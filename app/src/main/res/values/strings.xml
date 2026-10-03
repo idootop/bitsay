@@ -16,6 +16,14 @@
     <string name="action_search">搜索</string>
     <string name="action_close">关闭</string>
     <string name="action_undo">撤销</string>
+    <string name="action_select_all">全选</string>
+    <string name="action_select_none">取消全选</string>
+    <string name="action_cancel_selection">退出多选</string>
+    <string name="action_mark_done">标记完成</string>
+    <string name="action_mark_undone">取消完成</string>
+    <string name="selected_count">已选 %1$d 项</string>
+    <string name="batch_deleted">已删除 %1$d 条</string>
+    <string name="batch_done">已标记 %1$d 条</string>
 
     <string name="hint_note">写点什么…</string>
     <string name="hint_todo">要做点什么？</string>
@@ -37,9 +45,9 @@
     <string name="settings_title">设置</string>
     <string name="settings_backup">备份与恢复</string>
     <string name="settings_export">导出备份</string>
-    <string name="settings_export_desc">把所有笔记和待办导出成一个 .json 文件</string>
+    <string name="settings_export_desc">把全部笔记和待办导出成一个 .bitsay.gz 压缩备份文件</string>
     <string name="settings_import">导入备份</string>
-    <string name="settings_import_desc">从备份文件恢复（可选择覆盖或合并）</string>
+    <string name="settings_import_desc">选择 .bitsay.gz 备份文件恢复，可覆盖或合并</string>
     <string name="settings_about">关于</string>
     <string name="settings_stats">共 %1$d 条笔记 · %2$d 条待办</string>
     <string name="settings_widget_hint">长按桌面空白处 → 小组件 → 找到「比特记」，即可把列表放到桌面上。</string>

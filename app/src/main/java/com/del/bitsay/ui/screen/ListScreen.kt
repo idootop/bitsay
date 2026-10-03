@@ -3,6 +3,7 @@ package com.del.bitsay.ui.screen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,6 +52,7 @@ import com.del.bitsay.ui.components.SegmentedTabs
 import com.del.bitsay.ui.theme.Blush
 import com.del.bitsay.ui.theme.CardColors
 import com.del.bitsay.ui.theme.CuteShape
+import com.del.bitsay.ui.theme.CuteShapeSmall
 import com.del.bitsay.ui.theme.Done
 import com.del.bitsay.ui.theme.Ink
 import com.del.bitsay.ui.theme.InkSoft
@@ -68,33 +70,51 @@ fun ListScreen(
     onOpenItem: (Long) -> Unit,
     onToggleDone: (Long) -> Unit,
     onNew: () -> Unit,
+    onBeginSelection: (Long) -> Unit,
+    onToggleSelection: (Long) -> Unit,
+    onSelectAll: () -> Unit,
+    onClearSelection: () -> Unit,
+    onDeleteSelected: () -> Unit,
+    onSetSelectedDone: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            Header(
-                state = state,
-                onToggleSearch = onToggleSearch,
-                onOpenSettings = onOpenSettings,
-            )
-            SegmentedTabs(
-                options = listOf(Kind.NOTE, Kind.TODO),
-                selected = state.tab,
-                label = { stringResource(if (it == Kind.NOTE) R.string.tab_notes else R.string.tab_todos) },
-                accent = { if (it == Kind.NOTE) Sun else Mint },
-                onSelect = onSelectTab,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 18.dp),
-            )
-            if (state.searchOpen) {
-                SearchField(
-                    value = state.query,
-                    onValueChange = onQuery,
+            // Selection mode replaces the whole header rather than stacking on top of it: while
+            // picking rows, "search / settings / which tab" are all irrelevant.
+            if (state.inSelectionMode) {
+                SelectionHeader(
+                    state = state,
+                    onSelectAll = onSelectAll,
+                    onClearSelection = onClearSelection,
+                    onDeleteSelected = onDeleteSelected,
+                    onSetSelectedDone = onSetSelectedDone,
+                )
+            } else {
+                Header(
+                    state = state,
+                    onToggleSearch = onToggleSearch,
+                    onOpenSettings = onOpenSettings,
+                )
+                SegmentedTabs(
+                    options = listOf(Kind.NOTE, Kind.TODO),
+                    selected = state.tab,
+                    label = { stringResource(if (it == Kind.NOTE) R.string.tab_notes else R.string.tab_todos) },
+                    accent = { if (it == Kind.NOTE) Sun else Mint },
+                    onSelect = onSelectTab,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 10.dp),
+                        .padding(horizontal = 18.dp),
                 )
+                if (state.searchOpen) {
+                    SearchField(
+                        value = state.query,
+                        onValueChange = onQuery,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 10.dp),
+                    )
+                }
             }
             val items = state.visible
             if (items.isEmpty()) {
@@ -120,30 +140,119 @@ fun ListScreen(
                         ItemCard(
                             item = item,
                             index = index,
-                            onClick = { onOpenItem(item.id) },
-                            onToggleDone = { onToggleDone(item.id) },
+                            selecting = state.inSelectionMode,
+                            selected = item.id in state.selection,
+                            onClick = {
+                                if (state.inSelectionMode) {
+                                    onToggleSelection(item.id)
+                                } else {
+                                    onOpenItem(item.id)
+                                }
+                            },
+                            onLongClick = { onBeginSelection(item.id) },
+                            onToggleDone = {
+                                // While picking rows a tap means "select", never "tick".
+                                if (state.inSelectionMode) {
+                                    onToggleSelection(item.id)
+                                } else {
+                                    onToggleDone(item.id)
+                                }
+                            },
                         )
                     }
                 }
             }
         }
 
-        FloatingActionButton(
-            onClick = onNew,
+        // Creating a note is not a batch action: while rows are being picked, the FAB would only
+        // be in the way of the delete button.
+        if (!state.inSelectionMode) {
+            FloatingActionButton(
+                onClick = onNew,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 22.dp, bottom = 26.dp)
+                    .size(58.dp)
+                    .border(1.5.dp, Ink.copy(alpha = 0.16f), CircleShape),
+                containerColor = Sun,
+                contentColor = Ink,
+            ) {
+                androidx.compose.material3.Icon(
+                    painter = painterResource(R.drawable.ic_plus),
+                    contentDescription = stringResource(R.string.action_new),
+                    modifier = Modifier.size(26.dp),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Replaces the normal header while rows are being picked: a count, 全选/取消全选, and the two
+ * batch actions. "Mark done" only appears when the selection actually contains todos.
+ */
+@Composable
+private fun SelectionHeader(
+    state: AppUiState,
+    onSelectAll: () -> Unit,
+    onClearSelection: () -> Unit,
+    onDeleteSelected: () -> Unit,
+    onSetSelectedDone: (Boolean) -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CuteIconButton(
+            painter = painterResource(R.drawable.ic_close),
+            contentDescription = stringResource(R.string.action_cancel_selection),
+            onClick = onClearSelection,
+            tint = Ink,
+        )
+        Text(
+            text = stringResource(R.string.selected_count, state.selection.size),
+            style = MaterialTheme.typography.titleMedium,
+            color = Ink,
+            modifier = Modifier.padding(start = 6.dp),
+        )
+        Spacer(Modifier.weight(1f))
+        Text(
+            text = stringResource(
+                if (state.allVisibleSelected) R.string.action_select_none
+                else R.string.action_select_all,
+            ),
+            style = MaterialTheme.typography.labelLarge,
+            color = Ink,
             modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 22.dp, bottom = 26.dp)
-                .size(58.dp)
-                .border(1.5.dp, Ink.copy(alpha = 0.16f), CircleShape),
-            containerColor = Sun,
-            contentColor = Ink,
-        ) {
-            androidx.compose.material3.Icon(
-                painter = painterResource(R.drawable.ic_plus),
-                contentDescription = stringResource(R.string.action_new),
-                modifier = Modifier.size(26.dp),
+                .clip(CuteShapeSmall)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = { if (state.allVisibleSelected) onClearSelection() else onSelectAll() },
+                )
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+        )
+        if (state.selectedTodoCount > 0) {
+            CuteIconButton(
+                painter = painterResource(
+                    if (state.selectedTodosAllDone) R.drawable.ic_todo_open else R.drawable.ic_check,
+                ),
+                contentDescription = stringResource(
+                    if (state.selectedTodosAllDone) R.string.action_mark_undone
+                    else R.string.action_mark_done,
+                ),
+                onClick = { onSetSelectedDone(!state.selectedTodosAllDone) },
+                tint = Ink,
             )
         }
+        CuteIconButton(
+            painter = painterResource(R.drawable.ic_delete),
+            contentDescription = stringResource(R.string.action_delete),
+            onClick = onDeleteSelected,
+            tint = Ink,
+        )
     }
 }
 
@@ -250,7 +359,10 @@ private fun SearchField(
 private fun ItemCard(
     item: Item,
     index: Int,
+    selecting: Boolean,
+    selected: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     onToggleDone: () -> Unit,
 ) {
     val background = when {
@@ -264,14 +376,28 @@ private fun ItemCard(
             .clip(CuteShape)
             .background(background)
             .border(1.5.dp, Ink.copy(alpha = 0.13f), CuteShape)
-            .clickable(
+            .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = onClick,
+                onLongClick = onLongClick,
             )
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (selecting) {
+            androidx.compose.material3.Icon(
+                painter = painterResource(
+                    if (selected) R.drawable.ic_selected else R.drawable.ic_unselected,
+                ),
+                contentDescription = null,
+                tint = Color.Unspecified,
+                modifier = Modifier
+                    .size(24.dp)
+                    .padding(end = 0.dp),
+            )
+            Spacer(Modifier.width(12.dp))
+        }
         if (item.isTodo) {
             Box(
                 Modifier

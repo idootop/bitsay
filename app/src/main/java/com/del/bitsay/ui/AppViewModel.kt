@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.del.bitsay.AppContainer
+import com.del.bitsay.core.backup.BackupArchive
 import com.del.bitsay.core.backup.BackupFiles
 import com.del.bitsay.core.backup.BackupManager
 import com.del.bitsay.core.backup.ExportPayload
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -45,7 +47,7 @@ sealed interface Notice {
 }
 
 /** A backup file that has been read and is waiting for the user to pick a restore mode. */
-data class PendingImport(val json: String, val count: Int)
+data class PendingImport(val payload: ByteArray, val count: Int)
 
 data class AppUiState(
     val tab: Kind = Kind.NOTE,
@@ -74,6 +76,16 @@ data class AppUiState(
     /** Whether this launcher supports "pin widget to home screen" from inside the app. */
     val canPinWidget: Boolean = false,
     /**
+     * Ids ticked for a batch operation. Empty means "not in selection mode" — there is no
+     * separate boolean to keep in sync.
+     */
+    val selection: Set<Long> = emptySet(),
+    /**
+     * Rows matching [query], fetched from SQL. The in-memory lists only hold previews of the
+     * text, so searching them would silently miss matches deep inside a long note.
+     */
+    val searchResults: List<Item> = emptyList(),
+    /**
      * Raise the keyboard as soon as the editor appears. True only when the editor was opened to
      * **write something new** (the FAB, or the widget's `+`); opening an existing entry is a
      * "look at it" gesture and should not have half the screen covered by an IME.
@@ -91,11 +103,21 @@ data class AppUiState(
 ) {
     val current: List<Item> get() = if (tab == Kind.NOTE) notes else todos
 
-    val visible: List<Item> get() {
-        if (query.isBlank()) return current
-        val needle = query.trim()
-        return current.filter { it.text.contains(needle, ignoreCase = true) }
-    }
+    val visible: List<Item> get() = if (query.isBlank()) current else searchResults
+
+    val inSelectionMode: Boolean get() = selection.isNotEmpty()
+
+    val allVisibleSelected: Boolean
+        get() = visible.isNotEmpty() && visible.all { it.id in selection }
+
+    private val selectedTodos: List<Item> get() = current.filter { it.id in selection && it.isTodo }
+
+    /** How many of the *selected* rows are todos — decides whether "mark done" makes sense. */
+    val selectedTodoCount: Int get() = selectedTodos.size
+
+    /** Drives whether the batch button offers "mark done" or "mark not done". */
+    val selectedTodosAllDone: Boolean
+        get() = selectedTodos.isNotEmpty() && selectedTodos.all { it.done }
 
     val noteCount: Int get() = notes.size
     val todoCount: Int get() = todos.size
@@ -131,17 +153,86 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch {
             repository.todos.collect { list -> _state.update { it.copy(todos = list) } }
         }
+        // Search hits live outside the in-memory lists, so a write has to re-run them.
+        viewModelScope.launch {
+            repository.change.drop(1).collect {
+                if (_state.value.query.isNotBlank()) runSearch()
+            }
+        }
+    }
+
+    private fun scheduleSearch() {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            delay(SEARCH_DEBOUNCE_MS)
+            runSearch()
+        }
+    }
+
+    private suspend fun runSearch() {
+        val (kind, needle) = _state.value.let { it.tab to it.query }
+        val results = repository.search(kind, needle)
+        // Drop the result if the user typed on while the query was running.
+        if (_state.value.query == needle && _state.value.tab == kind) {
+            _state.update { it.copy(searchResults = results) }
+        }
     }
 
     // ------------------------------------------------------------------ navigation
 
-    fun selectTab(kind: Kind) = _state.update { it.copy(tab = kind, query = "") }
-
-    fun toggleSearch() = _state.update {
-        it.copy(searchOpen = !it.searchOpen, query = if (it.searchOpen) "" else it.query)
+    fun selectTab(kind: Kind) = _state.update {
+        it.copy(tab = kind, query = "", searchResults = emptyList(), selection = emptySet())
     }
 
-    fun setQuery(value: String) = _state.update { it.copy(query = value) }
+    fun toggleSearch() = _state.update {
+        if (it.searchOpen) {
+            it.copy(searchOpen = false, query = "", searchResults = emptyList())
+        } else {
+            it.copy(searchOpen = true)
+        }
+    }
+
+    fun setQuery(value: String) {
+        _state.update { it.copy(query = value) }
+        scheduleSearch()
+    }
+
+    // ------------------------------------------------------------------ batch selection
+
+    /** Long-press on a row: enter selection mode with that row ticked. */
+    fun beginSelection(id: Long) = _state.update { it.copy(selection = setOf(id)) }
+
+    fun toggleSelection(id: Long) = _state.update {
+        it.copy(selection = if (id in it.selection) it.selection - id else it.selection + id)
+    }
+
+    fun selectAllVisible() = _state.update {
+        it.copy(selection = it.visible.map { item -> item.id }.toSet())
+    }
+
+    fun clearSelection() = _state.update { it.copy(selection = emptySet()) }
+
+    fun deleteSelected() {
+        val ids = _state.value.selection
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            repository.deleteMany(ids)
+            _state.update { it.copy(selection = emptySet()) }
+        }
+    }
+
+    /**
+     * Ticks or unticks everything selected. Non-todo ids are ignored by the repository, so
+     * "select all" on a mixed list stays harmless.
+     */
+    fun setSelectedDone(done: Boolean) {
+        val ids = _state.value.selection
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            repository.setDoneMany(ids, done)
+            _state.update { it.copy(selection = emptySet()) }
+        }
+    }
 
     fun openSettings() = _state.update { it.copy(screen = Screen.Settings) }
 
@@ -295,7 +386,14 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
      */
     private suspend fun persistDraft() {
         val snapshot = _state.value
-        val id = repository.saveDraft(snapshot.editingId, snapshot.editingKind, snapshot.draft)
+        // reload = false: the list is behind the editor, so re-reading every row after every
+        // keystroke-batch buys nothing. leaveEditor() reloads once, when it becomes visible again.
+        val id = repository.saveDraft(
+            id = snapshot.editingId,
+            kind = snapshot.editingKind,
+            text = snapshot.draft,
+            reload = false,
+        )
         autoSaveThrottle.onWritten(SystemClock.elapsedRealtime())
         if (id == 0L) {
             _state.update { it.copy(dirty = snapshot.draft.isNotBlank()) }
@@ -321,7 +419,9 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
      * first would paint it for a frame before `finish()` landed, which is exactly the flicker the
      * separate window exists to avoid. So the screen is left alone and the window just goes away.
      */
-    private fun leaveEditor(fromWidget: Boolean) {
+    private suspend fun leaveEditor(fromWidget: Boolean) {
+        // One refresh for the whole editing session, instead of one per keystroke-batch.
+        repository.reload()
         if (fromWidget) exitToLauncher() else closeEditor()
     }
 
@@ -376,7 +476,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         }
         viewModelScope.launch {
             _state.update { it.copy(busy = true) }
-            runCatching { BackupFiles.write(container.context, uri, payload.json) }
+            runCatching { BackupFiles.write(container.context, uri, BackupArchive.compress(payload.payload)) }
                 .onSuccess { _state.update { it.copy(notice = Notice.Exported(payload.count)) } }
                 .onFailure { error -> _state.update { it.copy(notice = Notice.Failed(error.readable())) } }
             exportPayload = null
@@ -389,8 +489,8 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch {
             _state.update { it.copy(busy = true) }
             runCatching {
-                val json = BackupFiles.read(container.context, uri)
-                PendingImport(json = json, count = backup.peek(json).items.size)
+                val payload = BackupArchive.decompress(BackupFiles.read(container.context, uri))
+                PendingImport(payload = payload, count = backup.peek(payload).items.size)
             }
                 .onSuccess { pending -> _state.update { it.copy(pendingImport = pending) } }
                 .onFailure { error -> _state.update { it.copy(notice = Notice.Failed(error.readable())) } }
@@ -402,7 +502,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         val pending = _state.value.pendingImport ?: return
         viewModelScope.launch {
             _state.update { it.copy(busy = true, pendingImport = null) }
-            runCatching { backup.import(pending.json, replace) }
+            runCatching { backup.import(pending.payload, replace) }
                 .onSuccess { result -> _state.update { it.copy(notice = Notice.Imported(result)) } }
                 .onFailure { error -> _state.update { it.copy(notice = Notice.Failed(error.readable())) } }
             _state.update { it.copy(busy = false) }
@@ -417,6 +517,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     private var exportPayload: ExportPayload? = null
     private var autoSaveJob: Job? = null
+    private var searchJob: Job? = null
     private val autoSaveThrottle = WriteThrottle(AUTO_SAVE_THROTTLE_MS)
 
     /** True when the entry now in the editor did not exist until this editing session. */
@@ -437,5 +538,8 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
          * is written immediately, so this only bounds the middle of a long burst.
          */
         const val AUTO_SAVE_THROTTLE_MS = 400L
+
+        /** Long enough to coalesce a burst of typing, short enough to feel live. */
+        const val SEARCH_DEBOUNCE_MS = 180L
     }
 }

@@ -67,6 +67,16 @@ class ItemRepository(
     /** Blocking read for the widget, which runs on a binder thread and cannot await. */
     fun snapshot(kind: Kind): List<Item> = store.list(kind)
 
+    /**
+     * Full-text search over the *complete* text. Runs in SQL because the in-memory list only
+     * holds previews — filtering it would miss matches deep inside a long note.
+     */
+    suspend fun search(kind: Kind, query: String): List<Item> {
+        val needle = query.trim()
+        if (needle.isEmpty()) return items(kind).value
+        return withContext(dispatcher) { store.search(kind, needle) }
+    }
+
     // ------------------------------------------------------------------ mutations
 
     /** @return the new id, or `null` when [text] was blank. */
@@ -122,15 +132,41 @@ class ItemRepository(
     }
 
     /**
+     * Bulk delete, in one transaction and with one cache refresh — not N round trips. Selecting
+     * "all" on a 10 000-row list has to stay a single, quick operation.
+     *
+     * @return how many rows were removed.
+     */
+    suspend fun deleteMany(ids: Collection<Long>): Int {
+        if (ids.isEmpty()) return 0
+        val removed = withContext(dispatcher) { store.deleteMany(ids) }
+        if (removed > 0) afterWrite()
+        return removed
+    }
+
+    /** Bulk tick/untick. @return how many rows actually changed. */
+    suspend fun setDoneMany(ids: Collection<Long>, done: Boolean): Int {
+        if (ids.isEmpty()) return 0
+        val now = clock()
+        val changed = withContext(dispatcher) { store.setDoneMany(ids, done, now) }
+        if (changed > 0) afterWrite()
+        return changed
+    }
+
+    /**
      * Idempotent "persist whatever the user has typed so far". This is what the editor calls on
      * every debounced keystroke, so a crash, a swipe-away or a battery pull can never lose a
      * thought. Calling it repeatedly with the same text is free (no write, no version bump).
      *
      * @param id the row being edited, or 0 when the editor is still blank/new.
+     * @param reload when false the in-memory lists are left alone and only the change signal is
+     *   bumped. The editor passes false: the list is *behind* the editor, nobody is looking at
+     *   it, and re-reading tens of thousands of rows every 400 ms while someone types is pure
+     *   waste. Whoever closes the editor calls [reload] once instead.
      * @return the row id holding the text — the same [id] when it already existed, a fresh id
      *   when this call created the row, or 0 when there is nothing worth storing yet.
      */
-    suspend fun saveDraft(id: Long, kind: Kind, text: String): Long {
+    suspend fun saveDraft(id: Long, kind: Kind, text: String, reload: Boolean = true): Long {
         val clean = normalize(text) ?: return if (id > 0L) id else 0L
         val now = clock()
         var changed = true
@@ -154,7 +190,9 @@ class ItemRepository(
                 }
             }
         }
-        if (changed) afterWrite(inserted)
+        if (changed) {
+            if (reload) afterWrite(inserted) else bump(inserted)
+        }
         return resolved
     }
 
@@ -210,6 +248,11 @@ class ItemRepository(
 
     private suspend fun afterWrite(inserted: Boolean = false) {
         reload()
+        bump(inserted)
+    }
+
+    /** Bumps the change signal without touching the in-memory lists. */
+    private fun bump(inserted: Boolean) {
         _change.update { current ->
             val next = current.version + 1L
             current.copy(version = next, insertedAt = if (inserted) next else current.insertedAt)

@@ -32,14 +32,14 @@ class BackupManagerTest {
         val todoId = repository.todos.value.single().id
         repository.setDone(todoId, true)
 
-        val json = manager.export()
+        val payload = manager.export()
         val original = store.snapshot().sortedBy { it.id }
 
         val freshStore = FakeItemStore()
         val freshRepository = ItemRepository(freshStore, { now }, UnconfinedTestDispatcher())
         val freshManager = BackupManager(freshRepository, "1.0.0", { now })
 
-        val result = freshManager.import(json.json, replace = true)
+        val result = freshManager.import(payload.payload, replace = true)
 
         assertEquals(2, result.total)
         assertEquals(original, freshStore.snapshot().sortedBy { it.id })
@@ -54,15 +54,15 @@ class BackupManagerTest {
         val payload = manager.export()
 
         assertEquals(3, payload.count)
-        assertTrue(payload.json.contains("\"count\": 3"))
+        assertEquals(3, BackupCodec.decode(payload.payload).items.size)
     }
 
     @Test
     fun `peek validates without touching the database`() = runTest {
         repository.add(Kind.NOTE, "keep me")
-        val json = manager.export().json
+        val payload = manager.export().payload
 
-        val preview = manager.peek(json)
+        val preview = manager.peek(payload)
 
         assertEquals(1, preview.items.size)
         assertEquals(1, store.count(Kind.NOTE))
@@ -71,21 +71,15 @@ class BackupManagerTest {
     @Test
     fun `merge import never loses local data`() = runTest {
         repository.add(Kind.NOTE, "local")
-        val backupJson = BackupCodec.encode(
-            Backup(
-                items = listOf(
-                    com.del.bitsay.core.model.Item(
-                        id = 500,
-                        kind = Kind.NOTE,
-                        text = "from another phone",
-                        createdAt = 1,
-                        updatedAt = 2,
-                    ),
+        manager.import(BackupCodec.encode(Backup(items = listOf(
+                com.del.bitsay.core.model.Item(
+                    id = 500,
+                    kind = Kind.NOTE,
+                    text = "from another phone",
+                    createdAt = 1,
+                    updatedAt = 2,
                 ),
-            ),
-        )
-
-        manager.import(backupJson, replace = false)
+            ))), replace = false)
 
         val texts = store.snapshot().map { it.text }.toSet()
         assertEquals(setOf("local", "from another phone"), texts)
@@ -98,6 +92,6 @@ class BackupManagerTest {
             .toInstant()
             .toEpochMilli()
 
-        assertEquals("bitsay-20261001-1200.json", manager.suggestedFileName())
+        assertEquals("bitsay-20261001-1200.bitsay.gz", manager.suggestedFileName())
     }
 }

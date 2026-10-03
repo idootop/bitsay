@@ -83,11 +83,13 @@ fun BitSayRoot(
 
     // Enabled on the list too when the session came from the widget: back should leave the app,
     // not silently reveal an app screen the user never asked for.
-    BackHandler(enabled = state.screen != Screen.List || state.fromWidget) {
-        when (state.screen) {
-            is Screen.Editor -> viewModel.saveDraft()
-            Screen.Settings -> viewModel.openList()
-            Screen.List -> onExit()
+    BackHandler(enabled = state.screen != Screen.List || state.fromWidget || state.inSelectionMode) {
+        when {
+            // Backing out of a selection should only leave selection mode, not the screen.
+            state.inSelectionMode -> viewModel.clearSelection()
+            state.screen is Screen.Editor -> viewModel.saveDraft()
+            state.screen is Screen.Settings -> viewModel.openList()
+            else -> onExit()
         }
     }
 
@@ -113,6 +115,12 @@ fun BitSayRoot(
                     onOpenItem = viewModel::openItem,
                     onToggleDone = viewModel::toggleDone,
                     onNew = viewModel::startNewAsCurrentTab,
+                    onBeginSelection = viewModel::beginSelection,
+                    onToggleSelection = viewModel::toggleSelection,
+                    onSelectAll = viewModel::selectAllVisible,
+                    onClearSelection = viewModel::clearSelection,
+                    onDeleteSelected = viewModel::deleteSelected,
+                    onSetSelectedDone = viewModel::setSelectedDone,
                 )
 
                 is Screen.Editor -> EditorScreen(
@@ -130,7 +138,7 @@ fun BitSayRoot(
                     onBack = viewModel::openList,
                     onAddWidget = viewModel::addWidgetToHome,
                     onExport = { viewModel.prepareExport { name -> exportLauncher.launch(name) } },
-                    onImport = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
+                    onImport = { importLauncher.launch(BackupFiles.IMPORT_MIME_TYPES) },
                 )
             }
 

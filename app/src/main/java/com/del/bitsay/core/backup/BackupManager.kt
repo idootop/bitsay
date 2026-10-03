@@ -21,53 +21,66 @@ class BackupManager(
     private val zone: ZoneId = ZoneId.systemDefault(),
 ) {
 
-    /** Snapshot the whole database as a pretty-printed JSON document. */
+    /** Snapshot the whole database and encode it. */
     suspend fun export(): ExportPayload {
         val items = repository.all()
-        val json = BackupCodec.encode(
+        val payload = BackupCodec.encode(
             Backup(
                 appVersion = appVersion,
                 exportedAt = clock(),
                 items = items,
             ),
         )
-        return ExportPayload(json = json, count = items.size)
+        return ExportPayload(payload = payload, count = items.size)
     }
 
-    suspend fun import(json: String, replace: Boolean): ImportResult {
-        val backup = BackupCodec.decode(json)
+    suspend fun import(payload: ByteArray, replace: Boolean): ImportResult {
+        val backup = BackupCodec.decode(payload)
         return repository.restore(backup.items, replace)
     }
 
     /** Reads and validates without touching the database — used to size the confirm dialog. */
-    fun peek(json: String): Backup = BackupCodec.decode(json)
+    fun peek(payload: ByteArray): Backup = BackupCodec.decode(payload)
 
+    /**
+     * `.bitsay.gz` rather than a bare `.bitsay`: the payload really is gzip, and Android maps
+     * `.gz` to a real MIME type. That is what lets the import picker filter the list down to
+     * backup files — an unknown extension resolves to `application/octet-stream` and would show
+     * every unrelated file on the phone.
+     */
     fun suggestedFileName(): String {
         val stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmm")
             .withZone(zone)
             .format(Instant.ofEpochMilli(clock()))
-        return "bitsay-$stamp.json"
+        return "bitsay-$stamp.bitsay.gz"
     }
 }
 
-/** Result of [BackupManager.export]. */
-data class ExportPayload(val json: String, val count: Int)
+/** Result of [BackupManager.export]: the encoded payload plus how many rows it holds. */
+data class ExportPayload(val payload: ByteArray, val count: Int)
 
 /** Thin Storage-Access-Framework glue: no permissions, the user picks the file. */
 object BackupFiles {
 
-    const val MIME = "application/json"
+    /** The export picker's suggested type; the payload really is gzip. */
+    const val MIME = "application/gzip"
 
-    suspend fun write(context: Context, uri: Uri, text: String) = withContext(Dispatchers.IO) {
+    /**
+     * Only `.gz` files. Everything this app writes lands in that bucket, so the import picker
+     * shows backups instead of the whole Downloads folder — an unknown extension would resolve
+     * to `application/octet-stream` and match every unrelated file on the phone.
+     */
+    val IMPORT_MIME_TYPES = arrayOf("application/gzip")
+
+    suspend fun write(context: Context, uri: Uri, bytes: ByteArray) = withContext(Dispatchers.IO) {
         context.contentResolver.openOutputStream(uri, "wt")?.use { out ->
-            out.write(text.toByteArray(Charsets.UTF_8))
+            out.write(bytes)
             out.flush()
         } ?: error("无法写入所选文件")
     }
 
-    suspend fun read(context: Context, uri: Uri): String = withContext(Dispatchers.IO) {
-        context.contentResolver.openInputStream(uri)?.use { input ->
-            input.readBytes().toString(Charsets.UTF_8)
-        } ?: error("无法读取所选文件")
+    suspend fun read(context: Context, uri: Uri): ByteArray = withContext(Dispatchers.IO) {
+        context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            ?: error("无法读取所选文件")
     }
 }

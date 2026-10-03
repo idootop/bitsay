@@ -23,10 +23,19 @@ class SqliteItemStore(context: Context) : ItemStore {
     override fun list(kind: Kind): List<Item> = query(
         selection = "${BitSayDb.C_KIND} = ?",
         selectionArgs = arrayOf(kind.code.toString()),
-        // Sorted by CREATION time, not update time: editing a note (or ticking a todo) must not
-        // make the list jump around under the user's finger. Undone todos still sink to the
-        // bottom, and `id` breaks ties when two rows share a millisecond.
-        orderBy = "${BitSayDb.C_DONE} ASC, ${BitSayDb.C_CREATED_AT} DESC, ${BitSayDb.C_ID} DESC",
+        orderBy = DISPLAY_ORDER,
+        // Only a prefix of the text ever reaches the screen; pulling whole notes here is what
+        // would make a large database blow up the app's heap.
+        columns = PREVIEW_COLUMNS,
+    )
+
+    override fun search(kind: Kind, needle: String): List<Item> = query(
+        // LIKE against the real column, not the truncated preview: a match deep inside a long
+        // note must still be found.
+        selection = "${BitSayDb.C_KIND} = ? AND ${BitSayDb.C_TEXT} LIKE ? ESCAPE '\\'",
+        selectionArgs = arrayOf(kind.code.toString(), "%${escapeLike(needle)}%"),
+        orderBy = DISPLAY_ORDER,
+        columns = PREVIEW_COLUMNS,
     )
 
     override fun listAll(): List<Item> = query(
@@ -57,6 +66,33 @@ class SqliteItemStore(context: Context) : ItemStore {
     override fun delete(id: Long): Boolean =
         db.delete(BitSayDb.T_ITEMS, "${BitSayDb.C_ID} = ?", arrayOf(id.toString())) > 0
 
+    override fun deleteMany(ids: Collection<Long>): Int {
+        if (ids.isEmpty()) return 0
+        val chunk = ids.toList()
+        return db.inTransaction {
+            // One statement per chunk of ids: SQLITE_MAX_VARIABLE_NUMBER is 999 on older builds,
+            // so a "select all 10 000 rows" batch has to be split.
+            chunk.chunked(SQL_VARIABLE_LIMIT).sumOf { part ->
+                db.delete(BitSayDb.T_ITEMS, idInClause(part), idArgs(part))
+            }
+        }
+    }
+
+    override fun setDoneMany(ids: Collection<Long>, done: Boolean, now: Long): Int {
+        if (ids.isEmpty()) return 0
+        val values = ContentValues(2).apply {
+            put(BitSayDb.C_DONE, if (done) 1 else 0)
+            put(BitSayDb.C_UPDATED_AT, now)
+            if (done) put(BitSayDb.C_DONE_AT, now) else putNull(BitSayDb.C_DONE_AT)
+        }
+        val chunk = ids.toList()
+        return db.inTransaction {
+            chunk.chunked(SQL_VARIABLE_LIMIT).sumOf { part ->
+                db.update(BitSayDb.T_ITEMS, values, idInClause(part), idArgs(part))
+            }
+        }
+    }
+
     override fun replaceAll(items: List<Item>) {
         db.beginTransaction()
         try {
@@ -81,10 +117,11 @@ class SqliteItemStore(context: Context) : ItemStore {
         selectionArgs: Array<String>? = null,
         orderBy: String? = null,
         limit: String? = null,
+        columns: Array<String>? = null,
     ): List<Item> {
         val cursor = db.query(
             BitSayDb.T_ITEMS,
-            null,
+            columns,
             selection,
             selectionArgs,
             null,
@@ -112,6 +149,22 @@ class SqliteItemStore(context: Context) : ItemStore {
         )
     }
 
+    private fun <T> android.database.sqlite.SQLiteDatabase.inTransaction(body: () -> T): T {
+        beginTransaction()
+        return try {
+            val result = body()
+            setTransactionSuccessful()
+            result
+        } finally {
+            endTransaction()
+        }
+    }
+
+    private fun idInClause(ids: List<Long>): String =
+        "${BitSayDb.C_ID} IN (${ids.joinToString(",") { "?" }})"
+
+    private fun idArgs(ids: List<Long>): Array<String> = Array(ids.size) { ids[it].toString() }
+
     private fun Item.toValues(withId: Boolean): ContentValues = ContentValues(7).apply {
         if (withId) put(BitSayDb.C_ID, id)
         put(BitSayDb.C_KIND, kind.code)
@@ -120,5 +173,34 @@ class SqliteItemStore(context: Context) : ItemStore {
         put(BitSayDb.C_CREATED_AT, createdAt)
         put(BitSayDb.C_UPDATED_AT, updatedAt)
         if (doneAt == null) putNull(BitSayDb.C_DONE_AT) else put(BitSayDb.C_DONE_AT, doneAt)
+    }
+
+    private companion object {
+        /** Sorted by CREATION time: editing a note must not make the list jump under the finger. */
+        const val DISPLAY_ORDER =
+            "${BitSayDb.C_DONE} ASC, ${BitSayDb.C_CREATED_AT} DESC, ${BitSayDb.C_ID} DESC"
+
+        /** Everything except the bulk of the text, which only the editor and the backup need. */
+        val PREVIEW_COLUMNS = arrayOf(
+            BitSayDb.C_ID,
+            BitSayDb.C_KIND,
+            "substr(${BitSayDb.C_TEXT}, 1, ${ItemStore.PREVIEW_CHARS}) AS ${BitSayDb.C_TEXT}",
+            BitSayDb.C_DONE,
+            BitSayDb.C_CREATED_AT,
+            BitSayDb.C_UPDATED_AT,
+            BitSayDb.C_DONE_AT,
+        )
+
+        /** SQLite's default SQLITE_MAX_VARIABLE_NUMBER is 999 on older Android builds. */
+        const val SQL_VARIABLE_LIMIT = 500
+
+        /**
+         * Neutralises LIKE wildcards in user input, so searching for "50%" or "a_b" looks for
+         * those literal characters instead of turning into a match-everything pattern.
+         */
+        fun escapeLike(needle: String): String = needle
+            .replace("\\", "\\\\")
+            .replace("%", "\\%")
+            .replace("_", "\\_")
     }
 }

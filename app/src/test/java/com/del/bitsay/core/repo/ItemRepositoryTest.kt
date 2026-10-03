@@ -310,6 +310,165 @@ class ItemRepositoryTest {
         assertEquals(ItemRepository.MAX_TEXT_LENGTH, store.findById(huge)!!.text.length)
     }
 
+
+    // ------------------------------------------------------------------ big data
+
+    @Test
+    fun `list rows carry only a preview of a very long note`() = runTest {
+        val long = "头" + "很长的正文".repeat(400) + "藏在最后的暗号"
+        val id = repository.add(Kind.NOTE, long)!!
+
+        val listed = repository.notes.value.single()
+        assertEquals(ItemStore.PREVIEW_CHARS, listed.text.length)
+        // …but the real row is untouched, which is what the editor and the backup read.
+        assertEquals(long, store.findById(id)!!.text)
+    }
+
+    @Test
+    fun `the backup still contains the whole note, not the preview`() = runTest {
+        val long = "开" + "x".repeat(5_000) + "尾"
+        repository.add(Kind.NOTE, long)
+
+        assertEquals(long, repository.all().single().text)
+    }
+
+    @Test
+    fun `search finds a match deep inside a long note, past the preview cut-off`() = runTest {
+        val long = "头".repeat(400) + "藏在最后的暗号"
+        repository.add(Kind.NOTE, long)
+        repository.add(Kind.NOTE, "短笔记")
+
+        val hits = repository.search(Kind.NOTE, "暗号")
+
+        assertEquals(1, hits.size)
+        // Results are previews too — the row still has to be cheap to hold in a list.
+        assertEquals(ItemStore.PREVIEW_CHARS, hits.single().text.length)
+    }
+
+    @Test
+    fun `search is scoped to one kind`() = runTest {
+        repository.add(Kind.NOTE, "买牛奶")
+        repository.add(Kind.TODO, "买牛奶")
+
+        assertEquals(1, repository.search(Kind.NOTE, "买牛奶").size)
+        assertEquals(1, repository.search(Kind.TODO, "买牛奶").size)
+    }
+
+    @Test
+    fun `searching a blank string returns the whole list`() = runTest {
+        repository.add(Kind.NOTE, "a")
+        repository.add(Kind.NOTE, "b")
+
+        assertEquals(2, repository.search(Kind.NOTE, "   ").size)
+    }
+
+    @Test
+    fun `search with no matches returns nothing`() = runTest {
+        repository.add(Kind.NOTE, "买牛奶")
+        assertTrue(repository.search(Kind.NOTE, "不存在的词").isEmpty())
+    }
+
+    // ------------------------------------------------------------------ batch operations
+
+    @Test
+    fun `deleteMany removes every id in one go`() = runTest {
+        val a = repository.add(Kind.NOTE, "a")!!
+        val b = repository.add(Kind.NOTE, "b")!!
+        val c = repository.add(Kind.NOTE, "c")!!
+
+        assertEquals(2, repository.deleteMany(listOf(a, c)))
+
+        assertEquals(listOf("b"), repository.notes.value.map { it.text })
+        assertNull(store.findById(a))
+        assertNotNull(store.findById(b))
+        assertNull(store.findById(c))
+    }
+
+    @Test
+    fun `deleteMany ignores ids that are already gone`() = runTest {
+        val a = repository.add(Kind.NOTE, "a")!!
+        repository.delete(a)
+
+        assertEquals(0, repository.deleteMany(listOf(a, 9_999L)))
+    }
+
+    @Test
+    fun `deleteMany with an empty selection does not touch the cache`() = runTest {
+        repository.add(Kind.NOTE, "keep")
+        val version = repository.change.value.version
+
+        assertEquals(0, repository.deleteMany(emptyList()))
+
+        assertEquals(version, repository.change.value.version)
+        assertEquals(1, repository.notes.value.size)
+    }
+
+    @Test
+    fun `setDoneMany ticks a whole selection and skips the notes in it`() = runTest {
+        val todoA = repository.add(Kind.TODO, "a")!!
+        val todoB = repository.add(Kind.TODO, "b")!!
+        val note = repository.add(Kind.NOTE, "just a note")!!
+
+        val changed = repository.setDoneMany(listOf(todoA, todoB, note), done = true)
+
+        assertEquals(2, changed)
+        assertTrue(store.findById(todoA)!!.done)
+        assertTrue(store.findById(todoB)!!.done)
+        assertFalse(store.findById(note)!!.done)
+        assertEquals(1_000_000L, store.findById(todoA)!!.doneAt)
+    }
+
+    @Test
+    fun `setDoneMany can untick as well`() = runTest {
+        val id = repository.add(Kind.TODO, "a")!!
+        repository.setDone(id, true)
+
+        assertEquals(1, repository.setDoneMany(listOf(id), done = false))
+
+        assertFalse(store.findById(id)!!.done)
+        assertNull(store.findById(id)!!.doneAt)
+    }
+
+    @Test
+    fun `setDoneMany reports zero when nothing actually changed`() = runTest {
+        val id = repository.add(Kind.TODO, "a")!!
+        repository.setDone(id, true)
+        val version = repository.change.value.version
+
+        assertEquals(0, repository.setDoneMany(listOf(id), done = true))
+
+        assertEquals(version, repository.change.value.version)
+    }
+
+    // ------------------------------------------------------------------ autosave without reload
+
+    @Test
+    fun `saveDraft without reload bumps the change signal but leaves the cache alone`() = runTest {
+        repository.add(Kind.NOTE, "existing")
+        val cached = repository.notes.value
+        val version = repository.change.value.version
+
+        val id = repository.saveDraft(0L, Kind.NOTE, "typed while the editor was open", reload = false)
+
+        assertTrue(id > 0L)
+        // The list behind the editor is deliberately stale…
+        assertEquals(cached, repository.notes.value)
+        // …but the widget observer still hears about the write.
+        assertTrue(repository.change.value.version > version)
+        assertEquals(repository.change.value.version, repository.change.value.insertedAt)
+    }
+
+    @Test
+    fun `leaving the editor reloads once and the list catches up`() = runTest {
+        repository.add(Kind.NOTE, "existing")
+        repository.saveDraft(0L, Kind.NOTE, "新写的", reload = false)
+        assertEquals(1, repository.notes.value.size)
+
+        repository.reload()
+
+        assertEquals(2, repository.notes.value.size)
+    }
+
     // ------------------------------------------------------------------ restore
 
     @Test

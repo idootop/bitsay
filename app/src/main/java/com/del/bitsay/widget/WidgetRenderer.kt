@@ -112,6 +112,7 @@ internal object WidgetRenderer {
         // --- buttons ---
         views.setOnClickPendingIntent(R.id.widget_add, quickAddIntent(context, widgetId, kind))
         views.setOnClickPendingIntent(R.id.widget_open_app, openAppIntent(context, widgetId))
+        views.setOnClickPendingIntent(R.id.widget_search, searchIntent(context, widgetId))
 
         if (scrollToTop) {
             views.setInt(R.id.widget_list, "smoothScrollToPosition", 0)
@@ -171,6 +172,28 @@ internal object WidgetRenderer {
         )
     }
 
+    /**
+     * Search opens the same floating window as [`+`][quickAddIntent] and a row tap, landing on
+     * the search page instead of the editor.
+     *
+     * It is deliberately *not* [MainActivity]: entering the app's task would leave the app's list
+     * sitting behind the search page, so backing out would reveal a screen the user never asked
+     * for. In its own task, back simply dismisses the window onto the home screen.
+     */
+    private fun searchIntent(context: Context, widgetId: Int): PendingIntent {
+        val intent = Intent(context, WidgetEntryActivity::class.java).apply {
+            action = WidgetContract.ACTION_SEARCH
+            putExtra(WidgetContract.EXTRA_FROM_WIDGET, true)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        return PendingIntent.getActivity(
+            context,
+            requestCode(widgetId, RC_SEARCH),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
     private fun setKindIntent(context: Context, widgetId: Int, kind: Kind): PendingIntent =
         PendingIntent.getBroadcast(
             context,
@@ -195,6 +218,7 @@ internal object WidgetRenderer {
     private const val RC_ADD = 2
     private const val RC_OPEN_APP = 3
     private const val RC_TAB_BASE = 4
+    private const val RC_SEARCH = 7
 }
 
 internal fun Kind.labelRes(): Int =

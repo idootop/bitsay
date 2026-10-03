@@ -90,6 +90,13 @@ class WidgetEntryActivity : ComponentActivity() {
                 }
             }
 
+            // Search lands on this same floating window's search page, so backing out of it
+            // dismisses the window onto the home screen — exactly like the editor does.
+            WidgetContract.ACTION_SEARCH -> {
+                viewModel.openSearch(fromWidget = true)
+                true
+            }
+
             else -> false
         }
     }

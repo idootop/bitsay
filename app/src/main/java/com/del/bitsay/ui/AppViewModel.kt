@@ -41,6 +41,10 @@ sealed interface Screen {
     data object List : Screen
     data class Editor(val id: Long, val kind: Kind) : Screen
     data object Settings : Screen
+
+    /** Its own page rather than a field that expands inside the list: search has its own scope
+     *  (which list you are looking in), its own empty state and its own back behaviour. */
+    data object Search : Screen
 }
 
 /** One-shot user feedback. Kept as data so the UI owns all wording. */
@@ -69,7 +73,6 @@ data class PendingImport(val payload: ByteArray, val count: Int)
 data class AppUiState(
     val tab: Kind = Kind.NOTE,
     val query: String = "",
-    val searchOpen: Boolean = false,
     val notes: List<Item> = emptyList(),
     val todos: List<Item> = emptyList(),
     val screen: Screen = Screen.List,
@@ -205,13 +208,54 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         it.copy(tab = kind, query = "", searchResults = emptyList(), selection = emptySet())
     }
 
-    fun toggleSearch() = _state.update {
-        if (it.searchOpen) {
-            it.copy(searchOpen = false, query = "", searchResults = emptyList())
-        } else {
-            it.copy(searchOpen = true)
+    /**
+     * The search page's tab switch: same keyword, other kind.
+     *
+     * It must not go through [selectTab], which drops the query — there, "notes / todos" picks
+     * which list the app shows, here it narrows the search that is already on screen. The new
+     * results are fetched straight away rather than through the typing debounce: a tab tap is a
+     * single deliberate action, not a keystroke in a burst. The previous kind's rows stay up
+     * until the new ones land, which is a few milliseconds of a `LIKE` scan.
+     */
+    fun selectSearchTab(kind: Kind) {
+        if (_state.value.tab == kind) return
+        _state.update { it.copy(tab = kind) }
+        if (_state.value.query.isBlank()) {
+            _state.update { it.copy(searchResults = emptyList()) }
+            return
         }
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch { runSearch() }
     }
+
+    /**
+     * @param fromWidget true when the widget's search button opened the floating window: leaving
+     *   search then dismisses that window instead of landing on the app's list.
+     */
+    fun openSearch(fromWidget: Boolean = false) = _state.update {
+        it.copy(screen = Screen.Search, query = "", searchResults = emptyList(), fromWidget = fromWidget)
+    }
+
+    /**
+     * Leaving search drops the query: coming back to a stale result list would be confusing.
+     *
+     * In the widget's floating window there is nothing to go *back* to, and switching to the list
+     * first would paint the app's list inside the window for a frame — the same flicker
+     * [leaveEditor] avoids. So the window just goes away.
+     */
+    fun closeSearch() {
+        if (_state.value.fromWidget) {
+            exitToLauncher()
+            return
+        }
+        _state.update { it.copy(screen = Screen.List, query = "", searchResults = emptyList()) }
+    }
+
+    /**
+     * Opening a result has to keep the origin it was found from: a hit opened inside the widget's
+     * window must back out to the home screen, not to the app's list.
+     */
+    fun openSearchResult(id: Long) = openItem(id, fromWidget = _state.value.fromWidget)
 
     fun setQuery(value: String) {
         _state.update { it.copy(query = value) }

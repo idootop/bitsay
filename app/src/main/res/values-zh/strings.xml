@@ -10,6 +10,7 @@
     <string name="action_new">新建</string>
     <string name="action_save">保存</string>
     <string name="action_done">完成</string>
+    <string name="action_toggle_done">切换完成状态</string>
     <string name="action_delete">删除</string>
     <string name="action_back">返回</string>
     <string name="action_settings">设置</string>
@@ -21,6 +22,7 @@
 
     <string name="hint_note">写点什么…</string>
     <string name="hint_todo">要做点什么？</string>
+    <string name="search_prompt">输入关键词搜索笔记和待办</string>
     <string name="hint_search">搜索</string>
 
     <string name="empty_notes">还没有笔记\n点右下角的 + 写第一条</string>
@@ -64,6 +66,7 @@
     <string name="widget_new_note">新建笔记</string>
     <string name="widget_new_todo">新建待办</string>
     <string name="widget_switch">切换列表</string>
+    <string name="widget_search">搜索</string>
     <string name="widget_open_app">打开应用</string>
     <string name="widget_empty">这里空空的\n去 App 里记一条吧</string>
 

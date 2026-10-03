@@ -63,7 +63,13 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
     }
 
-    /** The widget's app button always lands on the list, never on whatever was left open. */
+    /**
+     * The widget's "open app" button lands on the list, never on whatever was left open.
+     *
+     * Search is not handled here: the widget's search button opens
+     * [com.del.bitsay.widget.WidgetEntryActivity]'s floating window instead, so that backing out of
+     * it returns to the home screen rather than to this task.
+     */
     private fun handleIntent(intent: Intent?) {
         if (intent?.action == WidgetContract.ACTION_SHOW_LIST) viewModel.openList()
     }

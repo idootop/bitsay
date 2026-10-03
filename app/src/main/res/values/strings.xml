@@ -15,6 +15,7 @@
     <string name="action_new">New</string>
     <string name="action_save">Save</string>
     <string name="action_done">Done</string>
+    <string name="action_toggle_done">Toggle done</string>
     <string name="action_delete">Delete</string>
     <string name="action_back">Back</string>
     <string name="action_settings">Settings</string>
@@ -26,6 +27,7 @@
 
     <string name="hint_note">Write something…</string>
     <string name="hint_todo">What needs doing?</string>
+    <string name="search_prompt">Type to search notes and todos</string>
     <string name="hint_search">Search</string>
 
     <string name="empty_notes">No notes yet\nTap + to write your first one</string>
@@ -69,6 +71,7 @@
     <string name="widget_new_note">New note</string>
     <string name="widget_new_todo">New todo</string>
     <string name="widget_switch">Switch list</string>
+    <string name="widget_search">Search</string>
     <string name="widget_open_app">Open the app</string>
     <string name="widget_empty">Nothing here yet\nAdd one in the app</string>
 

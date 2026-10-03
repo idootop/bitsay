@@ -27,6 +27,9 @@ internal object WidgetContract {
 
     /** Sent by the widget's app button: bring the app up on its list, not wherever it was left. */
     const val ACTION_SHOW_LIST = "com.del.bitsay.action.SHOW_LIST"
+
+    /** Sent by the widget's search button: open the app straight on its search page. */
+    const val ACTION_SEARCH = "com.del.bitsay.action.SEARCH"
 }
 
 /** Per-widget configuration, persisted in its own SharedPreferences file. */

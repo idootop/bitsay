@@ -223,7 +223,7 @@ app/src/main/java/com/del/bitsay/
 |---|---|---|
 | App 内 FAB `+` | 创建 | ✅ |
 | 桌面小组件 `+`（快捷记录） | 创建 | ✅ |
-| 点搜索图标 | 搜索 | ✅（同时展开搜索栏） |
+| 点搜索图标 / 小组件搜索按钮 | 搜索 | ✅（进入独立搜索页） |
 | App 列表点条目 | 查看 | ❌ |
 | 桌面小组件点条目 | 查看 | ❌ |
 
@@ -235,11 +235,108 @@ app/src/main/java/com/del/bitsay/
 - **为什么用 `editorSession` 当 key 而不是 `LaunchedEffect(Unit)`**：如果编辑器已经开着，
   再从桌面点 `+`（`singleTask` → `onNewIntent`），Compose 不会重建 `EditorScreen`，
   `Unit` 版本的副作用不会重跑，键盘就弹不出来；
-- 搜索栏：`SearchField` 在 `if (state.searchOpen)` 分支里，展开即新组合，
-  `LaunchedEffect(Unit)` 请求焦点并 show 即可。
+- 搜索页：`SearchScreen` 自己拥有输入框，`LaunchedEffect(Unit)` 请求焦点并 show 即可
+  （每次进入搜索页都是新组合）。
 
 > 注意一个符合 Android 惯例的细节：键盘弹起时，**第一次按返回是收起键盘**，第二次才退出编辑器。
 > 这是系统行为，不要用 `BackHandler` 去抢。
+
+#### 5.1.1 「输入法卡死」的根因（微信输入法 · 已定位到可复现判据）
+
+用户反馈：输入框聚焦后**偶现**键盘不弹出，一旦发生就**怎么点都不弹**；
+**重装 App 也无效**，只有「切到别的 App 点几下输入框」才能恢复。
+
+##### 判据：看 IME insets 源的高度
+
+```bash
+adb shell dumpsys window | grep -oE 'type=ime frame=\[[^]]*\]\[[^]]*\]' | head -1
+```
+
+| 状态 | InsetsSource(type=ime) | 键盘高度 | 截图 |
+|---|---|---|---|
+| **显示** | `frame=[0,1824][1260,2800]` | **976 px** | 键盘完整可见 |
+| **隐藏** | `frame=[0,0][0,0]` | 0 px（`visibleFrame` 仍是上次的 1824） | 无键盘，正常 |
+| **卡死** | `frame=[0,2799][1260,2800]` | **1 px** | 什么都没有 |
+
+卡死态是**第三种**几何：既不是显示态的 976px，也不是隐藏态的 0，而是一条 1px 的退化底边。
+
+脚本判定：`height = 2800 - top`，`<= 1` 且字段已聚焦、系统说 IME 已显示 → 卡死。
+
+##### 机制
+
+IME 的 insets 源被卡在**"隐藏态"的几何尺寸（1px）**上，但 `visible=true`、`mImeShowing=true`、
+IMMS 的 `mInputShown=true`。于是：
+
+- App 收到的是 1px 的 IME inset → 不 resize、`imePadding()` 也几乎为 0 → 布局不动；
+- 系统认为"IME 已经显示了" → 后续任何 `showSoftInput` 都是空操作 → 只能靠别的窗口接管输入
+  才会重算 insets。
+
+**这个陈旧状态不在我们进程里**（重装 App = 杀进程，依然卡死），而在系统的 insets 控制器里。
+
+##### 我踩过的坑（都是错的，别再重复）
+
+以下字段在**正常状态和卡死状态下一模一样**，不能拿来判卡死：
+
+- `InputMethodService` 的 `visibleTopInsets=2673` / `touchableRegion=SkRegion()`（这就是 WeType 的正常值）
+- WM 的 `mCapturedLeash=… animation-leash of insets_animation`（正常时也挂在这个 leash 下）
+- `mRequestedShowExplicitly=true` / `mInputShown=true` / `mImeWindowVis=3`
+- `dumpsys input` 里 IME 窗口的 `inputConfig` 少了 `NOT_VISIBLE`（两者都有过）
+
+另外两条**错误推断**，一并记下：
+
+1. "WeType 给键盘窗口加了 FLAG_SECURE，所以截图看不到键盘" —— **错的**。
+   `screencap` 能完整截到微信输入法（Chrome 截图里键盘、候选条、前往键全在）。
+   **截图是可信的**：我们 App 截图里没键盘 = 真的没画出来。
+2. "把 `keyboard?.show()` 去掉就好了" —— **错的**。去掉后 ImeTracker 里
+   `SHOW_SOFT_INPUT_BY_INSETS_API` 依然出现（那是 Compose 自己在字段获焦时发的），
+   请求模式没有任何变化。这次改动只是去掉一次**重复**请求，**不是修复**。
+
+> 教训：判断"键盘在不在"必须**截图 + insets 高度**一起看；只看 `mInputShown` 一定会误判
+> （卡死时它也是 `true`）。同样，不要拿"看起来可疑"的字段下结论 —— 先和正常态对比。
+
+##### 仍未确定的部分
+
+**触发条件还没找到**（偶现）。已知的相关性：
+
+- 大多发生在**用 adb 自动化操作**的时候（`input keyevent BACK` 收键盘、快速切页、
+  键盘动画期间 `am force-stop` / `adb install`），人手动操作时少见；
+- 现象上像是一次 **show/hide 动画被打断**，insets 停在了隐藏态的几何尺寸上。
+
+**下一步（按用户要求：先复现、再改，不许先打补丁）**：
+
+**已证伪的触发假设（别再重复试）**：
+
+| 假设 | 实验 | 结果 |
+|---|---|---|
+| 快速 show/hide 竞争 | 编辑器内「点输入框 → BACK」× 8 轮 | ❌ 全部正常 |
+| 键盘开着时进程被突然杀掉 | 键盘升起后 `am force-stop` | ❌ 干净隐藏，重开正常 |
+| `noHistory` 独立任务窗销毁 | 小组件悬浮窗（搜索页）开→BACK×2 关窗 × 3 轮 | ❌ 干净隐藏 |
+| 跨页面快速切换 | 列表⇄搜索页 × 20 轮（各 0.25s） | ❌ 全部 `[0,1824]` |
+| 悬浮窗关不掉 / HOME 无效 | 观测到残留窗口 | ❌ 误判（是用户手动打开的） |
+
+**下一步**：ImeTracker 的历史缓冲**只有约 7 秒**（实测两次 dump 只覆盖 19:42:50–19:42:57），
+所以必须**在卡死发生后的几秒内**抓 `dumpsys input_method`，否则回放不了。卡死时立刻抓，
+重点看 `TYPE_SHOW/HIDE … STATUS_FAIL/TIMEOUT` 那几条的前后顺序。
+
+**排查纪律（这轮踩过的坑）**：
+
+1. **`mInputShown` 不能用来判断键盘在不在** —— 卡死时它也是 `true`。必须用上面的 insets 判据 + 截图。
+2. **别拿"看起来可疑"的字段下结论** —— 先和确认过的正常态对比。这轮我把
+   `visibleTopInsets=2673`、`touchableRegion=SkRegion()`、`animation-leash`、
+   `mRequestedShowExplicitly` 全当成了"铁证"，结果**全都是正常值**。
+3. **一次测量说明不了问题** —— 我至少三次因为 `sleep` 太短、launcher 还在切换动画里，
+   就得出了错误结论（"HOME 关不掉悬浮窗""小组件点击无效"）。测量前先确认状态稳定。
+4. **用户可能同时在手动操作手机** —— 观测到的状态未必是我的操作造成的。先问一句。
+2. 复现成功后，再决定是「App 侧自愈」（检测到 `ime` inset ≤1px 而字段已聚焦时，
+   主动 `hide(ime())` + `show(ime())` 触发重算）还是别的做法。
+
+#### 5.1.2 现场原始存档
+
+- 卡死态：`/tmp/ime2/im_wedge.txt`、`win_wedge.txt`、`input_wedge.txt`、`wedge.png`（无键盘）
+- 正常态（同机同 App，恢复后）：`/tmp/ime2/after.png`（键盘完整）
+- 正常态对照（Chrome）：`/tmp/ime2/chrome.png`
+- 早期两次误判为"卡死"的存档：`/tmp/ime/{im,win,log}_stuck.txt`、`/tmp/ime/win_ok.txt`
+  （后者其实**也是卡死态**，所以当时 diff 不出差异）
 
 ---
 
@@ -530,9 +627,9 @@ git add -A -n                      # 提交前预演，确认没有产物/密钥
 - [x] core/repo：`ItemRepository` 全部业务规则 + `saveDraft` 自动保存
 - [x] core/backup：`MiniJson` + `BackupCodec` + `BackupManager` + SAF 读写
 - [x] core/util：`TimeText` 相对时间文案
-- [x] **63 个单元测试全绿**（repo 23 / json 10 / codec 9 / manager 5 / time 10 / widget 6）
+- [x] **101 个单元测试全绿**（repo 41 / codec 15 / archive 8 / manager 5 / time 10 / throttle 9 / preview 5 / widget 6）
 - [x] ui 状态层：`AppViewModel`（StateFlow 单一状态源）+ 自动保存调度 + 生命周期 flush
-- [x] Compose 三个页面：列表（笔记/待办分段 + 搜索 + FAB）、编辑器、设置
+- [x] Compose 四个页面：列表（笔记/待办分段 + FAB）、编辑器、设置、搜索
 - [x] 桌面小组件全部交互（切换/新建/查看/勾选/缩放）+ 放置配置页
 - [x] 应用图标（纯 vector 自适应图标，含 monochrome 主题图标）
 - [x] 真机（Android 16 / API 36）全流程验证 —— 见 §11
@@ -562,6 +659,10 @@ git add -A -n                      # 提交前预演，确认没有产物/密钥
 - [x] 编辑器自动保存不再全量 reload
 - [x] **多选批量删除**（单事务，500 条一批）。多选顶栏只有「退出 / 已选 N 项 / 删除」：
       无全选、无批量 toggle 完成；多选时隐藏待办的完成状态圈，避免两个圆圈并排
+- [x] **搜索独立成页**：`Screen.Search`，顶栏「返回 + 输入框」，小组件顶栏右侧搜索按钮对称入口
+- [x] **搜索结果与首页共用同一套 list / 行样式**：`ui/components/ItemList.kt`，
+      `ListScreen` 与 `SearchScreen` 都调它，不存在第二套「轻量行」—— 见 §16
+- [x] **搜索页切分类不清空关键词**：同一个词换到另一个分类里重查 —— 见 §16
 
 ### ⚠️ 已知限制（不是 bug，是外部行为）
 
@@ -578,7 +679,7 @@ git add -A -n                      # 提交前预演，确认没有产物/密钥
 - [ ] **UI/UX 细化**：打开 `design/ui-preview.html` 验收可爱 / 手绘方向，定稿后回填到
       `ui/theme/*` 与 `res/drawable/*`（当前 Android 端是「可用的第一版」，HTML 是设计源）
 - [ ] 备份：可选的「自动定期备份到 SAF 目录」（现在只有手动导出）
-- [ ] 列表：长按多选 / 批量删除；单条分享为文本
+- [ ] 列表：单条分享为文本（长按多选 + 批量删除已完成）
 - [ ] 待办：拖拽排序（真·手动顺序，现在固定按 updatedAt）
 - [ ] 小组件：`android:configure` 已支持重配置，但没做「选择显示条数 / 字号」的细化
 - [ ] 字体：目前用系统字体。若要更强的可爱风，可考虑打包中文手写字体子集（注意体积）
@@ -620,9 +721,8 @@ git add -A -n                      # 提交前预演，确认没有产物/密钥
 | 设置页「添加到桌面」入口出现且可点（API 返回已受理；见 §10 已知限制） | ⚠️ |
 | **新建（App FAB）自动弹键盘**（`mInputShown=false → true`） | ✅ |
 | **查看已有条目不弹键盘**（编辑器全屏可见，`mInputShown=false`） | ✅ |
-| **点搜索图标：搜索栏展开 + 键盘弹出 + 光标就位** | ✅ |
+| **点搜索图标 / 小组件搜索按钮：进入独立搜索页 + 键盘弹出** | ✅ |
 | 搜索输入过滤生效（输入 zz → 「没有找到相关内容」） | ✅ |
-| 关闭搜索键盘自动收起 | ✅ |
 | 小组件 tab 切换笔记/待办（写入 `kind_29`，列表随之切换） | ✅ |
 | 小组件右下角悬浮 + → 打开 `WidgetEntryActivity`（顶层即悬浮窗，无首页闪烁） | ✅ |
 | 小组件点条目 → 悬浮窗查看（无键盘、无完成按钮） | ✅ |
@@ -653,6 +753,10 @@ git add -A -n                      # 提交前预演，确认没有产物/密钥
 | 切「深色」→ App 全部页面深色；设置页概览卡对比度正常 | ✅ |
 | **系统浅色 + App 设为深色 → 小组件立即变深色**（无需其它操作触发） | ✅ |
 | 切回「跟随系统」→ App 与小组件同时恢复浅色，偏好键被移除 | ✅ |
+| 小组件顶栏搜索按钮位置与「进 App」左右对称，点击进搜索页 | ✅ |
+| **搜索结果行 = 首页行**（同色系卡片 + 创建时间，`ui/components/ItemList.kt` 单一实现） | ✅ |
+| **搜索「Q4」→ 笔记分类 1 条命中；切「待办」关键词仍在、0 条命中（「没有找到相关内容」）；切回笔记命中恢复** | ✅ |
+| 搜索页空关键词 → 显示「输入关键词搜索笔记和待办」，切分类不崩 | ✅ |
 | 导入后 done / doneAt 一一对应（5000 待办中 1281 完成、1281 个 doneAt） | ✅ |
 
 未验证 / 待补：小组件**手动拖拽缩放**的中间档位逐级走查（只验证了当前档位的渲染结果与 `WidgetSize` 单测）、
@@ -818,3 +922,66 @@ FAB 保持不变的亮黄 —— 它是重点色点缀，两种模式下都成�
 用脚本批量清理"未使用 import"时要小心：`kotlinx.coroutines.flow.getValue` /
 `androidx.compose.runtime.getValue` / `setValue` 是 **`by` 委托用的操作符扩展**，
 文本里根本不出现这两个名字，正则判定为"未使用"，删掉后整个文件编译不过。
+
+---
+
+## 16. 搜索页
+
+### 16.1 为什么独立成页
+
+最早搜索是列表头里一个展开的输入框，结果和正常列表抢同一块空间，而且**没法明确地"放弃这次搜索"**。
+现在 `Screen.Search` 是一页：整屏给结果、自己的结果集、一个明确的返回键。
+
+入口有两个，**左右对称**：App 列表头右上角的搜索图标，和小组件顶栏右侧的搜索按钮
+（`WidgetContract.ACTION_SEARCH` → `MainActivity` → `viewModel.openSearch()`）。
+小组件顶栏顺序：`进 App | 笔记 | 待办 | 搜索`。
+
+### 16.2 结果行复用首页的行（不要再设计第二套）
+
+**`ui/components/ItemList.kt` 是唯一的列表实现。**
+
+```kotlin
+ItemList(
+    items        = …,
+    onClick      = { … },
+    onToggleDone = { … },
+    selecting    = …,          // 首页多选态
+    selection    = …,
+    onLongClick  = …,          // null = 不支持长按（搜索页）
+    bottomPadding = 104.dp,    // 首页要给 FAB 留位；搜索页传 32.dp
+)
+```
+
+- `ListScreen` 和 `SearchScreen` 都调它，行样式（色系轮转、圆角、描边、单行省略、
+  创建时间、待办完成圈）**只有一处实现**；
+- **点击语义留在调用方**，因为两个页面的语义本来就不同：首页在多选态下"点 = 选中"，
+  搜索页"点 = 打开编辑器"；
+- 曾经的 `SearchScreen.ResultCard`（更小的圆角、两行、无时间戳的"轻量行"）**已删除** ——
+  它的存在只会让两套样式慢慢漂移。
+
+### 16.3 切分类不清空关键词
+
+```kotlin
+fun selectSearchTab(kind: Kind) {
+    if (_state.value.tab == kind) return
+    _state.update { it.copy(tab = kind) }
+    if (_state.value.query.isBlank()) { …clear…; return }
+    searchJob?.cancel(); searchJob = viewModelScope.launch { runSearch() }
+}
+```
+
+- **不能复用 `selectTab()`**：那个是首页的"切换显示哪个列表"，语义里包含了
+  `query = ""`（历史遗留：搜索还在列表头里的时候，换 tab 必须丢掉搜索）。
+  搜索页的 tab 是"在哪个分类里搜"，关键词必须留着。
+- 切 tab 走**立即查询**，不走输入防抖（`SEARCH_DEBOUNCE_MS`）：点 tab 是一次确定动作，
+  不是连打键盘；防抖会让切过去之后空一下。
+- 旧分类的结果保留到新结果返回，避免闪一下"没有找到相关内容"。
+
+### 16.4 一个 IME 相关的观感问题（不是 bug）
+
+微信输入法的**候选词条是浮在光标附近的**。搜索框在页面顶部，所以候选条会浮在顶栏下面，
+**正好盖住「笔记 / 待办」分类 tab**。真机截图见 §11 的验证过程。
+
+这是输入法自己的悬浮窗（`type=2011` 的 IME window），App 侧盖不住也挪不动；
+换输入法或关掉"候选栏跟随光标"即可。**不要为此改布局。**
+

@@ -37,6 +37,7 @@ import com.del.bitsay.core.model.Kind
 import com.del.bitsay.ui.components.PaperBackground
 import com.del.bitsay.ui.screen.EditorScreen
 import com.del.bitsay.ui.screen.ListScreen
+import com.del.bitsay.ui.screen.SearchScreen
 import com.del.bitsay.ui.screen.SettingsScreen
 
 @Composable
@@ -101,6 +102,7 @@ fun BitSayRoot(
             // Backing out of a selection should only leave selection mode, not the screen.
             state.inSelectionMode -> viewModel.clearSelection()
             state.screen is Screen.Editor -> viewModel.saveDraft()
+            state.screen is Screen.Search -> viewModel.closeSearch()
             state.screen is Screen.Settings -> viewModel.openList()
             else -> onExit()
         }
@@ -122,8 +124,7 @@ fun BitSayRoot(
                 Screen.List -> ListScreen(
                     state = state,
                     onSelectTab = viewModel::selectTab,
-                    onToggleSearch = viewModel::toggleSearch,
-                    onQuery = viewModel::setQuery,
+                    onOpenSearch = viewModel::openSearch,
                     onOpenSettings = viewModel::openSettings,
                     onOpenItem = viewModel::openItem,
                     onToggleDone = viewModel::toggleDone,
@@ -139,6 +140,15 @@ fun BitSayRoot(
                     onDraftChange = viewModel::setDraft,
                     onBack = viewModel::saveDraft,
                     onDelete = viewModel::deleteCurrent,
+                )
+
+                Screen.Search -> SearchScreen(
+                    state = state,
+                    onQuery = viewModel::setQuery,
+                    onSelectTab = viewModel::selectSearchTab,
+                    onBack = viewModel::closeSearch,
+                    onOpenItem = viewModel::openSearchResult,
+                    onToggleDone = viewModel::toggleDone,
                 )
 
                 Screen.Settings -> SettingsScreen(

@@ -24,7 +24,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import com.del.bitsay.i18n.backupErrorMessage
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -41,9 +43,11 @@ import com.del.bitsay.ui.screen.SettingsScreen
 fun BitSayRoot(
     viewModel: AppViewModel,
     onExit: () -> Unit,
+    onRelaunch: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
 
     val exportLauncher = rememberLauncherForActivityResult(
@@ -58,6 +62,9 @@ fun BitSayRoot(
     LaunchedEffect(viewModel) {
         viewModel.exit.collect { onExit() }
     }
+    LaunchedEffect(viewModel) {
+        viewModel.relaunch.collect { onRelaunch() }
+    }
 
     // ---- one-shot feedback -------------------------------------------------
     val message: String? = when (val notice = state.notice) {
@@ -69,7 +76,13 @@ fun BitSayRoot(
             notice.result.inserted,
             notice.result.updated,
         )
-        is Notice.Failed -> stringResource(R.string.op_fail, notice.reason)
+        is Notice.Failed -> when {
+            // The wording lives in resources, so the mapping from a failure to a sentence
+            // happens here rather than in the state layer.
+            notice.staleExport -> context.getString(R.string.backup_error_stale)
+            notice.error != null -> context.backupErrorMessage(notice.error, notice.schema)
+            else -> context.getString(R.string.op_fail, notice.detail.orEmpty())
+        }
         Notice.Empty -> stringResource(R.string.nothing_to_save)
         Notice.WidgetPinRequested -> stringResource(R.string.widget_pin_requested)
         Notice.WidgetPinUnsupported -> stringResource(R.string.widget_pin_unsupported)
@@ -133,6 +146,8 @@ fun BitSayRoot(
                     todoCount = state.todoCount,
                     openTodoCount = state.openTodoCount,
                     canPinWidget = state.canPinWidget,
+                    language = state.language,
+                    onLanguage = viewModel::setLanguage,
                     onBack = viewModel::openList,
                     onAddWidget = viewModel::addWidgetToHome,
                     onExport = { viewModel.prepareExport { name -> exportLauncher.launch(name) } },

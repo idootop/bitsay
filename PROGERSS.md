@@ -537,6 +537,7 @@ git add -A -n                      # 提交前预演，确认没有产物/密钥
 - [x] 应用图标（纯 vector 自适应图标，含 monochrome 主题图标）
 - [x] 真机（Android 16 / API 36）全流程验证 —— 见 §11
 - [x] release 包体积 **2.11 MB**，R8 + resource shrinking，签名并实机跑通
+- [x] **i18n**：中英双语，默认跟随系统，找不到回落到英文（默认资源集）—— 见 §14
 - [x] 仓库卫生：完整 `.gitignore` + `.gitattributes` + `keystore/README.md` + 口令模板 —— 见 §9.1
 - [x] 自动保存改为**前缘+后缘节流**（400ms），第一个字立刻落盘 —— 见 §5
 - [x] 列表默认按**创建时间**排序（编辑/勾选不再让列表跳动）
@@ -642,6 +643,11 @@ git add -A -n                      # 提交前预演，确认没有产物/密钥
 | 覆盖导入还原 10 006 条，`SUM(LENGTH(text))` 与导出前完全一致 | ✅ |
 | 导出文件名 `.bitsay.gz`；导入选择器只显示备份文件（无关文件被过滤掉） | ✅ |
 | 用新扩展名/mime 走完整往返：导出 → 选择器选中 → 合并导入 6 条 | ✅ |
+| 语言默认跟随系统（设备 zh-CN → 中文界面） | ✅ |
+| 切到 English → 全界面英文；force-stop 重启后仍是英文（已持久化） | ✅ |
+| 切回「跟随系统」→ 恢复中文，偏好键被移除 | ✅ |
+| **系统中文 + App 设为 English → 小组件立即显示 Notes / Todos**（无需其它操作触发） | ✅ |
+| 切回「跟随系统」→ 小组件立即恢复 笔记 / 待办 | ✅ |
 | 导入后 done / doneAt 一一对应（5000 待办中 1281 完成、1281 个 doneAt） | ✅ |
 
 未验证 / 待补：小组件**手动拖拽缩放**的中间档位逐级走查（只验证了当前档位的渲染结果与 `WidgetSize` 单测）、
@@ -678,3 +684,65 @@ git add -A -n                      # 提交前预演，确认没有产物/密钥
 | 小组件外观 | `res/layout/widget_bitsay.xml`、`widget_item.xml`、`res/drawable/widget_*.xml` |
 
 **改渲染细节**（XML/代码）即可；**改颜色**记得两边同步（`colors.xml` 与 `Color.kt`）。
+
+---
+
+## 14. 多语言（i18n）
+
+支持**简体中文 / English**，默认**跟随系统**。
+
+### 14.1 资源布局
+
+| 目录 | 角色 |
+|---|---|
+| `res/values/strings.xml` | **默认集 = 英文**。任何 locale 都匹配不到时落到这里 |
+| `res/values-zh/strings.xml` | 中文 |
+
+**默认集必须是英文**，因为"找不到就 fallback 到英文"是靠「默认资源集」实现的，
+不是靠额外的 fallback 机制。新字符串一律**先加英文那份**。
+
+`build.gradle.kts` 里把 `MissingTranslation` / `ExtraTranslation` 提升为 lint **error**，
+防止两份资源悄悄漂移（另有 92 条键集的交叉校验）。
+
+### 14.2 踩过的坑：文案藏在 Kotlin 里
+
+i18n 的难点不是翻译，是**把埋在代码里的中文挖出来**。这次挖出四类：
+
+1. **`core/util/TimeText`** —— "刚刚 / N 分钟前 / 今天 / 昨天" 和 `M月d日` 全是硬编码，
+   而它是纯 Kotlin 且被单测覆盖（JVM 测试读不到 Android 资源）。
+   解法：抽出 `TimeWording` 数据类由调用方注入；**日期 pattern 也进资源**
+   （`time_pattern_month_day` = `MMM d` / `M月d日`），配合传入的 `Locale` 渲染。
+   这样时间规则保持纯净可测，中英两套文案各有一组单测。
+2. **核心层的异常消息** —— `BackupException` 原来直接带中文句子。
+   改成携带 `BackupError` 枚举（`NOT_A_BACKUP / EMPTY / CORRUPT / NEWER_SCHEMA / IO`），
+   由 UI 层查资源成句（`i18n/Strings.kt`）。
+3. **列表计数、设置分区、关于页、小组件配置页** —— 直接用 `stringResource` 补全。
+4. `Notice.Failed` 从"带一句现成的话"改成"带一个可命名的原因"。
+
+### 14.3 语言设置怎么生效
+
+- 选择存在 `bitsay_settings.xml`（`LanguagePrefs`），`SYSTEM` = 不写键。
+- 通过 **`attachBaseContext` + `createConfigurationContext`** 应用，
+  **没有引入 AppCompat**（`AppCompatDelegate.setApplicationLocales` 需要 AppCompat Activity
+  和一整个 support library，为一个设置不值当）。
+- 同时 `Locale.setDefault`：日期格式化走的是 `java.time`，读的是进程默认 locale 而不是
+  Context 配置，两者必须一起改，否则界面会中英混排。
+- 改语言后由 ViewModel 发 `relaunch` 事件 → Activity `recreate()`。
+  屏幕上每个字符串和每个 formatter 都是按旧配置构建的，重建才是唯一诚实的做法。
+- **小组件要特殊处理**：宿主（桌面）用的是**它自己的** configuration 来 inflate 布局，
+  所以 XML 里写的 `android:text="@string/…"` 永远跟随系统语言。
+  `WidgetRenderer` 因此用 `context.withAppLanguage()` 显式 `setTextViewText` 两个 tab 和空状态。
+  实测：系统中文 + App 设为 English → 小组件显示 `Notes` / `Todos`。
+
+四个 Activity（MainActivity / WidgetEntryActivity / WidgetConfigActivity）都覆写了
+`attachBaseContext`，**新增 Activity 时别忘了**。
+
+### 14.4 切语言必须主动刷新小组件
+
+Activity 靠 `recreate()` 换语言，但**小组件不会自己变**：它的字符串已经被写进
+RemoteViews 交给宿主了，除非重新渲染一次，否则它会一直停在旧语言。
+`AppViewModel.setLanguage()` 因此在发 `relaunch` 事件的同时
+`WidgetUpdater.refreshAll()`。
+
+这条容易被漏掉，因为它和"数据变了就刷新"是两条独立的触发路径 ——
+语言切换**不**会产生 `repository.change`，订阅数据的那个观察者不会醒。

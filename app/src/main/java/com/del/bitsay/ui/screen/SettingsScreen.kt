@@ -1,5 +1,7 @@
 package com.del.bitsay.ui.screen
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,10 +13,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -23,6 +31,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.pm.PackageInfoCompat
 import com.del.bitsay.R
+import com.del.bitsay.i18n.AppLanguage
 import com.del.bitsay.ui.components.CuteCard
 import com.del.bitsay.ui.components.CuteIconButton
 import com.del.bitsay.ui.components.SectionTitle
@@ -38,6 +47,8 @@ fun SettingsScreen(
     todoCount: Int,
     openTodoCount: Int,
     canPinWidget: Boolean,
+    language: AppLanguage,
+    onLanguage: (AppLanguage) -> Unit,
     onBack: () -> Unit,
     onAddWidget: () -> Unit,
     onExport: () -> Unit,
@@ -45,6 +56,15 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    var showLanguage by remember { mutableStateOf(false) }
+
+    if (showLanguage) {
+        LanguageDialog(
+            current = language,
+            onPick = { onLanguage(it); showLanguage = false },
+            onDismiss = { showLanguage = false },
+        )
+    }
     val version = remember(context) {
         runCatching {
             val info = context.packageManager.getPackageInfo(context.packageName, 0)
@@ -73,15 +93,15 @@ fun SettingsScreen(
             )
         }
 
-        SectionTitle("概览")
+        SectionTitle(stringResource(R.string.settings_section_overview))
         CuteCard(color = Sun) {
             Text(
-                text = "$noteCount 条笔记 · $todoCount 条待办",
+                text = stringResource(R.string.settings_stats, noteCount, todoCount),
                 style = MaterialTheme.typography.titleMedium,
                 color = Ink,
             )
             Text(
-                text = "其中 $openTodoCount 条待办还没完成",
+                text = stringResource(R.string.count_open_todos, openTodoCount),
                 style = MaterialTheme.typography.bodySmall,
                 color = Ink.copy(alpha = 0.7f),
                 modifier = Modifier.padding(top = 6.dp),
@@ -105,7 +125,7 @@ fun SettingsScreen(
             )
         }
 
-        SectionTitle("桌面小组件")
+        SectionTitle(stringResource(R.string.settings_section_widget))
         CuteCard(color = Sky, contentPadding = PaddingValues(0.dp)) {
             if (canPinWidget) {
                 // One tap inside the app beats making the user hunt through the launcher's
@@ -125,17 +145,27 @@ fun SettingsScreen(
             )
         }
 
+        SectionTitle(stringResource(R.string.settings_language))
+        CuteCard(contentPadding = PaddingValues(0.dp)) {
+            SettingRow(
+                painter = painterResource(R.drawable.ic_language),
+                title = stringResource(R.string.settings_language_display),
+                subtitle = stringResource(language.labelRes()),
+                onClick = { showLanguage = true },
+            )
+        }
+
         SectionTitle(stringResource(R.string.settings_about))
         CuteCard(color = Lilac) {
-            Text("比特记 Bitsay", style = MaterialTheme.typography.titleMedium, color = Ink)
+            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium, color = Ink)
             Text(
-                text = "版本 $version",
+                text = stringResource(R.string.settings_version, version),
                 style = MaterialTheme.typography.bodySmall,
                 color = Ink.copy(alpha = 0.7f),
                 modifier = Modifier.padding(top = 4.dp),
             )
             Text(
-                text = "纯文字笔记 + 待办，零权限，数据只在你自己手里。",
+                text = stringResource(R.string.settings_about_tagline),
                 style = MaterialTheme.typography.bodySmall,
                 color = Ink.copy(alpha = 0.7f),
                 modifier = Modifier.padding(top = 10.dp),
@@ -144,4 +174,50 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(28.dp))
     }
+}
+
+/** Three options, no free-form picker: the app only ships two languages plus "follow system". */
+@Composable
+private fun LanguageDialog(
+    current: AppLanguage,
+    onPick: (AppLanguage) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_language)) },
+        text = {
+            Column {
+                AppLanguage.entries.forEach { option ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                            ) { onPick(option) }
+                            .padding(vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = option == current, onClick = { onPick(option) })
+                        Text(
+                            text = stringResource(option.labelRes()),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Ink,
+                            modifier = Modifier.padding(start = 8.dp),
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        },
+    )
+}
+
+private fun AppLanguage.labelRes(): Int = when (this) {
+    AppLanguage.SYSTEM -> R.string.language_system
+    AppLanguage.CHINESE -> R.string.language_chinese
+    AppLanguage.ENGLISH -> R.string.language_english
 }

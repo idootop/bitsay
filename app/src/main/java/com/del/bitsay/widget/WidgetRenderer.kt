@@ -11,6 +11,7 @@ import android.widget.RemoteViews
 import com.del.bitsay.MainActivity
 import com.del.bitsay.R
 import com.del.bitsay.core.model.Kind
+import com.del.bitsay.i18n.withAppLanguage
 
 /**
  * Builds the [RemoteViews] for one widget instance. Stateless: everything it needs comes from
@@ -36,7 +37,15 @@ internal object WidgetRenderer {
         val kind = WidgetPrefs(context).kindOf(widgetId)
         val items = context.appContainer.repository.snapshot(kind)
 
+        // The host inflates the layout with ITS configuration, i.e. the system language. Strings
+        // declared in the XML would therefore ignore the in-app language setting, so everything
+        // visible is assigned here from a context pinned to the chosen language.
+        val ui = context.withAppLanguage()
+
         val views = RemoteViews(context.packageName, R.layout.widget_bitsay)
+        views.setTextViewText(R.id.widget_tab_notes, ui.getString(R.string.tab_notes))
+        views.setTextViewText(R.id.widget_tab_todos, ui.getString(R.string.tab_todos))
+        views.setTextViewText(R.id.widget_empty, ui.getString(R.string.widget_empty))
 
         // --- the two list tabs ---
         views.setInt(

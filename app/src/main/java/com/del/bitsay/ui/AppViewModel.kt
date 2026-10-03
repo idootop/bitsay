@@ -7,6 +7,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.del.bitsay.AppContainer
 import com.del.bitsay.core.backup.BackupArchive
+import com.del.bitsay.core.backup.BackupError
+import com.del.bitsay.core.backup.BackupException
 import com.del.bitsay.core.backup.BackupFiles
 import com.del.bitsay.core.backup.BackupManager
 import com.del.bitsay.core.backup.ExportPayload
@@ -15,7 +17,10 @@ import com.del.bitsay.core.model.Kind
 import com.del.bitsay.core.repo.ImportResult
 import com.del.bitsay.core.repo.ItemRepository
 import com.del.bitsay.core.util.WriteThrottle
+import com.del.bitsay.i18n.AppLanguage
 import com.del.bitsay.widget.WidgetPinner
+import com.del.bitsay.widget.WidgetUpdater
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -27,6 +32,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Which full-screen surface is on top. Deliberately hand-rolled: three screens do not
  *  justify a navigation library plus its serialization dependency. */
@@ -39,7 +45,17 @@ sealed interface Screen {
 /** One-shot user feedback. Kept as data so the UI owns all wording. */
 sealed interface Notice {
     data class Exported(val count: Int) : Notice
-    data class Failed(val reason: String) : Notice
+    /**
+     * [error] is set when the failure is one we can name; [detail] carries anything else. The
+     * wording lives in resources, not here, so this layer stays language-agnostic.
+     */
+    data class Failed(
+        val error: BackupError? = null,
+        val detail: String? = null,
+        val schema: Int = 0,
+        /** The in-memory export expired before the user picked a file — not a damaged backup. */
+        val staleExport: Boolean = false,
+    ) : Notice
     data class Imported(val result: ImportResult) : Notice
     data object Empty : Notice
     data object WidgetPinRequested : Notice
@@ -75,6 +91,8 @@ data class AppUiState(
     val quickCapture: Boolean = false,
     /** Whether this launcher supports "pin widget to home screen" from inside the app. */
     val canPinWidget: Boolean = false,
+    /** The language the app is displayed in; [AppLanguage.SYSTEM] means "follow the phone". */
+    val language: AppLanguage = AppLanguage.SYSTEM,
     /**
      * Ids ticked for a batch operation. Empty means "not in selection mode" — there is no
      * separate boolean to keep in sync.
@@ -122,7 +140,10 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     private val backup: BackupManager = container.backup
 
     private val _state = MutableStateFlow(
-        AppUiState(canPinWidget = WidgetPinner.isSupported(container.context)),
+        AppUiState(
+            canPinWidget = WidgetPinner.isSupported(container.context),
+            language = container.languagePrefs.current(),
+        ),
     )
     val state: StateFlow<AppUiState> = _state.asStateFlow()
 
@@ -132,6 +153,14 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
      */
     private val _exit = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val exit: SharedFlow<Unit> = _exit.asSharedFlow()
+
+    /**
+     * Fired when the language changed. Every string on screen — and every date formatter — was
+     * built from the old configuration, so the only honest way to apply it is to rebuild the
+     * screen. `recreate()` re-runs `attachBaseContext`, which is where the locale is applied.
+     */
+    private val _relaunch = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val relaunch: SharedFlow<Unit> = _relaunch.asSharedFlow()
 
     init {
         viewModelScope.launch { repository.reload() }
@@ -340,7 +369,19 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch { repository.reload() }
     }
 
-    /** Asks the launcher to drop a widget on the home screen (settings → 桌面小组件). */
+    fun setLanguage(language: AppLanguage) {
+        if (_state.value.language == language) return
+        container.languagePrefs.set(language)
+        _state.update { it.copy(language = language) }
+        // The widget renders its strings into RemoteViews, so it holds a copy of the old
+        // language until something makes it render again — nothing else here would.
+        viewModelScope.launch {
+            withContext(Dispatchers.Default) { WidgetUpdater.refreshAll(container.context) }
+        }
+        _relaunch.tryEmit(Unit)
+    }
+
+    /** Asks the launcher to drop a widget on the home screen. */
     fun addWidgetToHome() {
         val accepted = WidgetPinner.request(container.context)
         _state.update {
@@ -434,7 +475,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                     onReady(name)
                 }
                 .onFailure { error ->
-                    _state.update { it.copy(notice = Notice.Failed(error.readable())) }
+                    _state.update { it.copy(notice = error.toFailure()) }
                 }
             _state.update { it.copy(busy = false) }
         }
@@ -443,14 +484,14 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     fun writeExport(uri: Uri) {
         val payload = exportPayload
         if (payload == null) {
-            _state.update { it.copy(notice = Notice.Failed("导出内容已失效，请重试")) }
+            _state.update { it.copy(notice = Notice.Failed(staleExport = true)) }
             return
         }
         viewModelScope.launch {
             _state.update { it.copy(busy = true) }
             runCatching { BackupFiles.write(container.context, uri, BackupArchive.compress(payload.payload)) }
                 .onSuccess { _state.update { it.copy(notice = Notice.Exported(payload.count)) } }
-                .onFailure { error -> _state.update { it.copy(notice = Notice.Failed(error.readable())) } }
+                .onFailure { error -> _state.update { it.copy(notice = error.toFailure()) } }
             exportPayload = null
             _state.update { it.copy(busy = false) }
         }
@@ -465,7 +506,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                 PendingImport(payload = payload, count = backup.peek(payload).items.size)
             }
                 .onSuccess { pending -> _state.update { it.copy(pendingImport = pending) } }
-                .onFailure { error -> _state.update { it.copy(notice = Notice.Failed(error.readable())) } }
+                .onFailure { error -> _state.update { it.copy(notice = error.toFailure()) } }
             _state.update { it.copy(busy = false) }
         }
     }
@@ -476,7 +517,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             _state.update { it.copy(busy = true, pendingImport = null) }
             runCatching { backup.import(pending.payload, replace) }
                 .onSuccess { result -> _state.update { it.copy(notice = Notice.Imported(result)) } }
-                .onFailure { error -> _state.update { it.copy(notice = Notice.Failed(error.readable())) } }
+                .onFailure { error -> _state.update { it.copy(notice = error.toFailure()) } }
             _state.update { it.copy(busy = false) }
         }
     }
@@ -495,7 +536,11 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     /** True when the entry now in the editor did not exist until this editing session. */
     private var createdInThisSession = false
 
-    private fun Throwable.readable(): String = message ?: this::class.java.simpleName
+    /** Turns any throwable into something the UI can put into a sentence. */
+    private fun Throwable.toFailure(): Notice.Failed = when (this) {
+        is BackupException -> Notice.Failed(error = error, schema = schema)
+        else -> Notice.Failed(detail = message ?: this::class.java.simpleName)
+    }
 
     class Factory(private val container: AppContainer) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {

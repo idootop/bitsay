@@ -81,6 +81,10 @@ android {
     }
 
     lint {
+        // A missing translation is a bug, not a warning: the default resource set is English and
+        // anything absent from values-zh silently falls back to it for Chinese users.
+        error += setOf("MissingTranslation", "ExtraTranslation")
+        // Lint still should not fail the build for unrelated style advisories.
         abortOnError = false
     }
 }

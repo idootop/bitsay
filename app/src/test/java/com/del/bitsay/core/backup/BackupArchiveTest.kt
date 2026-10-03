@@ -52,17 +52,17 @@ class BackupArchiveTest {
         assertTrue(restored.items.any { it.isTodo })
     }
 
-    @Test(expected = BackupFormatException::class)
+    @Test(expected = BackupException::class)
     fun `an empty file is rejected instead of crashing the gunzip`() {
         BackupArchive.decompress(ByteArray(0))
     }
 
-    @Test(expected = BackupFormatException::class)
+    @Test(expected = BackupException::class)
     fun `a file that is not gzip is rejected`() {
         BackupArchive.decompress("not a backup".toByteArray())
     }
 
-    @Test(expected = BackupFormatException::class)
+    @Test(expected = BackupException::class)
     fun `a corrupted stream fails loudly rather than importing junk`() {
         val broken = BackupArchive.compress(payload)
         // Damage the deflate body, past the 10-byte gzip header.

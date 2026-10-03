@@ -6,6 +6,7 @@ import com.del.bitsay.core.backup.BackupManager
 import com.del.bitsay.core.db.SqliteItemStore
 import com.del.bitsay.core.repo.ItemRepository
 import com.del.bitsay.core.repo.ItemStore
+import com.del.bitsay.i18n.LanguagePrefs
 import com.del.bitsay.widget.WidgetPrefs
 import com.del.bitsay.widget.WidgetUpdater
 import kotlinx.coroutines.CoroutineScope
@@ -29,6 +30,7 @@ class AppContainer(context: Context) {
     val repository = ItemRepository(store)
     val backup = BackupManager(repository, appVersion(this.context))
     val widgetPrefs = WidgetPrefs(this.context)
+    val languagePrefs = LanguagePrefs(this.context)
 
     private fun appVersion(context: Context): String = runCatching {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()

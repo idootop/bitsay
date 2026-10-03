@@ -1,6 +1,7 @@
 package com.del.bitsay.widget
 
 import android.appwidget.AppWidgetManager
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -39,6 +40,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.del.bitsay.R
 import com.del.bitsay.core.model.Kind
+import com.del.bitsay.i18n.withAppLanguage
 import com.del.bitsay.ui.components.CuteCard
 import com.del.bitsay.ui.components.PaperBackground
 import com.del.bitsay.ui.theme.BitSayTheme
@@ -54,6 +56,12 @@ import com.del.bitsay.ui.theme.Sun
  * because `widgetFeatures="reconfigurable"`): pick which list this instance shows.
  */
 class WidgetConfigActivity : ComponentActivity() {
+
+    /** Same language pinning as the other activities; this screen shows strings too. */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(newBase.withAppLanguage())
+    }
+
 
     private var widgetId = AppWidgetManager.INVALID_APPWIDGET_ID
 
@@ -118,7 +126,7 @@ private fun ConfigScreen(
 
             OptionCard(
                 title = stringResource(R.string.widget_config_notes),
-                subtitle = "干净的一段文字，随手记",
+                subtitle = stringResource(R.string.widget_config_notes_desc),
                 color = Sky,
                 selected = kind == Kind.NOTE,
                 onClick = { onPick(Kind.NOTE) },
@@ -126,7 +134,7 @@ private fun ConfigScreen(
             Spacer(Modifier.height(12.dp))
             OptionCard(
                 title = stringResource(R.string.widget_config_todos),
-                subtitle = "点一下圆圈就能勾掉",
+                subtitle = stringResource(R.string.widget_config_todos_desc),
                 color = Mint,
                 selected = kind == Kind.TODO,
                 onClick = { onPick(Kind.TODO) },

@@ -76,11 +76,11 @@ object BackupFiles {
         context.contentResolver.openOutputStream(uri, "wt")?.use { out ->
             out.write(bytes)
             out.flush()
-        } ?: error("无法写入所选文件")
+        } ?: throw BackupException(BackupError.IO)
     }
 
     suspend fun read(context: Context, uri: Uri): ByteArray = withContext(Dispatchers.IO) {
         context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-            ?: error("无法读取所选文件")
+            ?: throw BackupException(BackupError.IO)
     }
 }

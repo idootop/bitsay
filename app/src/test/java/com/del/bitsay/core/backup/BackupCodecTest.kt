@@ -162,24 +162,24 @@ class BackupCodecTest {
 
     // ------------------------------------------------------------------ corruption
 
-    @Test(expected = BackupFormatException::class)
+    @Test(expected = BackupException::class)
     fun `rejects a foreign file`() {
         BackupCodec.decode("{\"app\":\"something-else\"}".toByteArray())
     }
 
-    @Test(expected = BackupFormatException::class)
+    @Test(expected = BackupException::class)
     fun `rejects an empty file`() {
         BackupCodec.decode(ByteArray(0))
     }
 
-    @Test(expected = BackupFormatException::class)
+    @Test(expected = BackupException::class)
     fun `rejects a truncated payload instead of importing half a database`() {
         val full = BackupCodec.encode(Backup(items = sample))
 
         BackupCodec.decode(full.copyOfRange(0, full.size - 12))
     }
 
-    @Test(expected = BackupFormatException::class)
+    @Test(expected = BackupException::class)
     fun `rejects a header claiming more rows than the file can hold`() {
         val full = BackupCodec.encode(Backup(items = sample))
         // Byte 4 is the record count (a single byte for small payloads); inflate it absurdly.
@@ -194,8 +194,8 @@ class BackupCodecTest {
 
         val error = runCatching { BackupCodec.decode(encoded) }.exceptionOrNull()
 
-        assertTrue(error is BackupFormatException)
-        assertTrue(error!!.message!!.contains("更新的版本"))
+        assertEquals(BackupError.NEWER_SCHEMA, (error as BackupException).error)
+        assertEquals(BackupCodec.SCHEMA + 1, error.schema)
     }
 
     @Test

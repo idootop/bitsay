@@ -1,11 +1,13 @@
 package com.del.bitsay
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import com.del.bitsay.i18n.withAppLanguage
 import com.del.bitsay.ui.AppViewModel
 import com.del.bitsay.ui.BitSayRoot
 import com.del.bitsay.ui.theme.BitSayTheme
@@ -20,6 +22,15 @@ import com.del.bitsay.widget.WidgetContract
  */
 class MainActivity : ComponentActivity() {
 
+    /**
+     * Pins the activity to the language chosen in settings. Doing it here rather than through
+     * `AppCompatDelegate` keeps the app free of the AppCompat dependency for one setting.
+     */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(newBase.withAppLanguage())
+    }
+
+
     private val viewModel: AppViewModel by viewModels {
         AppViewModel.Factory((application as BitSayApp).container)
     }
@@ -30,7 +41,7 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) handleIntent(intent)
         setContent {
             BitSayTheme {
-                BitSayRoot(viewModel, onExit = { finish() })
+                BitSayRoot(viewModel, onExit = { finish() }, onRelaunch = { recreate() })
             }
         }
     }

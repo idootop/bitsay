@@ -1,74 +1,124 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  This is the DEFAULT resource set, i.e. the fallback every locale lands on when no
+  `values-<lang>` folder matches. It is deliberately English: Chinese lives in `values-zh`.
+  Any new string must be added here first.
+-->
 <resources>
-    <string name="app_name">比特记</string>
-    <string name="widget_label">比特记 · 列表</string>
-    <string name="widget_description">在桌面查看笔记或待办，点一下就能记。</string>
+    <string name="app_name">Bitsay</string>
+    <string name="widget_label">Bitsay · List</string>
+    <string name="widget_description">See your notes or todos on the home screen — one tap to jot one down.</string>
 
-    <string name="tab_notes">笔记</string>
-    <string name="tab_todos">待办</string>
+    <string name="tab_notes">Notes</string>
+    <string name="tab_todos">Todos</string>
 
-    <string name="action_new">新建</string>
-    <string name="action_save">保存</string>
-    <string name="action_done">完成</string>
-    <string name="action_delete">删除</string>
-    <string name="action_back">返回</string>
-    <string name="action_settings">设置</string>
-    <string name="action_search">搜索</string>
-    <string name="action_close">关闭</string>
-    <string name="action_undo">撤销</string>
-    <string name="action_cancel_selection">退出多选</string>
-    <string name="selected_count">已选 %1$d 项</string>
+    <string name="action_new">New</string>
+    <string name="action_save">Save</string>
+    <string name="action_done">Done</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_back">Back</string>
+    <string name="action_settings">Settings</string>
+    <string name="action_search">Search</string>
+    <string name="action_close">Close</string>
+    <string name="action_undo">Undo</string>
+    <string name="action_cancel_selection">Leave selection</string>
+    <string name="selected_count">%1$d selected</string>
 
-    <string name="hint_note">写点什么…</string>
-    <string name="hint_todo">要做点什么？</string>
-    <string name="hint_search">搜索</string>
+    <string name="hint_note">Write something…</string>
+    <string name="hint_todo">What needs doing?</string>
+    <string name="hint_search">Search</string>
 
-    <string name="empty_notes">还没有笔记\n点右下角的 + 写第一条</string>
-    <string name="empty_todos">还没有待办\n点右下角的 + 加一条</string>
-    <string name="empty_search">没有找到相关内容</string>
+    <string name="empty_notes">No notes yet\nTap + to write your first one</string>
+    <string name="empty_todos">No todos yet\nTap + to add one</string>
+    <string name="empty_search">Nothing matched</string>
 
-    <string name="deleted">已删除</string>
-    <string name="saved">已保存</string>
-    <string name="nothing_to_save">内容为空</string>
+    <string name="deleted">Deleted</string>
+    <string name="saved">Saved</string>
+    <string name="nothing_to_save">Nothing to save</string>
 
-    <string name="editor_saving">正在输入…</string>
-    <string name="editor_saved">已自动保存</string>
-    <string name="editor_autosave_hint">边打字边保存，关掉也不会丢</string>
-    <string name="editor_quick_capture_hint">返回桌面时自动保存</string>
+    <string name="editor_saving">Typing…</string>
+    <string name="editor_saved">Saved automatically</string>
+    <string name="editor_autosave_hint">Saved as you type — closing will not lose it</string>
+    <string name="editor_quick_capture_hint">Saved when you go back</string>
 
-    <string name="settings_title">设置</string>
-    <string name="settings_backup">备份与恢复</string>
-    <string name="settings_export">导出备份</string>
-    <string name="settings_export_desc">把全部笔记和待办导出成一个 .bitsay.gz 压缩备份文件</string>
-    <string name="settings_import">导入备份</string>
-    <string name="settings_import_desc">选择 .bitsay.gz 备份文件恢复，可覆盖或合并</string>
-    <string name="settings_about">关于</string>
-    <string name="settings_stats">共 %1$d 条笔记 · %2$d 条待办</string>
-    <string name="settings_widget_hint">长按桌面空白处 → 小组件 → 找到「比特记」，即可把列表放到桌面上。</string>
-    <string name="settings_widget_add">添加到桌面</string>
-    <string name="settings_widget_add_desc">把笔记或待办列表放到桌面，点一下就能记</string>
-    <string name="widget_pin_requested">已请求添加到桌面；若桌面没有反应，请长按桌面空白处手动添加</string>
-    <string name="widget_pin_unsupported">当前桌面不支持从应用内添加，请长按桌面空白处手动添加</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_backup">Backup &amp; restore</string>
+    <string name="settings_export">Export backup</string>
+    <string name="settings_export_desc">Write every note and todo into one compressed .bitsay.gz file</string>
+    <string name="settings_import">Import backup</string>
+    <string name="settings_import_desc">Restore from a .bitsay.gz file — merge or replace</string>
+    <string name="settings_about">About</string>
+    <string name="settings_stats">%1$d notes · %2$d todos</string>
+    <string name="settings_widget_hint">Long-press an empty spot on the home screen → Widgets → find “Bitsay” to put a list on your desktop.</string>
+    <string name="settings_widget_add">Add to home screen</string>
+    <string name="settings_widget_add_desc">Put a notes or todos list on the desktop and jot things down with one tap</string>
+    <string name="widget_pin_requested">Requested. If nothing happens, long-press an empty spot on the home screen and add it manually</string>
+    <string name="widget_pin_unsupported">This launcher cannot add widgets from inside an app — long-press an empty spot on the home screen instead</string>
 
-    <string name="export_ok">已导出 %1$d 条记录</string>
-    <string name="export_fail">导出失败：%1$s</string>
-    <string name="op_fail">操作失败：%1$s</string>
-    <string name="import_ok">已导入 %1$d 条记录（新增 %2$d，更新 %3$d）</string>
-    <string name="import_fail">导入失败：%1$s</string>
-    <string name="import_confirm_title">导入备份</string>
-    <string name="import_confirm_msg">备份里有 %1$d 条记录。要怎么做？</string>
-    <string name="import_mode_merge">合并（保留现有内容）</string>
-    <string name="import_mode_replace">覆盖（清空现有内容）</string>
-    <string name="cancel">取消</string>
+    <string name="export_ok">Exported %1$d records</string>
+    <string name="export_fail">Export failed: %1$s</string>
+    <string name="op_fail">Failed: %1$s</string>
+    <string name="import_ok">Imported %1$d records (%2$d new, %3$d updated)</string>
+    <string name="import_fail">Import failed: %1$s</string>
+    <string name="import_confirm_title">Import backup</string>
+    <string name="import_confirm_msg">The backup holds %1$d records. What should happen to the current ones?</string>
+    <string name="import_mode_merge">Merge (keep what is here)</string>
+    <string name="import_mode_replace">Replace (wipe what is here)</string>
+    <string name="cancel">Cancel</string>
 
-    <string name="widget_new_note">新建笔记</string>
-    <string name="widget_new_todo">新建待办</string>
-    <string name="widget_switch">切换列表</string>
-    <string name="widget_open_app">打开应用</string>
-    <string name="widget_empty">这里空空的\n去 App 里记一条吧</string>
+    <string name="widget_new_note">New note</string>
+    <string name="widget_new_todo">New todo</string>
+    <string name="widget_switch">Switch list</string>
+    <string name="widget_open_app">Open the app</string>
+    <string name="widget_empty">Nothing here yet\nAdd one in the app</string>
 
-    <string name="widget_config_title">选择要显示的列表</string>
-    <string name="widget_config_notes">显示笔记</string>
-    <string name="widget_config_todos">显示待办</string>
-    <string name="widget_config_confirm">添加到桌面</string>
+    <string name="widget_config_title">Which list should it show?</string>
+    <string name="widget_config_notes">Show notes</string>
+    <string name="widget_config_todos">Show todos</string>
+    <string name="widget_config_confirm">Add to home screen</string>
+
+    <!-- Language -->
+    <string name="settings_language_display">Display language</string>
+    <string name="settings_language">Language</string>
+    <string name="language_system">Follow system</string>
+    <string name="language_chinese">简体中文</string>
+    <string name="language_english">English</string>
+
+    <!-- List counters -->
+    <string name="count_notes">%1$d notes</string>
+    <string name="count_todos">%1$d todos · %2$d open</string>
+    <string name="count_todos_short">%1$d todos</string>
+    <string name="count_open_todos">%1$d of them still open</string>
+
+    <!-- Settings sections and about -->
+    <string name="settings_section_overview">Overview</string>
+    <string name="settings_section_widget">Home-screen widget</string>
+    <string name="settings_about_tagline">Plain-text notes and todos, no permissions, your data stays with you.</string>
+    <string name="settings_version">Version %1$s</string>
+
+    <!-- Editor footer -->
+    <string name="editor_created_at">Created %1$s</string>
+    <string name="editor_saved_at">%1$s · %2$s</string>
+
+    <!-- Relative time -->
+    <string name="time_just_now">Just now</string>
+    <string name="time_minutes_ago">%1$d min ago</string>
+    <string name="time_today">Today %1$s</string>
+    <string name="time_yesterday">Yesterday %1$s</string>
+    <string name="time_pattern_month_day">MMM d</string>
+    <string name="time_pattern_year_month_day">MMM d, yyyy</string>
+    <string name="time_pattern_full">yyyy-MM-dd HH:mm</string>
+
+    <!-- Backup errors -->
+    <string name="backup_error_not_a_backup">That is not a Bitsay backup file</string>
+    <string name="backup_error_empty">The backup file is empty</string>
+    <string name="backup_error_corrupt">The backup file is damaged</string>
+    <string name="backup_error_newer">This backup comes from a newer version (schema=%1$d) — please update the app</string>
+    <string name="backup_error_io">Could not read or write the chosen file</string>
+    <string name="backup_error_unknown">Unknown error</string>
+    <string name="backup_error_stale">The export expired — please try again</string>
+
+    <!-- Widget configuration -->
+    <string name="widget_config_notes_desc">A clean block of text, ready to jot into</string>
+    <string name="widget_config_todos_desc">Tap the circle to tick one off</string>
 </resources>

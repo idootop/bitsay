@@ -27,12 +27,12 @@ object BackupArchive {
     }
 
     fun decompress(bytes: ByteArray): ByteArray {
-        if (bytes.isEmpty()) throw BackupFormatException("备份文件是空的")
-        if (!isCompressed(bytes)) throw BackupFormatException("这不是比特记的备份文件")
+        if (bytes.isEmpty()) throw BackupException(BackupError.EMPTY)
+        if (!isCompressed(bytes)) throw BackupException(BackupError.NOT_A_BACKUP)
         return try {
             GZIPInputStream(bytes.inputStream()).use { it.readBytes() }
         } catch (e: IOException) {
-            throw BackupFormatException("备份文件已损坏：${e.message ?: "无法解压"}")
+            throw BackupException(BackupError.CORRUPT)
         }
     }
 

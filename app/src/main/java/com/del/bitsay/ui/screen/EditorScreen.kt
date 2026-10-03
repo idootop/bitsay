@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import com.del.bitsay.R
 import com.del.bitsay.core.model.Kind
 import com.del.bitsay.core.util.TimeText
+import com.del.bitsay.core.util.TimeWording
+import com.del.bitsay.i18n.rememberTimeWording
 import com.del.bitsay.ui.AppUiState
 import com.del.bitsay.ui.components.CuteIconButton
 import com.del.bitsay.ui.theme.CuteShape
@@ -46,6 +48,7 @@ fun EditorScreen(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val wording = rememberTimeWording()
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
 
@@ -127,10 +130,10 @@ fun EditorScreen(
         // screen (back, or the gesture) is the only action left. A button would only imply that
         // saving is something the user still has to remember to do.
         Column(Modifier.fillMaxWidth()) {
-            SaveStatus(state)
+            SaveStatus(state, wording)
             if (state.editingCreatedAt > 0L) {
                 Text(
-                    text = "创建于 ${TimeText.absolute(state.editingCreatedAt)}",
+                    text = stringResource(R.string.editor_created_at, TimeText.absolute(state.editingCreatedAt, wording)),
                     style = MaterialTheme.typography.bodySmall,
                     color = InkSoft,
                     modifier = Modifier.padding(top = 2.dp),
@@ -145,7 +148,7 @@ fun EditorScreen(
  * "your words are safe" versus "still typing".
  */
 @Composable
-private fun SaveStatus(state: AppUiState) {
+private fun SaveStatus(state: AppUiState, wording: TimeWording) {
     val saved = state.editingUpdatedAt > 0L
     val (label, tint) = when {
         state.dirty -> stringResource(R.string.editor_saving) to InkSoft
@@ -164,7 +167,11 @@ private fun SaveStatus(state: AppUiState) {
             Spacer(Modifier.width(4.dp))
         }
         Text(
-            text = if (saved && !state.dirty) "$label · ${TimeText.relative(state.editingUpdatedAt)}" else label,
+            text = if (saved && !state.dirty) {
+                stringResource(R.string.editor_saved_at, label, TimeText.relative(state.editingUpdatedAt, wording))
+            } else {
+                label
+            },
             style = MaterialTheme.typography.bodySmall,
             color = tint,
         )

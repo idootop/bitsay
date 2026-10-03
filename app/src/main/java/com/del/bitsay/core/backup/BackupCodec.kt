@@ -12,8 +12,24 @@ data class Backup(
     val items: List<Item> = emptyList(),
 )
 
+/**
+ * Why a backup could not be read. Pure data — no wording — because the text the user sees has to
+ * come from the resource system, and this file is deliberately Android-free.
+ */
+enum class BackupError {
+    NOT_A_BACKUP,
+    EMPTY,
+    CORRUPT,
+    NEWER_SCHEMA,
+    IO,
+}
+
 /** Thrown when a file is not a readable bitsay backup. */
-class BackupFormatException(message: String) : IllegalArgumentException(message)
+class BackupException(
+    val error: BackupError,
+    /** Only meaningful for [BackupError.NEWER_SCHEMA]: the schema the file claims to be. */
+    val schema: Int = 0,
+) : IllegalArgumentException("backup error: $error")
 
 /**
  * The backup payload: a purpose-built binary encoding, gzipped by [BackupArchive].
@@ -53,7 +69,7 @@ class BackupFormatException(message: String) : IllegalArgumentException(message)
  * ```
  *
  * Decoding validates every length against the bytes actually left, so a truncated or foreign
- * file fails loudly with [BackupFormatException] instead of half-importing a database.
+ * file fails loudly with [BackupException] instead of half-importing a database.
  */
 object BackupCodec {
 
@@ -115,17 +131,17 @@ object BackupCodec {
         val input = ByteSource(bytes)
         val magic = input.bytes(MAGIC.size)
         if (!magic.contentEquals(MAGIC)) {
-            throw BackupFormatException("这不是比特记的备份文件")
+            throw BackupException(BackupError.NOT_A_BACKUP)
         }
 
         val schema = input.varint()
         if (schema > SCHEMA) {
-            throw BackupFormatException("备份来自更新的版本（schema=$schema），请先升级 App")
+            throw BackupException(BackupError.NEWER_SCHEMA, schema = schema.toInt())
         }
         val exportedAt = input.varint()
         val count = input.varint()
         if (count < 0L || count > input.remaining()) {
-            throw BackupFormatException("备份文件已损坏：记录数 $count 与实际内容不符")
+            throw BackupException(BackupError.CORRUPT)
         }
 
         val items = ArrayList<Item>(count.toInt())
@@ -147,7 +163,7 @@ object BackupCodec {
 
             val length = input.varint()
             if (length < 0L || length > MAX_TEXT_BYTES) {
-                throw BackupFormatException("备份文件已损坏：文本长度 $length 不合理")
+                throw BackupException(BackupError.CORRUPT)
             }
             val text = input.utf8(length.toInt())
 
@@ -250,5 +266,5 @@ private class ByteSource(private val data: ByteArray) {
         return (raw ushr 1) xor -(raw and 1L)
     }
 
-    private fun fail(why: String): Nothing = throw BackupFormatException("备份文件已损坏：$why")
+    private fun fail(why: String): Nothing = throw BackupException(BackupError.CORRUPT)
 }

@@ -43,6 +43,8 @@ import com.del.bitsay.R
 import com.del.bitsay.core.model.Item
 import com.del.bitsay.core.model.Kind
 import com.del.bitsay.core.util.TextPreview
+import com.del.bitsay.core.util.TimeWording
+import com.del.bitsay.i18n.rememberTimeWording
 import com.del.bitsay.core.util.TimeText
 import com.del.bitsay.ui.AppUiState
 import com.del.bitsay.ui.components.CuteIconButton
@@ -74,6 +76,8 @@ fun ListScreen(
     onDeleteSelected: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val wording = rememberTimeWording()
+
     Box(modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             // Selection mode replaces the whole header rather than stacking on top of it: while
@@ -133,6 +137,7 @@ fun ListScreen(
                     itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
                         ItemCard(
                             item = item,
+                            wording = wording,
                             index = index,
                             selecting = state.inSelectionMode,
                             selected = item.id in state.selection,
@@ -241,9 +246,9 @@ private fun Header(
             )
             Text(
                 text = if (state.tab == Kind.NOTE) {
-                    "${state.noteCount} 条笔记"
+                    stringResource(R.string.count_notes, state.noteCount)
                 } else {
-                    "${state.todoCount} 条待办 · ${state.openTodoCount} 条未完成"
+                    stringResource(R.string.count_todos, state.todoCount, state.openTodoCount)
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = InkSoft,
@@ -321,6 +326,7 @@ private fun SearchField(
 @Composable
 private fun ItemCard(
     item: Item,
+    wording: TimeWording,
     index: Int,
     selecting: Boolean,
     selected: Boolean,
@@ -397,7 +403,7 @@ private fun ItemCard(
                 textDecoration = if (item.done) TextDecoration.LineThrough else null,
             )
             Text(
-                text = TimeText.relative(item.createdAt),
+                text = TimeText.relative(item.createdAt, wording),
                 style = MaterialTheme.typography.bodySmall,
                 color = InkSoft.copy(alpha = 0.85f),
                 modifier = Modifier.padding(top = 6.dp),

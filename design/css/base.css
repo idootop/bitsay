@@ -1,0 +1,109 @@
+/* ==========================================================================
+   base.css —— reset、演示台外壳、手机框
+   --------------------------------------------------------------------------
+   注意分工：
+   * 外壳（.shell / .stage / .panel）只用 --sh-* 变量，不参与 App 的主题，
+     否则切深色时连演示台一起变，看不清 App 本身的效果；
+   * 手机内部的 .app-root 才吃 tokens.css 里的设计令牌。
+   ========================================================================== */
+
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; padding:0; }
+button{ font:inherit; color:inherit; background:none; border:none; padding:0; cursor:pointer; }
+ul{ margin:0; padding:0; list-style:none; }
+
+/* ---------- 演示台外壳 ---------- */
+:root{
+  /* ---------- 真机尺寸（vivo V2309A：1260×2800 @560dpi = 360×800 dp） ----------
+     下面全部按 1 CSS px = 1 dp 画，所以 Kotlin 里的 dp 值可以直接抄过来对照 */
+  --screen-w: 360px;
+  --screen-h: 800px;
+  --safe-top: 36px;        /* 状态栏高度，对应 WindowInsets.safeDrawing 的顶部 */
+
+  --sh-bg:#F4F1EC;
+  --sh-panel:#FFFFFF;
+  --sh-ink:#2B2926;
+  --sh-ink-soft:#7C756C;
+  --sh-line:#E2DCD2;
+  --sh-accent:#FFD34E;
+}
+body{
+  background:var(--sh-bg);
+  color:var(--sh-ink);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB",
+              "Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
+  font-size:14px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.shell{ max-width:1340px; margin:0 auto; padding:22px 20px 80px; }
+.shell__title{ font-size:22px; font-weight:800; margin:0 0 4px; letter-spacing:.3px; }
+.shell__sub{ color:var(--sh-ink-soft); font-size:12.5px; margin:0 0 16px; max-width:900px; }
+.shell__sub b{ color:var(--sh-ink); }
+.shell__sub code{ background:var(--sh-panel); padding:1px 6px; border-radius:6px; }
+
+.panel{
+  background:var(--sh-panel); border:1px solid var(--sh-line); border-radius:14px;
+  padding:12px 14px; margin-bottom:10px;
+}
+.panel__row{ display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; }
+.panel__label{ font-size:11.5px; color:var(--sh-ink-soft); letter-spacing:.6px;
+  text-transform:uppercase; margin-right:2px; }
+.spacer{ flex:1 1 auto; }
+
+.btn{
+  font-size:13px; padding:6px 14px; border-radius:10px;
+  border:1px solid var(--sh-line); background:var(--sh-panel); color:var(--sh-ink);
+  transition:background var(--dur,.18s) var(--ease,cubic-bezier(.2,.7,.3,1));
+}
+.btn:hover{ background:#FAF8F4; }
+.btn[aria-pressed="true"]{ background:var(--sh-accent); border-color:#E0B93F; font-weight:700; }
+.btn--ghost{ border-style:dashed; color:var(--sh-ink-soft); }
+.hint{ font-size:11.5px; color:var(--sh-ink-soft); line-height:1.7; }
+kbd{ background:#EFEBE4; border:1px solid var(--sh-line); border-bottom-width:2px;
+  border-radius:5px; padding:0 5px; font-size:11px; font-family:inherit; }
+
+/* ---------- 舞台布局 ---------- */
+.stage{ display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; margin-top:14px; }
+.stage--center{ justify-content:flex-start; }
+.col{ display:flex; flex-direction:column; gap:16px; }
+.col__cap{ font-size:12px; color:var(--sh-ink-soft); text-align:center; letter-spacing:.4px; }
+
+/* ---------- 手机框（屏幕 360×800 dp，1px = 1dp） ---------- */
+.phone{
+  width:calc(var(--screen-w) + 18px); flex:0 0 auto; background:#2C2A27;
+  border-radius:38px; padding:9px; box-shadow:0 12px 30px rgba(0,0,0,.20);
+}
+.phone__screen{
+  width:var(--screen-w); height:var(--screen-h);
+  border-radius:30px; overflow:hidden; position:relative;
+  background:var(--c-bg);
+  transition:background var(--dur) var(--ease);
+}
+/* 纸纹点阵铺满整屏（含状态栏下方），对应 PaperBackground */
+.phone__screen::before{
+  content:""; position:absolute; inset:0; pointer-events:none; z-index:0;
+  background-image:radial-gradient(circle,var(--c-line) 1.1px,transparent 1.2px);
+  background-size:var(--dot-size) var(--dot-size);
+  opacity:var(--dots); transition:opacity var(--dur) var(--ease);
+}
+.phone__notch{
+  position:absolute; top:8px; left:50%; transform:translateX(-50%);
+  width:62px; height:5px; border-radius:99px; background:#6b655d; z-index:9;
+}
+
+/* 状态栏：真机高度 36dp，App 内容从它下面开始（enableEdgeToEdge + safeDrawing） */
+.statusbar{
+  position:absolute; top:0; left:0; right:0; height:var(--safe-top); z-index:8;
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:11px; color:var(--c-ink-soft); padding:6px 14px 0; letter-spacing:.3px;
+}
+.statusbar__icons{ letter-spacing:1px; }
+/* 桌面上的状态栏是白字（压在壁纸上） */
+.hs .statusbar{ color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.35); }
+
+/* ---------- 总览网格 ---------- */
+.grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:24px; margin-top:14px; }
+.grid__cell{ display:flex; flex-direction:column; gap:8px; }
+
+/* 页面挂载点：铺满整屏，顶部由页面自己让出 --safe-top */
+.host{ position:absolute; inset:0; z-index:1; display:flex; flex-direction:column; }

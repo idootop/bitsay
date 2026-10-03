@@ -676,8 +676,8 @@ git add -A -n                      # 提交前预演，确认没有产物/密钥
 
 ### ⏳ 待办（按建议优先级）
 
-- [ ] **UI/UX 细化**：打开 `design/ui-preview.html` 验收可爱 / 手绘方向，定稿后回填到
-      `ui/theme/*` 与 `res/drawable/*`（当前 Android 端是「可用的第一版」，HTML 是设计源）
+- [ ] **UI/UX 细化（当前正在做）**：打开 `design/index.html`（可交互、单一样式，就是当前 App 的样子），
+      在 `design/css/tokens.css` 上直接调整；定稿后回填 `ui/theme/*` 与 `res/drawable/*`。见 §13
 - [ ] 备份：可选的「自动定期备份到 SAF 目录」（现在只有手动导出）
 - [ ] 列表：单条分享为文本（长按多选 + 批量删除已完成）
 - [ ] 待办：拖拽排序（真·手动顺序，现在固定按 updatedAt）
@@ -767,7 +767,8 @@ git add -A -n                      # 提交前预演，确认没有产物/密钥
 ## 12. 下一步建议（给接手的 agent）
 
 1. **先跑一遍 §2 的构建命令**，确认 63 个测试全绿、release 能出包。环境问题优先解决 `JAVA_HOME`。
-2. **UI 方向**：打开 `design/ui-preview.html`（浏览器直接打开，无需构建）。
+2. **UI 方向**：打开 `design/index.html`（浏览器直接打开，无需构建、无需起服务器；`?dark=1` 进深色）。
+   只有一份样式，旋钮集中在 `design/css/tokens.css`；改样式先看 `design/README.md` 的分工表。
    用户明确要求「先在 HTML 上预览调整验收，确定之后再迁移到 Android」。
    定稿后按 §13 的映射表回填。
 3. **没做完的功能**在 §10「待办」里，按用户的实际反馈排序，不要自己加需求。
@@ -778,21 +779,59 @@ git add -A -n                      # 提交前预演，确认没有产物/密钥
 
 ---
 
-## 13. HTML 设计稿 → Android 映射表
+## 13. 设计台 → Android 映射表
 
-`design/ui-preview.html` 是设计源；Android 端对应位置：
+设计源不再是单张 HTML，而是一个**可交互的设计台工程** `design/`（详见 `design/README.md`）。
+用浏览器直接打开 `design/index.html` 即可，**不需要起服务器**（普通 `<script>`，`file://` 能跑）。
 
-| HTML 里的元素 | Android 对应 |
+### 13.1 设计台里有什么
+
+一个页面看完整 App，**所有视图共用同一份数据**（在任一处勾掉一条待办，其它视图立刻跟着变）：
+
+| 区块 | 内容 |
 |---|---|
-| `--bg` / `--paper` / `--ink` … 调色板 | `ui/theme/Color.kt` + `res/values/colors.xml`（小组件共用） |
-| 卡片不规则圆角 | `ui/theme/Theme.kt` 里的 `CuteShape` / `CuteShapeSmall` |
-| 卡片描边 1.5dp、13% 墨色 | `CuteCard`（`ui/components/Common.kt`） |
-| 纸纹点阵背景 | `PaperBackground` 的 `Canvas` |
-| 分段切换（笔记/待办） | `SegmentedTabs` |
-| 列表卡片配色循环 | `ListScreen.kt` 的 `CardColors` / `TODO_COLORS` |
-| 小组件外观 | `res/layout/widget_bitsay.xml`、`widget_item.xml`、`res/drawable/widget_*.xml` |
+| ① 可交互真机 | 列表 ⇄ 编辑器 ⇄ 搜索 ⇄ 设置 真的能走通；旁边是真实桌面 + 小组件 |
+| ② 全部页面总览 | 7 台手机：笔记 / 待办 / 多选 / 编辑器（查看）/ 编辑器（快捷记录）/ 搜索 / 设置 |
+| ③ 桌面小组件 | 三块**真实桌面**（蓝天草地壁纸 + 图标列 + Dock），小组件分别 2×5 / 2×3 / 2×2 |
+| ④ 组件库 | 卡片、分段 tab、图标按钮、勾选圈、空状态 |
+| ⑤ 设计令牌 | 与 `Color.kt` 一一对应的色板（切版本/亮暗会跟着变） |
+| ⑥ 版本取舍 | 四个方向的做法、Compose 成本、取舍 |
 
-**改渲染细节**（XML/代码）即可；**改颜色**记得两边同步（`colors.xml` 与 `Color.kt`）。
+**只有一份样式**（= 当前 App 的样子），没有多套主题。调观感优先改 `design/css/tokens.css`；
+单页微调去 `design/css/pages/<页面>.css` 顶部的「本页可调参数」；深色只在 `design/css/dark.css` 里替换 token。
+
+### 13.2 文件分工（改东西先看这张表）
+
+| 想改什么 | 改哪里 |
+|---|---|
+| 颜色 / 圆角 / 间距节奏 / 字号 | `design/css/tokens.css` |
+| **某一个页面**的样式 | `design/css/pages/<页面>.css` 顶部的「本页可调参数」 |
+| 跨页面组件（卡片 / tab / FAB） | `design/css/components.css` |
+| 深色模式 | `design/css/dark.css`（只替换 token，页面样式不动） |
+| 图标 | `design/js/icons.js` |
+| 数据规则（排序 / 搜索 / 增删） | `design/js/store.js` |
+| 某页结构与交互 | `design/js/pages/<页面>.js` |
+
+### 13.3 对应到 Android
+
+| 设计台 | Android |
+|---|---|
+| `tokens.css` 的 `--c-*` | `ui/theme/Color.kt`（`BitSayPalette`）+ `res/values/colors.xml`（小组件） |
+| `--r-card` / `--r-card-sm` | `ui/theme/Theme.kt` 的 `CuteShape` / `CuteShapeSmall` |
+| `--bw` / `--bc`（描边） | `CuteCard` 的 `border(1.5.dp, Ink.copy(alpha=.13f))` |
+| `.app-root::before` 点阵 | `PaperBackground` 的 `Canvas` |
+| `.seg` / `.seg__item` | `ui/components/SegmentedTabs.kt` |
+| `js/ui.js` 的 `card()` | **`ui/components/ItemList.kt`**（首页与搜索页共用，只有这一处实现） |
+| `js/pages/list.js` | `ui/screen/ListScreen.kt`（含多选顶栏） |
+| `js/pages/editor.js` | `ui/screen/EditorScreen.kt`（400ms 节流自动保存） |
+| `js/pages/search.js` | `ui/screen/SearchScreen.kt`（切分类保留关键词） |
+| `js/pages/settings.js` | `ui/screen/SettingsScreen.kt` |
+| `js/pages/widget.js` | `res/layout/widget_bitsay.xml` + `widget_item.xml` + `WidgetRenderer.kt` |
+| `css/pages/homescreen.css` | 无（只是演示台用的真实桌面外壳） |
+| `js/store.js` | `core/repo/ItemRepository.kt` + `AppViewModel` 的状态部分 |
+
+> **同步规则**：颜色只改 `Color.kt` 和 `colors.xml`，设计台跟着改 `tokens.css`；
+> 三者必须一致，否则设计稿就失去对照意义。
 
 ---
 

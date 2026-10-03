@@ -1,0 +1,95 @@
+/* ==========================================================================
+   桌面小组件 —— 对应 res/layout/widget_bitsay.xml + WidgetRenderer.kt
+   --------------------------------------------------------------------------
+   底色不是页面的牛皮纸，而是纸白 --c-paper（res/values/colors.xml 的 widget_bg=#FFFDF7），
+   配 1.5dp 的 --c-line 描边 + 不等圆角 24/20/24/20（widget_bg.xml），
+   所以它在壁纸上看起来是一张白卡片 —— 这点和 App 内页面不一样。
+
+   尺寸取自真机实测（宿主把小组件按约 0.91 倍渲染，所以比声明的 48dp 略小）：
+     * 小组件 RemoteViews 实际 206 × 535 dp，顶栏 47.4，行节距 47.1（卡片 43.4）
+     * 图标按钮 43.7 × 43.4；tab 高 36.3、宽 57.4；勾选圈可点区 40dp
+   声明的值是 48dp/52dp（Material 最小触摸目标），改的时候两个都想想。
+   ========================================================================== */
+
+/* ---------- 本页可调参数 ---------- */
+.widget{
+  --w-row-h: 43px;          /* 一行卡片的高度（声明 48dp） */
+  --w-row-gap: 4px;         /* 行间距（行有 2dp 外边距 ×2） */
+  --w-head-h: 47px;         /* 顶栏高度（声明 52dp） */
+  --w-btn: 44px;            /* 顶栏图标按钮（声明 48dp） */
+  --w-tab-h: 36px;
+  --w-tick-w: 40px;         /* 勾选圈的可点宽度 */
+  --w-fab: 44px;
+  --w-pad: 5px;             /* 卡片外内边距 */
+}
+
+.widget{
+  position:relative; display:flex; flex-direction:column;
+  background:var(--c-paper);                  /* widget_bg */
+  border-radius:24px 20px 24px 20px;          /* widget_bg.xml 的四个角 */
+  --bw:1.5px; --bc:var(--c-line);             /* widget_stroke */
+  padding:var(--w-pad); overflow:hidden;
+  box-shadow:0 6px 16px rgba(0,0,0,.22);
+  color:var(--c-ink);
+  transition:background var(--dur) var(--ease);
+}
+
+/* 顶栏：进App ｜ 笔记 ｜ 待办 ｜ 搜索 */
+.widget__head{ display:flex; align-items:center; gap:0; height:var(--w-head-h); flex:0 0 auto; }
+.widget__head[hidden]{ display:none; }
+.widget__icon{
+  width:var(--w-btn); height:var(--w-btn); flex:0 0 auto;
+  display:grid; place-items:center; color:var(--c-ink-soft); border-radius:10px;
+}
+.widget__icon:active{ background:rgba(128,128,128,.14); }
+.widget__icon svg{ width:19px; height:19px; }
+.widget__tab{
+  flex:1 1 0; height:var(--w-tab-h); display:grid; place-items:center;
+  font-size:13px; font-weight:700; color:var(--c-ink-soft);
+  border-radius:9px; margin:0 2px;
+  transition:background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.widget__tab--on{ background:var(--w-accent,var(--c-sun)); color:var(--c-on-accent); }
+
+/* 列表：单行、固定行高、无日期 */
+.widget__list{
+  flex:1 1 auto; min-height:0; overflow-y:auto;
+  display:flex; flex-direction:column; gap:var(--w-row-gap);
+  scrollbar-width:thin;
+}
+.widget__list::-webkit-scrollbar{ width:3px; }
+.widget__list::-webkit-scrollbar-thumb{ background:var(--c-line); border-radius:3px; }
+.widget__row{
+  position:relative; height:var(--w-row-h); flex:0 0 auto;
+  display:flex; align-items:center; overflow:hidden;
+  border-radius:var(--r-card-sm); background:var(--row-fill,var(--c-paper));
+  padding-right:8px; cursor:pointer;
+}
+.widget__row:active{ filter:brightness(.96); }
+.widget__tick{
+  width:var(--w-tick-w); height:var(--w-row-h); flex:0 0 auto;
+  display:grid; place-items:center; color:var(--c-ink);
+}
+.widget__tick svg{ width:17px; height:17px; }
+.widget__text{
+  flex:1 1 auto; min-width:0; font-size:14px; line-height:17.1px;
+  color:var(--row-ink,var(--c-ink));
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.widget__row--done{ --row-fill:var(--c-done); --row-ink:var(--c-ink-soft); }
+.widget__row--done .widget__text{ text-decoration:line-through; }
+
+.widget__empty{
+  flex:1 1 auto; display:grid; place-items:center; text-align:center;
+  color:var(--c-ink-soft); font-size:13px; white-space:pre-line; line-height:1.8;
+}
+
+/* + 悬浮在列表之上：列表不预留底部空白 */
+.widget__fab{
+  position:absolute; right:8px; bottom:8px; width:var(--w-fab); height:var(--w-fab);
+  border-radius:var(--r-pill); background:var(--c-sun); color:var(--c-on-accent);
+  display:grid; place-items:center; box-shadow:0 2px 6px rgba(0,0,0,.28); z-index:3;
+}
+.widget__fab svg{ width:21px; height:21px; }
+.widget--tiny .widget__fab{ width:36px; height:36px; right:6px; bottom:6px; }
+.widget--tiny .widget__fab svg{ width:18px; height:18px; }

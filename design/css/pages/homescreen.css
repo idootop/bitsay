@@ -1,0 +1,104 @@
+/* ==========================================================================
+   真实桌面 —— 小组件只在真实桌面里才看得出比例对不对
+   --------------------------------------------------------------------------
+   尺寸全部来自真机实测 + refs/screenshots/20261001-171723.jpg 的等比换算
+   （参考图 1080px 宽 = 360dp，即 3 px/dp）：
+     小组件（宿主容器）  x 31..246   y 70..614    → 215 × 544
+     小组件（我们的视图）x 36..241   y 75..609    → 206 × 535
+     小组件名字           居中，y ≈ 628
+     应用图标列           x 265..322（中心 293），首个 y ≈ 87，节距 ≈ 80
+     翻页圆点            y ≈ 678
+     Dock                x 24..336  y 729..779
+   ========================================================================== */
+
+/* ---------- 本页可调参数 ---------- */
+:root{
+  --hs-left: 36px;          /* 小组件左边距 */
+  --hs-top: 75px;           /* 小组件上边距（状态栏之下） */
+  --hs-widget-w: 206px;     /* 小组件宽度（实测） */
+  --hs-icon-x: 265px;       /* 图标列左边 */
+  --hs-icon-w: 57px;        /* 图标列宽 */
+  --hs-dock-top: 729px;
+  --hs-dock-x: 24px;
+  --hs-dock-w: 312px;
+}
+
+.hs-phone{
+  width:calc(var(--screen-w) + 18px); flex:0 0 auto; background:#2C2A27;
+  border-radius:40px; padding:9px; box-shadow:0 14px 34px rgba(0,0,0,.24);
+}
+.hs{
+  position:relative; width:var(--screen-w); height:var(--screen-h);
+  border-radius:30px; overflow:hidden;
+  /* 壁纸：蓝天 + 云 + 草地 */
+  background:
+    radial-gradient(140px 48px at 24% 16%, rgba(255,255,255,.95), rgba(255,255,255,0) 70%),
+    radial-gradient(180px 56px at 74% 10%, rgba(255,255,255,.85), rgba(255,255,255,0) 72%),
+    radial-gradient(100px 36px at 54% 24%, rgba(255,255,255,.75), rgba(255,255,255,0) 70%),
+    radial-gradient(220px 74px at 10% 32%, rgba(255,255,255,.55), rgba(255,255,255,0) 72%),
+    linear-gradient(#3E86C9 0%, #63A8DC 34%, #9CC9EA 52%, #C9E2F2 60%);
+}
+/* 草地：一条带弧度的绿带，从屏高 56% 处开始 */
+.hs::after{
+  content:""; position:absolute; left:-8%; right:-8%; bottom:0; height:44%;
+  background:linear-gradient(#7FA83F, #5C8A2E 45%, #47701F);
+  border-radius:52% 48% 0 0 / 16% 16% 0 0; z-index:0;
+}
+/* 只抬层级，**绝不能动 position** —— 状态栏/槽位/图标列/Dock 全靠绝对定位，
+   早先这里写了 position:relative，把它们的定位全破坏了 */
+.hs > *{ z-index:1; }
+
+/* 状态栏：白字压在壁纸上 */
+.hs .statusbar{ color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.35); }
+
+/* 小组件槽位 */
+.hs__slot{ position:absolute; left:var(--hs-left); top:var(--hs-top); width:var(--hs-widget-w); }
+.hs__slot .widget{ width:100%; }
+.hs__name{
+  position:absolute; left:var(--hs-left); width:var(--hs-widget-w); top:626px;
+  text-align:center; color:rgba(255,255,255,.95); font-size:11px;
+  text-shadow:0 1px 3px rgba(0,0,0,.45);
+}
+
+/* 右侧应用图标列 */
+.hs__icons{
+  position:absolute; left:var(--hs-icon-x); top:82px; width:var(--hs-icon-w);
+  display:flex; flex-direction:column; gap:20px;   /* 实测 7 个图标从 y87 排到 y671 */
+}
+.hs__icon{ display:flex; flex-direction:column; align-items:center; gap:4px; }
+.hs__icon .glyph{
+  width:48px; height:48px; border-radius:14px; display:grid; place-items:center;
+  box-shadow:0 3px 8px rgba(0,0,0,.22); color:#fff; font-size:20px; font-weight:700;
+}
+.hs__icon .cap{
+  font-size:10px; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.5);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
+}
+
+/* 翻页圆点 */
+.hs__dots{
+  position:absolute; left:0; right:0; top:674px;
+  display:flex; justify-content:center; gap:7px;
+}
+.hs__dots i{ width:5px; height:5px; border-radius:50%; background:rgba(255,255,255,.55); }
+.hs__dots i.on{ background:#fff; }
+
+/* Dock */
+.hs__dock{
+  position:absolute; left:var(--hs-dock-x); top:var(--hs-dock-top);
+  width:var(--hs-dock-w); height:50px; border-radius:25px;
+  background:rgba(255,255,255,.26);
+  display:flex; justify-content:space-around; align-items:center;
+}
+.hs__dock .glyph{
+  width:44px; height:44px; border-radius:13px; display:grid; place-items:center;
+  box-shadow:0 3px 8px rgba(0,0,0,.22); color:#fff; font-size:19px; font-weight:700;
+}
+
+/* 深色壁纸 */
+[data-dark="1"] .hs{
+  background:
+    radial-gradient(140px 48px at 24% 16%, rgba(255,255,255,.28), rgba(255,255,255,0) 70%),
+    linear-gradient(#12203A 0%, #1B3355 36%, #24425F 54%, #1E3A2A 60%);
+}
+[data-dark="1"] .hs::after{ background:linear-gradient(#1F3A21, #16301A 45%, #102512); }

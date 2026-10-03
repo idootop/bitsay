@@ -1,0 +1,61 @@
+/* ==========================================================================
+   设置页 —— 对应 ui/screen/SettingsScreen.kt
+   实测：顶栏 36..96；分组标题 x24；色块 x18..342；
+        行内：图标 x34 起 30dp，文字 x72 起，标题行高 24，说明行高 16
+   ========================================================================== */
+
+/* ---------- 本页可调参数 ---------- */
+.settings-page{
+  --sect-pad-left: 24px;    /* 分组标题比色块多缩进 6dp */
+  --sect-gap-top: 16px;
+  --sect-gap-bottom: 8px;
+  --row-pad-y: 14px;
+  --row-pad-x: 16px;
+  --row-icon: 30px;         /* 行首图标 30dp */
+  --row-icon-gap: 8px;      /* 图标到文字 8dp（实测图标 34..64，文字 72 起） */
+}
+
+.settings-page .topbar{ padding:12px 12px 12px 18px; }
+
+.settings-page__body{
+  flex:1 1 auto; min-height:0; overflow-y:auto;
+  padding:0 var(--pad-page) 28px;
+}
+.settings-page__body::-webkit-scrollbar{ width:3px; }
+.settings-page__body::-webkit-scrollbar-thumb{ background:var(--c-line); border-radius:3px; }
+
+.sect{
+  font-size:12px; line-height:20px; font-weight:700; letter-spacing:.9px;
+  color:var(--c-ink-soft);
+  padding-left:calc(var(--sect-pad-left) - var(--pad-page));
+  margin:var(--sect-gap-top) 0 var(--sect-gap-bottom);
+}
+.sect:first-child{ margin-top:2px; }
+
+.block{
+  position:relative; border-radius:var(--r-card); background:var(--c-paper);
+  box-shadow:var(--shadow-card); overflow:hidden;
+}
+.block--tinted{ background:var(--block-fill,var(--c-paper)); }
+.block__pad{ padding:16px; }
+
+.srow{
+  display:flex; align-items:center;
+  padding:var(--row-pad-y) var(--row-pad-x); cursor:pointer;
+}
+.srow:hover{ background:rgba(128,128,128,.07); }
+.srow + .srow{ border-top:1px solid var(--bc); }
+.srow__icon{
+  width:var(--row-icon); height:var(--row-icon); flex:0 0 auto;
+  display:grid; place-items:center; color:var(--c-ink);
+  margin-right:var(--row-icon-gap);
+}
+.srow__icon svg{ width:20px; height:20px; }
+.srow__text{ flex:1 1 auto; min-width:0; }
+.srow__title{ font-size:16px; line-height:24px; }        /* titleMedium 16sp/24sp */
+.srow__desc{ font-size:12px; line-height:16px; color:var(--c-ink-soft); margin-top:2px; }
+.srow__value{ font-size:12px; line-height:16px; color:var(--c-ink-soft); }
+.srow__chev{ color:var(--c-ink-soft); font-size:17px; margin-left:6px; }
+
+.big-stat{ font-size:16px; line-height:24px; font-weight:700; }
+.note-text{ font-size:12px; line-height:20px; color:var(--c-ink-soft); }

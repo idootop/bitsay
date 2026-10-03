@@ -1,0 +1,26 @@
+/* ==========================================================================
+   dark.css —— 深色模式
+   --------------------------------------------------------------------------
+   只做一件事：把 tokens.css 里的浅色令牌换成对应的 -d 值。
+   页面样式一行都不用改 —— 这就是"颜色只走 token"的意义。
+
+   由 <body data-dark="1"> 触发（演示台右上角切换，或 URL 加 &dark=1）。
+   ========================================================================== */
+[data-dark="1"]{
+  --c-bg:       var(--c-bg-d);
+  --c-paper:    var(--c-paper-d);
+  --c-ink:      var(--c-ink-d);
+  --c-ink-soft: var(--c-ink-soft-d);
+  --c-line:     var(--c-line-d);
+  --c-track:    var(--c-track-d);
+  --c-sun:      var(--c-sun-d);
+  --c-mint:     var(--c-mint-d);
+  --c-sky:      var(--c-sky-d);
+  --c-blush:    var(--c-blush-d);
+  --c-lilac:    var(--c-lilac-d);
+  --c-peach:    var(--c-peach-d);
+  --c-done:     var(--c-done-d);
+  --c-on-accent:var(--c-on-accent-d);
+  --c-shadow:   var(--c-shadow-d);
+  --bc:         rgba(242,237,228,.14);
+}

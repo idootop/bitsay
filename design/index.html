@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>比特记 bitsay · UI/UX 设计台</title>
+<!-- 顺序有讲究：tokens → base → components → 各页面 → 深色 → 演示台 -->
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/pages/list.css">
+<link rel="stylesheet" href="css/pages/editor.css">
+<link rel="stylesheet" href="css/pages/search.css">
+<link rel="stylesheet" href="css/pages/settings.css">
+<link rel="stylesheet" href="css/pages/widget.css">
+<link rel="stylesheet" href="css/pages/homescreen.css">
+<link rel="stylesheet" href="css/dark.css">
+<link rel="stylesheet" href="css/board.css">
+</head>
+<body data-dark="0">
+
+
+
+<div class="shell">
+  <h1 class="shell__title">比特记 bitsay · UI/UX 设计台</h1>
+  <p class="shell__sub">
+    一个页面看完整 App：<b>所有页面、所有组件、小组件三种尺寸</b>，而且<strong>都能点</strong>——
+    所有视图共用同一份数据，在任一视图里勾一条待办，其它视图会立刻跟着变。
+    改样式请按目录分工：颜色在 <code>css/tokens.css</code>，单页微调在 <code>css/pages/*.css</code> 顶部的「本页可调参数」。
+  </p>
+
+  <div class="panel">
+    <div class="panel__row">
+      <span class="panel__label">亮度</span>
+      <div id="modes" style="display:flex;gap:6px">
+        <button class="btn" data-d="0" aria-pressed="true">浅色</button>
+        <button class="btn" data-d="1">深色</button>
+      </div>
+      <span class="spacer"></span>
+      <button class="btn btn--ghost" id="reset">重置演示数据</button>
+    </div>
+    <div class="panel__row" style="margin-top:10px">
+      <span class="hint">
+        只有一份样式，全部旋钮在 <code>css/tokens.css</code>；单页微调去
+        <code>css/pages/&lt;页面&gt;.css</code> 顶部的「本页可调参数」。
+      </span>
+    </div>
+  </div>
+
+  <h2 class="sect-title"><span class="n">①</span>可交互真机演示</h2>
+  <p class="sect-sub">左边这台是真的能走通的：点条目进编辑器、长按进多选、<b>+</b> 快捷记录、右上角进搜索和设置。
+    右边是桌面小组件——勾一条待办，两边的数据是同一份。</p>
+  <div class="stage" id="demo"></div>
+
+  <h2 class="sect-title"><span class="n">②</span>全部页面总览</h2>
+  <p class="sect-sub">每个页面一台，全部是实时渲染的（不是截图）。搜索页预填了 <code>Q4</code>，
+    可以点「待办」看<b>关键词保留、在当前分类下重查</b>的行为。</p>
+  <div class="grid" id="overview"></div>
+
+  <h2 class="sect-title"><span class="n">③</span>桌面小组件</h2>
+  <p class="sect-sub">顶栏顺序固定 <b>进 App ｜ 笔记 ｜ 待办 ｜ 搜索</b>；行高 48dp、单行、无日期；
+    <b>装不下「顶栏 + 3 行」时顶栏自动收起</b>。点 tab 会同时切换所有尺寸的小组件。</p>
+  <div class="stage" id="widgets"></div>
+
+  <h2 class="sect-title"><span class="n">④</span>组件库</h2>
+  <p class="sect-sub">卡片、分段 tab、图标按钮、勾选圈、空状态 —— 全站复用同一套。</p>
+  <div class="knobs" id="components"></div>
+
+  <h2 class="sect-title"><span class="n">⑤</span>设计令牌</h2>
+  <p class="sect-sub">与 <code>ui/theme/Color.kt</code> 一一对应；切亮暗时这里的值会跟着变。改颜色只改 <code>css/tokens.css</code>。</p>
+  <div class="pal" id="palette"></div>
+
+  </div>
+</div>
+
+<script src="js/icons.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/pages/list.js"></script>
+<script src="js/pages/editor.js"></script>
+<script src="js/pages/search.js"></script>
+<script src="js/pages/settings.js"></script>
+<script src="js/pages/widget.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

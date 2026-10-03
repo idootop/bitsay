@@ -1,0 +1,46 @@
+/* ==========================================================================
+   编辑器 —— 对应 ui/screen/EditorScreen.kt
+   没有保存按钮：边打边存，返回即离开。
+   实测：顶栏 36..88，纸面 100..740，状态行 754..770，创建时间 772..788
+   ========================================================================== */
+
+/* ---------- 本页可调参数 ---------- */
+.editor-page{
+  --sheet-pad: 18px;       /* 纸面内边距（实测正文 x 36..324 = 18+18 .. 342-18） */
+  --sheet-gap-top: 12px;   /* 顶栏到纸面 */
+  --foot-pad-top: 14px;    /* 纸面到状态行 */
+  --page-pad-x: 18px;
+  --page-pad-bottom: 12px;
+}
+
+.editor-page .topbar{ padding:12px 12px var(--sheet-gap-top) 18px; }
+
+.editor-page__body{
+  flex:1 1 auto; min-height:0; display:flex; flex-direction:column;
+  padding:0 var(--page-pad-x) var(--page-pad-bottom);
+}
+
+.sheet{
+  flex:1 1 auto; min-height:0; position:relative; overflow-y:auto;
+  padding:var(--sheet-pad); border-radius:var(--r-card);
+  background:var(--c-paper); box-shadow:var(--shadow-card);
+}
+.sheet__input{
+  width:100%; height:100%; min-height:100%; resize:none;
+  border:none; outline:none; background:transparent; color:var(--c-ink);
+  font:inherit; font-size:16px; line-height:24px;   /* bodyLarge 16sp/24sp */
+}
+.sheet__ph{
+  position:absolute; top:var(--sheet-pad); left:var(--sheet-pad); right:var(--sheet-pad);
+  color:var(--c-ink-soft); opacity:.72; pointer-events:none;
+  font-size:16px; line-height:24px;
+}
+
+/* 底部状态：正在输入… / ✓ 已自动保存 · 刚刚 / 创建于 …（bodySmall 12sp/16sp） */
+.editor-page__foot{
+  padding-top:var(--foot-pad-top); font-size:12px; line-height:16px;
+  color:var(--c-ink-soft); display:flex; flex-direction:column; gap:2px;
+}
+.editor-page__status{ display:flex; align-items:center; gap:5px; height:16px; }
+.editor-page__status--saved{ color:var(--c-ink); }
+.editor-page__status svg{ width:14px; height:14px; flex:0 0 auto; }

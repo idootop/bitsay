@@ -1,0 +1,154 @@
+/* ==========================================================================
+   components.css —— 跨页面复用的组件
+   --------------------------------------------------------------------------
+   所有数值来自真机实测（1260×2800 @560dpi → ÷3.5 = dp），
+   括号里标的是 Android 侧的来源，方便两边对照。
+   只想调某一个页面时**不要改这里**，去 css/pages/<页面>.css。
+   ========================================================================== */
+
+/* ---------- 页面骨架 ---------- */
+.app-root{
+  position:relative; flex:1 1 auto; min-height:0;
+  display:flex; flex-direction:column;
+  padding-top:var(--safe-top);          /* enableEdgeToEdge + safeDrawing */
+  background:transparent; color:var(--c-ink);
+  font-size:var(--fs-body); line-height:var(--lh-body);
+}
+.page{ flex:1 1 auto; display:flex; flex-direction:column; min-height:0; }
+
+/* ---------- 顶部栏 ----------
+   ListScreen.Header: padding(start=22, end=12, top=12, bottom=14)
+   标题 22dp 起、y48 起；副标题紧跟其下 2dp */
+.topbar{
+  display:flex; align-items:center; flex:0 0 auto;
+  padding:12px 12px 14px 22px;
+}
+.topbar__titles{ flex:1 1 auto; min-width:0; }
+.topbar__title{
+  font-size:28px; line-height:36px; font-weight:700; margin:0;   /* headlineMedium */
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.topbar__sub{ font-size:12px; line-height:16px; color:var(--c-ink-soft); margin-top:2px; }
+.topbar__actions{ display:flex; align-items:center; }
+
+/* 编辑器 / 设置页的顶栏：Column 的 padding 是 vertical=12, horizontal=18，
+   顶栏行高 40，标题 22sp/28sp，前面留 6dp */
+.topbar--page{ padding:12px 12px 8px 18px; }
+.topbar--page .topbar__title{ font-size:22px; line-height:28px; }   /* titleLarge */
+.topbar--page .topbar__titles{ padding-left:6px; }
+
+/* ---------- 图标按钮 ----------
+   CuteIconButton：视觉 40×40（真机上被 Compose 扩到 48×48 的触摸目标，
+   但**画出来的**是 40，所以这里按 40 画） */
+.icon-btn{
+  width:40px; height:40px; flex:0 0 auto; display:grid; place-items:center;
+  color:var(--c-ink-soft); border-radius:var(--r-pill);
+}
+.icon-btn:hover{ background:rgba(128,128,128,.10); }
+.icon-btn--ink{ color:var(--c-ink); }
+.icon-btn svg{ width:22px; height:22px; display:block; }   /* 图标字形 22dp */
+
+/* ---------- 分段 tab ----------
+   SegmentedTabs = 轨道(左右各留 18dp，内部 4dp 内边距) + 按钮 48dp 高 */
+.seg{
+  display:flex; gap:4px; margin:0 var(--pad-page);
+  padding:4px; background:var(--c-track); border-radius:var(--r-block);
+  flex:0 0 auto;
+}
+.seg__item{
+  flex:1 1 0; height:48px; display:grid; place-items:center;
+  font-size:14px; line-height:20px; font-weight:700;      /* labelLarge */
+  color:var(--c-ink-soft); border-radius:var(--r-tab);
+  transition:background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.seg__item--on{ background:var(--seg-accent,var(--c-sun)); color:var(--c-on-accent); }
+
+/* ---------- 条目卡片 ----------
+   实测：整卡 68.9dp 高 = 14 + 文字行 18.9 + 6 + 时间行 16 + 14 */
+.card{
+  position:relative; display:flex; align-items:center;
+  padding:14px 16px; border-radius:var(--r-card);
+  background:var(--card-fill,var(--c-paper));
+  box-shadow:var(--shadow-card);
+  cursor:pointer; -webkit-user-select:none; user-select:none;
+}
+.card:active{ transform:scale(.99); }
+.card__body{ flex:1 1 auto; min-width:0; }
+.card__text{
+  font-size:16px; line-height:18.9px; color:var(--card-ink,var(--c-ink));
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.card__meta{ font-size:12px; line-height:16px; color:var(--c-ink-soft); margin-top:6px; }
+.card--done{ --card-fill:var(--c-done); --card-ink:var(--c-ink-soft); }
+.card--done .card__text{ text-decoration:line-through; }
+
+/* 描边单独一层：不参与内部布局，改 --bw/--bc 也不会挤到内容 */
+.inked{ position:relative; }
+.inked::after{
+  content:""; position:absolute; inset:0; pointer-events:none; border-radius:inherit;
+  border:var(--bw) solid var(--bc);
+}
+
+/* ---------- 待办勾选圈：26dp，右侧 12dp 间距 ---------- */
+.tick{
+  width:26px; height:26px; flex:0 0 auto; margin-right:12px;
+  display:grid; place-items:center; border-radius:var(--r-pill);
+  border:2px solid var(--c-ink); background:transparent;
+}
+.tick--on{ background:var(--c-mint); }
+.tick svg{ width:15px; height:15px; }
+
+/* ---------- 多选圈：24dp ---------- */
+.pick{
+  width:24px; height:24px; flex:0 0 auto; margin-right:12px;
+  display:grid; place-items:center; border-radius:var(--r-pill);
+  border:2px solid var(--c-ink-soft);
+}
+.pick--on{ background:var(--c-sun); border-color:var(--c-ink); }
+.pick svg{ width:13px; height:13px; }
+
+/* ---------- FAB：58dp，右下各留 22 / 26dp，字形 26dp ---------- */
+.fab{
+  position:absolute; right:22px; bottom:26px; width:58px; height:58px;
+  border-radius:var(--r-pill); background:var(--c-sun); color:var(--c-on-accent);
+  display:grid; place-items:center; box-shadow:var(--shadow-fab); z-index:4;
+}
+.fab:active{ transform:scale(.95); }
+.fab svg{ width:26px; height:26px; }
+
+/* ---------- 空状态 ----------
+   EmptyHint = 整行 + 上下各 56dp 内边距 + 居中，用 bodyLarge（16sp） */
+.empty{
+  padding:56px var(--pad-page); text-align:center;
+  color:var(--c-ink-soft); font-size:16px; line-height:24px; white-space:pre-line;
+}
+
+/* ---------- 轻提示 / 对话框 ---------- */
+.toast{
+  position:absolute; left:50%; bottom:110px; transform:translateX(-50%) translateY(8px);
+  background:var(--c-ink); color:var(--c-bg); font-size:12.5px;
+  padding:8px 16px; border-radius:var(--r-pill); z-index:20;
+  opacity:0; pointer-events:none; max-width:80%; text-align:center;
+  transition:opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.toast--on{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+.scrim{
+  position:absolute; inset:0; background:rgba(0,0,0,.38); z-index:30;
+  display:grid; place-items:center; padding:24px;
+  opacity:0; pointer-events:none; transition:opacity var(--dur) var(--ease);
+}
+.scrim--on{ opacity:1; pointer-events:auto; }
+.dialog{
+  width:100%; background:var(--c-paper); border-radius:var(--r-card);
+  padding:18px 8px 8px; box-shadow:0 12px 30px rgba(0,0,0,.25);
+}
+.dialog__title{ font-size:17px; font-weight:700; padding:0 16px 8px; }
+.dialog__opt{
+  display:flex; align-items:center; gap:10px; padding:13px 16px; border-radius:12px;
+  font-size:16px; cursor:pointer;
+}
+.dialog__opt:hover{ background:rgba(128,128,128,.10); }
+.dialog__opt .check{ width:18px; color:var(--c-ink); }
+.dialog__actions{ display:flex; justify-content:flex-end; padding:6px 10px 4px; }
+.dialog__actions button{ font-size:14px; font-weight:700; padding:8px 14px; border-radius:10px; }

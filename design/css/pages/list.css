@@ -1,0 +1,41 @@
+/* ==========================================================================
+   列表页（笔记 / 待办）—— 对应 ui/screen/ListScreen.kt
+   ========================================================================== */
+
+/* ---------- 本页可调参数（只影响列表页，覆盖 tokens.css 的共享默认值） ---------- */
+.list-page{
+  --list-pad-x:      18px;   /* 左右留白（实测卡片 x 18..342） */
+  --list-pad-top:    12px;   /* tab 底 162 → 首卡顶 184 */
+  --list-pad-bottom: 104px;  /* 给 FAB 让位，对应 contentPadding bottom = 104.dp */
+  --list-gap:        10px;   /* 条目间距 */
+  --card-pad-y:      14px;
+  --card-pad-x:      16px;
+}
+
+/* ---------- 顶部栏：标题 22dp 起、y48 起；图标按钮贴右 12dp ---------- */
+.list-page .topbar{ padding:12px 12px 14px 22px; }
+
+/* 多选态：整条顶栏被替换（标题、搜索、设置全部让位，tab 也一起收掉）
+   SelectionHeader: padding(start=12, end=12, top=12, bottom=14) */
+.list-page .selbar{
+  display:flex; align-items:center; flex:0 0 auto;
+  padding:12px 12px 14px 12px;
+}
+.list-page .selbar__count{
+  flex:1 1 auto; padding-left:6px; font-size:17px; font-weight:700;
+}
+
+/* ---------- 列表 ---------- */
+.list{
+  flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden;
+  padding:var(--list-pad-top) var(--list-pad-x) var(--list-pad-bottom);
+  display:flex; flex-direction:column; gap:var(--list-gap);
+  scrollbar-width:thin;
+}
+.list::-webkit-scrollbar{ width:3px; }
+.list::-webkit-scrollbar-thumb{ background:var(--c-line); border-radius:3px; }
+.list::-webkit-scrollbar-track{ background:transparent; }
+.list .card{ padding:var(--card-pad-y) var(--card-pad-x); }
+
+/* 多选态下不显示 FAB（新建不是批量动作） */
+.list-page--selecting .fab{ display:none; }

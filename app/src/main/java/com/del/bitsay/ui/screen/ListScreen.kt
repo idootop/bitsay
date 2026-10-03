@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -52,7 +51,6 @@ import com.del.bitsay.ui.components.SegmentedTabs
 import com.del.bitsay.ui.theme.Blush
 import com.del.bitsay.ui.theme.CardColors
 import com.del.bitsay.ui.theme.CuteShape
-import com.del.bitsay.ui.theme.CuteShapeSmall
 import com.del.bitsay.ui.theme.Done
 import com.del.bitsay.ui.theme.Ink
 import com.del.bitsay.ui.theme.InkSoft
@@ -72,10 +70,8 @@ fun ListScreen(
     onNew: () -> Unit,
     onBeginSelection: (Long) -> Unit,
     onToggleSelection: (Long) -> Unit,
-    onSelectAll: () -> Unit,
     onClearSelection: () -> Unit,
     onDeleteSelected: () -> Unit,
-    onSetSelectedDone: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier.fillMaxSize()) {
@@ -85,10 +81,8 @@ fun ListScreen(
             if (state.inSelectionMode) {
                 SelectionHeader(
                     state = state,
-                    onSelectAll = onSelectAll,
                     onClearSelection = onClearSelection,
                     onDeleteSelected = onDeleteSelected,
-                    onSetSelectedDone = onSetSelectedDone,
                 )
             } else {
                 Header(
@@ -188,16 +182,14 @@ fun ListScreen(
 }
 
 /**
- * Replaces the normal header while rows are being picked: a count, 全选/取消全选, and the two
- * batch actions. "Mark done" only appears when the selection actually contains todos.
+ * Replaces the normal header while rows are being picked: a count and the one batch action.
+ * Deleting is the only thing worth doing to a mixed selection of notes and todos.
  */
 @Composable
 private fun SelectionHeader(
     state: AppUiState,
-    onSelectAll: () -> Unit,
     onClearSelection: () -> Unit,
     onDeleteSelected: () -> Unit,
-    onSetSelectedDone: (Boolean) -> Unit,
 ) {
     Row(
         Modifier
@@ -218,35 +210,6 @@ private fun SelectionHeader(
             modifier = Modifier.padding(start = 6.dp),
         )
         Spacer(Modifier.weight(1f))
-        Text(
-            text = stringResource(
-                if (state.allVisibleSelected) R.string.action_select_none
-                else R.string.action_select_all,
-            ),
-            style = MaterialTheme.typography.labelLarge,
-            color = Ink,
-            modifier = Modifier
-                .clip(CuteShapeSmall)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = { if (state.allVisibleSelected) onClearSelection() else onSelectAll() },
-                )
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-        )
-        if (state.selectedTodoCount > 0) {
-            CuteIconButton(
-                painter = painterResource(
-                    if (state.selectedTodosAllDone) R.drawable.ic_todo_open else R.drawable.ic_check,
-                ),
-                contentDescription = stringResource(
-                    if (state.selectedTodosAllDone) R.string.action_mark_undone
-                    else R.string.action_mark_done,
-                ),
-                onClick = { onSetSelectedDone(!state.selectedTodosAllDone) },
-                tint = Ink,
-            )
-        }
         CuteIconButton(
             painter = painterResource(R.drawable.ic_delete),
             contentDescription = stringResource(R.string.action_delete),
@@ -392,13 +355,14 @@ private fun ItemCard(
                 ),
                 contentDescription = null,
                 tint = Color.Unspecified,
-                modifier = Modifier
-                    .size(24.dp)
-                    .padding(end = 0.dp),
+                modifier = Modifier.size(24.dp),
             )
             Spacer(Modifier.width(12.dp))
         }
-        if (item.isTodo) {
+        // The done circle doubles as the "tick this todo" button, which is meaningless while rows
+        // are being picked — and two circles side by side read as clutter. The struck-through,
+        // greyed text still says the todo is done.
+        if (item.isTodo && !selecting) {
             Box(
                 Modifier
                     .size(26.dp)

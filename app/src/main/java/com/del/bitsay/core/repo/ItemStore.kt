@@ -43,9 +43,6 @@ interface ItemStore {
     /** Bulk delete in one transaction. @return how many rows went away. */
     fun deleteMany(ids: Collection<Long>): Int
 
-    /** Bulk tick/untick in one transaction. @return how many rows changed. */
-    fun setDoneMany(ids: Collection<Long>, done: Boolean, now: Long): Int
-
     /** Wipes the table and inserts [items] verbatim (ids included). */
     fun replaceAll(items: List<Item>)
 

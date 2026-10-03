@@ -44,20 +44,6 @@ class FakeItemStore(seed: List<Item> = emptyList()) : ItemStore {
 
     override fun deleteMany(ids: Collection<Long>): Int = ids.count { rows.remove(it) != null }
 
-    override fun setDoneMany(ids: Collection<Long>, done: Boolean, now: Long): Int {
-        var changed = 0
-        ids.forEach { id ->
-            val existing = rows[id] ?: return@forEach
-            if (existing.kind != Kind.TODO || existing.done == done) return@forEach
-            rows[id] = existing.copy(
-                done = done,
-                doneAt = if (done) now else null,
-                updatedAt = now,
-            )
-            changed++
-        }
-        return changed
-    }
 
     override fun replaceAll(items: List<Item>) {
         rows.clear()

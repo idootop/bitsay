@@ -78,20 +78,6 @@ class SqliteItemStore(context: Context) : ItemStore {
         }
     }
 
-    override fun setDoneMany(ids: Collection<Long>, done: Boolean, now: Long): Int {
-        if (ids.isEmpty()) return 0
-        val values = ContentValues(2).apply {
-            put(BitSayDb.C_DONE, if (done) 1 else 0)
-            put(BitSayDb.C_UPDATED_AT, now)
-            if (done) put(BitSayDb.C_DONE_AT, now) else putNull(BitSayDb.C_DONE_AT)
-        }
-        val chunk = ids.toList()
-        return db.inTransaction {
-            chunk.chunked(SQL_VARIABLE_LIMIT).sumOf { part ->
-                db.update(BitSayDb.T_ITEMS, values, idInClause(part), idArgs(part))
-            }
-        }
-    }
 
     override fun replaceAll(items: List<Item>) {
         db.beginTransaction()

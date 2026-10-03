@@ -403,42 +403,8 @@ class ItemRepositoryTest {
         assertEquals(1, repository.notes.value.size)
     }
 
-    @Test
-    fun `setDoneMany ticks a whole selection and skips the notes in it`() = runTest {
-        val todoA = repository.add(Kind.TODO, "a")!!
-        val todoB = repository.add(Kind.TODO, "b")!!
-        val note = repository.add(Kind.NOTE, "just a note")!!
 
-        val changed = repository.setDoneMany(listOf(todoA, todoB, note), done = true)
 
-        assertEquals(2, changed)
-        assertTrue(store.findById(todoA)!!.done)
-        assertTrue(store.findById(todoB)!!.done)
-        assertFalse(store.findById(note)!!.done)
-        assertEquals(1_000_000L, store.findById(todoA)!!.doneAt)
-    }
-
-    @Test
-    fun `setDoneMany can untick as well`() = runTest {
-        val id = repository.add(Kind.TODO, "a")!!
-        repository.setDone(id, true)
-
-        assertEquals(1, repository.setDoneMany(listOf(id), done = false))
-
-        assertFalse(store.findById(id)!!.done)
-        assertNull(store.findById(id)!!.doneAt)
-    }
-
-    @Test
-    fun `setDoneMany reports zero when nothing actually changed`() = runTest {
-        val id = repository.add(Kind.TODO, "a")!!
-        repository.setDone(id, true)
-        val version = repository.change.value.version
-
-        assertEquals(0, repository.setDoneMany(listOf(id), done = true))
-
-        assertEquals(version, repository.change.value.version)
-    }
 
     // ------------------------------------------------------------------ autosave without reload
 

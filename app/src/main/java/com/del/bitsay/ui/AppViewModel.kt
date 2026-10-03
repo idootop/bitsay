@@ -107,18 +107,6 @@ data class AppUiState(
 
     val inSelectionMode: Boolean get() = selection.isNotEmpty()
 
-    val allVisibleSelected: Boolean
-        get() = visible.isNotEmpty() && visible.all { it.id in selection }
-
-    private val selectedTodos: List<Item> get() = current.filter { it.id in selection && it.isTodo }
-
-    /** How many of the *selected* rows are todos — decides whether "mark done" makes sense. */
-    val selectedTodoCount: Int get() = selectedTodos.size
-
-    /** Drives whether the batch button offers "mark done" or "mark not done". */
-    val selectedTodosAllDone: Boolean
-        get() = selectedTodos.isNotEmpty() && selectedTodos.all { it.done }
-
     val noteCount: Int get() = notes.size
     val todoCount: Int get() = todos.size
     val openTodoCount: Int get() = todos.count { !it.done }
@@ -206,10 +194,6 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         it.copy(selection = if (id in it.selection) it.selection - id else it.selection + id)
     }
 
-    fun selectAllVisible() = _state.update {
-        it.copy(selection = it.visible.map { item -> item.id }.toSet())
-    }
-
     fun clearSelection() = _state.update { it.copy(selection = emptySet()) }
 
     fun deleteSelected() {
@@ -221,18 +205,6 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
-    /**
-     * Ticks or unticks everything selected. Non-todo ids are ignored by the repository, so
-     * "select all" on a mixed list stays harmless.
-     */
-    fun setSelectedDone(done: Boolean) {
-        val ids = _state.value.selection
-        if (ids.isEmpty()) return
-        viewModelScope.launch {
-            repository.setDoneMany(ids, done)
-            _state.update { it.copy(selection = emptySet()) }
-        }
-    }
 
     fun openSettings() = _state.update { it.copy(screen = Screen.Settings) }
 

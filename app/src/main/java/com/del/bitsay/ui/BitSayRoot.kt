@@ -117,10 +117,8 @@ fun BitSayRoot(
                     onNew = viewModel::startNewAsCurrentTab,
                     onBeginSelection = viewModel::beginSelection,
                     onToggleSelection = viewModel::toggleSelection,
-                    onSelectAll = viewModel::selectAllVisible,
                     onClearSelection = viewModel::clearSelection,
                     onDeleteSelected = viewModel::deleteSelected,
-                    onSetSelectedDone = viewModel::setSelectedDone,
                 )
 
                 is Screen.Editor -> EditorScreen(

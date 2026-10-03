@@ -144,14 +144,6 @@ class ItemRepository(
         return removed
     }
 
-    /** Bulk tick/untick. @return how many rows actually changed. */
-    suspend fun setDoneMany(ids: Collection<Long>, done: Boolean): Int {
-        if (ids.isEmpty()) return 0
-        val now = clock()
-        val changed = withContext(dispatcher) { store.setDoneMany(ids, done, now) }
-        if (changed > 0) afterWrite()
-        return changed
-    }
 
     /**
      * Idempotent "persist whatever the user has typed so far". This is what the editor calls on

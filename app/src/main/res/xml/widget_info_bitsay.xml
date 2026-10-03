@@ -3,7 +3,7 @@
     android:configure="com.del.bitsay.widget.WidgetConfigActivity"
     android:initialLayout="@layout/widget_bitsay"
     android:minHeight="110dp"
-    android:minResizeHeight="60dp"
+    android:minResizeHeight="110dp"
     android:minResizeWidth="110dp"
     android:minWidth="180dp"
     android:resizeMode="horizontal|vertical"

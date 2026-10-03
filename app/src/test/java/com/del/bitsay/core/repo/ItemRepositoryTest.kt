@@ -139,20 +139,110 @@ class ItemRepositoryTest {
         assertEquals(listOf("open one", "done one"), repository.todos.value.map { it.text })
     }
 
+    // ------------------------------------------------------------------ ordering
+
     @Test
-    fun `dataVersion increments only on real writes`() = runTest {
-        val before = repository.dataVersion.value
+    fun `the list is ordered by creation time, newest first`() = runTest {
+        repository.add(Kind.NOTE, "第一条")
+        now = 2_000_000L
+        repository.add(Kind.NOTE, "第二条")
+        now = 3_000_000L
+        repository.add(Kind.NOTE, "第三条")
+
+        assertEquals(listOf("第三条", "第二条", "第一条"), repository.notes.value.map { it.text })
+    }
+
+    @Test
+    fun `editing an entry does not move it up the list`() = runTest {
+        val oldest = repository.add(Kind.NOTE, "先写的")!!
+        now = 2_000_000L
+        repository.add(Kind.NOTE, "后写的")
+        now = 3_000_000L
+
+        repository.updateText(oldest, "先写的（改过）")
+
+        // Sorting by updatedAt would have promoted the edited note; creation order must not budge.
+        assertEquals(listOf("后写的", "先写的（改过）"), repository.notes.value.map { it.text })
+    }
+
+    @Test
+    fun `ticking a todo does not reorder the list either`() = runTest {
+        repository.add(Kind.TODO, "先加的")
+        now = 2_000_000L
+        val newest = repository.add(Kind.TODO, "后加的")!!
+        now = 3_000_000L
+
+        repository.setDone(newest, true)
+
+        // It sinks because it is done, but stays below the older entry within that group.
+        assertEquals(listOf("先加的", "后加的"), repository.todos.value.map { it.text })
+    }
+
+    @Test
+    fun `change version increments only on real writes`() = runTest {
+        val before = repository.change.value.version
         repository.add(Kind.NOTE, "   ") // rejected
-        assertEquals(before, repository.dataVersion.value)
+        assertEquals(before, repository.change.value.version)
 
         val id = repository.add(Kind.NOTE, "real")!!
-        assertEquals(before + 1, repository.dataVersion.value)
+        assertEquals(before + 1, repository.change.value.version)
 
         repository.updateText(id, "real") // no change
-        assertEquals(before + 1, repository.dataVersion.value)
+        assertEquals(before + 1, repository.change.value.version)
 
         repository.updateText(id, "changed")
-        assertEquals(before + 2, repository.dataVersion.value)
+        assertEquals(before + 2, repository.change.value.version)
+    }
+
+    // ------------------------------------------------------------------ change signal
+
+    @Test
+    fun `creating a note marks the change as having revealed a new row`() = runTest {
+        assertEquals(0L, repository.change.value.insertedAt)
+
+        repository.add(Kind.NOTE, "新建")
+
+        val change = repository.change.value
+        assertEquals(change.version, change.insertedAt)
+    }
+
+    @Test
+    fun `editing a note does not mark it as an insert`() = runTest {
+        val id = repository.add(Kind.NOTE, "新建")!!
+        val insertedAt = repository.change.value.insertedAt
+
+        now = 2_000_000L
+        repository.updateText(id, "改一下")
+
+        val change = repository.change.value
+        assertEquals(insertedAt, change.insertedAt)
+        assertTrue(change.version > change.insertedAt)
+    }
+
+    @Test
+    fun `ticking a todo does not mark it as an insert`() = runTest {
+        val id = repository.add(Kind.TODO, "待办")!!
+        val insertedAt = repository.change.value.insertedAt
+        val version = repository.change.value.version
+
+        now = 2_000_000L
+        repository.setDone(id, true)
+
+        val change = repository.change.value
+        assertTrue(change.version > version)
+        assertEquals(insertedAt, change.insertedAt)
+    }
+
+    @Test
+    fun `autosave only marks the very first keystroke of a new entry as an insert`() = runTest {
+        val id = repository.saveDraft(0L, Kind.NOTE, "打第一个字")
+        assertEquals(repository.change.value.version, repository.change.value.insertedAt)
+        val insertedAt = repository.change.value.insertedAt
+
+        now = 2_000_000L
+        repository.saveDraft(id, Kind.NOTE, "继续打字")
+
+        assertEquals(insertedAt, repository.change.value.insertedAt)
     }
 
     // ------------------------------------------------------------------ autosave
@@ -185,12 +275,12 @@ class ItemRepositoryTest {
     @Test
     fun `saveDraft with unchanged text does not touch the database`() = runTest {
         val id = repository.saveDraft(0L, Kind.NOTE, "稳定")
-        val version = repository.dataVersion.value
+        val version = repository.change.value.version
         now = 5_000_000L
 
         assertEquals(id, repository.saveDraft(id, Kind.NOTE, "稳定"))
 
-        assertEquals(version, repository.dataVersion.value)
+        assertEquals(version, repository.change.value.version)
         assertEquals(1_000_000L, store.findById(id)!!.updatedAt)
     }
 

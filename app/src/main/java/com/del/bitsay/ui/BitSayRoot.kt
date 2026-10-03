@@ -38,7 +38,11 @@ import com.del.bitsay.ui.screen.ListScreen
 import com.del.bitsay.ui.screen.SettingsScreen
 
 @Composable
-fun BitSayRoot(viewModel: AppViewModel, modifier: Modifier = Modifier) {
+fun BitSayRoot(
+    viewModel: AppViewModel,
+    onExit: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
 
@@ -49,6 +53,11 @@ fun BitSayRoot(viewModel: AppViewModel, modifier: Modifier = Modifier) {
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri -> if (uri != null) viewModel.loadImport(uri) }
+
+    // A widget-launched session ends by getting out of the way, back to the home screen.
+    LaunchedEffect(viewModel) {
+        viewModel.exit.collect { onExit() }
+    }
 
     // ---- one-shot feedback -------------------------------------------------
     val message: String? = when (val notice = state.notice) {
@@ -62,6 +71,8 @@ fun BitSayRoot(viewModel: AppViewModel, modifier: Modifier = Modifier) {
         )
         is Notice.Failed -> stringResource(R.string.op_fail, notice.reason)
         Notice.Empty -> stringResource(R.string.nothing_to_save)
+        Notice.WidgetPinRequested -> stringResource(R.string.widget_pin_requested)
+        Notice.WidgetPinUnsupported -> stringResource(R.string.widget_pin_unsupported)
     }
     LaunchedEffect(state.notice) {
         if (message != null) {
@@ -70,11 +81,13 @@ fun BitSayRoot(viewModel: AppViewModel, modifier: Modifier = Modifier) {
         }
     }
 
-    BackHandler(enabled = state.screen != Screen.List) {
+    // Enabled on the list too when the session came from the widget: back should leave the app,
+    // not silently reveal an app screen the user never asked for.
+    BackHandler(enabled = state.screen != Screen.List || state.fromWidget) {
         when (state.screen) {
             is Screen.Editor -> viewModel.saveDraft()
             Screen.Settings -> viewModel.openList()
-            Screen.List -> Unit
+            Screen.List -> onExit()
         }
     }
 
@@ -106,7 +119,6 @@ fun BitSayRoot(viewModel: AppViewModel, modifier: Modifier = Modifier) {
                     state = state,
                     onDraftChange = viewModel::setDraft,
                     onBack = viewModel::saveDraft,
-                    onSave = viewModel::saveDraft,
                     onDelete = viewModel::deleteCurrent,
                 )
 
@@ -114,7 +126,9 @@ fun BitSayRoot(viewModel: AppViewModel, modifier: Modifier = Modifier) {
                     noteCount = state.noteCount,
                     todoCount = state.todoCount,
                     openTodoCount = state.openTodoCount,
+                    canPinWidget = state.canPinWidget,
                     onBack = viewModel::openList,
+                    onAddWidget = viewModel::addWidgetToHome,
                     onExport = { viewModel.prepareExport { name -> exportLauncher.launch(name) } },
                     onImport = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
                 )

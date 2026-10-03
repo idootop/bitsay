@@ -23,12 +23,15 @@ class SqliteItemStore(context: Context) : ItemStore {
     override fun list(kind: Kind): List<Item> = query(
         selection = "${BitSayDb.C_KIND} = ?",
         selectionArgs = arrayOf(kind.code.toString()),
-        // undone todos first, then most recently touched.
-        orderBy = "${BitSayDb.C_DONE} ASC, ${BitSayDb.C_UPDATED_AT} DESC, ${BitSayDb.C_ID} DESC",
+        // Sorted by CREATION time, not update time: editing a note (or ticking a todo) must not
+        // make the list jump around under the user's finger. Undone todos still sink to the
+        // bottom, and `id` breaks ties when two rows share a millisecond.
+        orderBy = "${BitSayDb.C_DONE} ASC, ${BitSayDb.C_CREATED_AT} DESC, ${BitSayDb.C_ID} DESC",
     )
 
     override fun listAll(): List<Item> = query(
-        orderBy = "${BitSayDb.C_UPDATED_AT} DESC, ${BitSayDb.C_ID} DESC",
+        // `id ASC` keeps exports deterministic: two backups of unchanged data are byte-identical.
+        orderBy = "${BitSayDb.C_ID} ASC",
     )
 
     override fun findById(id: Long): Item? =

@@ -10,12 +10,23 @@ internal object WidgetContract {
     const val EXTRA_ITEM_ID = "item_id"
     const val EXTRA_ACTION = "action"
 
-    const val ACTION_TOGGLE_KIND = "com.del.bitsay.action.WIDGET_TOGGLE_KIND"
+    /** Set when the app was opened from the home screen, so it can get out of the way again. */
+    const val EXTRA_FROM_WIDGET = "from_widget"
+
+    /** Tapping a tab asks for that list by name — no toggling, so the tap is never ambiguous. */
+    const val ACTION_SET_KIND = "com.del.bitsay.action.WIDGET_SET_KIND"
     const val ACTION_ITEM_CLICK = "com.del.bitsay.action.WIDGET_ITEM_CLICK"
     const val ACTION_REFRESH = "com.del.bitsay.action.WIDGET_REFRESH"
 
     const val ITEM_ACTION_OPEN = "open"
     const val ITEM_ACTION_TOGGLE_DONE = "toggle_done"
+
+    /** What the floating home-screen window ([WidgetEntryActivity]) is asked to do. */
+    const val ACTION_NEW_ITEM = "com.del.bitsay.action.NEW_ITEM"
+    const val ACTION_OPEN_ITEM = "com.del.bitsay.action.OPEN_ITEM"
+
+    /** Sent by the widget's app button: bring the app up on its list, not wherever it was left. */
+    const val ACTION_SHOW_LIST = "com.del.bitsay.action.SHOW_LIST"
 }
 
 /** Per-widget configuration, persisted in its own SharedPreferences file. */
@@ -42,29 +53,20 @@ class WidgetPrefs(context: Context) {
 }
 
 /**
- * How much room the host gave us. The launcher calls `onAppWidgetOptionsChanged` on every
- * resize, so the widget gets denser or roomier as the user drags its handles.
+ * The only thing about the widget that reacts to being resized.
+ *
+ * Rows are always a fixed single line, so height never changes how an item looks — it only
+ * decides whether the header earns its keep. The rule is expressed in **content terms** rather
+ * than in cells or in a magic dp number: show the tabs only if the list still gets
+ * [MIN_ROWS_WITH_HEADER] rows underneath them. At the 2x2 minimum that is false, so a small
+ * widget trades its header for a usable list; from three rows up the header comes back.
+ *
+ * The launcher reports new options through `onAppWidgetOptionsChanged` on every resize.
  */
-internal enum class WidgetSize(val maxLines: Int, val showTime: Boolean, val showHeader: Boolean) {
-    /** One cell tall: a single line per row, header hidden to buy back space. */
-    COMPACT(maxLines = 1, showTime = false, showHeader = false),
+internal object WidgetLayout {
 
-    /** The default 3x2 widget. */
-    REGULAR(maxLines = 2, showTime = false, showHeader = true),
+    const val MIN_ROWS_WITH_HEADER = 3
 
-    /** 4+ cells tall: three lines per row plus a timestamp. */
-    EXPANDED(maxLines = 3, showTime = true, showHeader = true),
-    ;
-
-    companion object {
-        fun from(minWidthDp: Int, minHeightDp: Int): WidgetSize = when {
-            minHeightDp in 1..COMPACT_MAX_HEIGHT || minWidthDp in 1..COMPACT_MAX_WIDTH -> COMPACT
-            minHeightDp >= EXPANDED_MIN_HEIGHT -> EXPANDED
-            else -> REGULAR
-        }
-
-        private const val COMPACT_MAX_HEIGHT = 90
-        private const val COMPACT_MAX_WIDTH = 150
-        private const val EXPANDED_MIN_HEIGHT = 200
-    }
+    fun showHeader(minHeightDp: Int, headerHeightDp: Int, rowHeightDp: Int): Boolean =
+        minHeightDp >= headerHeightDp + MIN_ROWS_WITH_HEADER * rowHeightDp
 }

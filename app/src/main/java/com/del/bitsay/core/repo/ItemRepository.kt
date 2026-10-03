@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 
 /**
@@ -34,9 +35,24 @@ class ItemRepository(
     val notes: StateFlow<List<Item>> = _notes.asStateFlow()
     val todos: StateFlow<List<Item>> = _todos.asStateFlow()
 
-    /** Bumped on every successful write. The widget layer listens to it to re-render. */
-    private val _dataVersion = MutableStateFlow(0L)
-    val dataVersion: StateFlow<Long> = _dataVersion.asStateFlow()
+    /**
+     * Emitted after every successful write. The widget layer listens to it to re-render.
+     *
+     * [version] alone would not be enough: observers also need to know *what kind* of write
+     * happened. A newest-first ListView re-anchors its scroll position to the previously-first
+     * row whenever its data changes (`AbsListView.rememberSyncState`), so when a row is
+     * **inserted** at the top the new entry ends up hidden just above the viewport. [insertedAt]
+     * carries the [version] of the most recent insert so the widget can tell the two apart and
+     * scroll back to the top only when there is something new to reveal.
+     */
+    data class DataChange(
+        val version: Long = 0L,
+        /** [version] at which a brand-new row appeared; 0 when nothing was ever inserted. */
+        val insertedAt: Long = 0L,
+    )
+
+    private val _change = MutableStateFlow(DataChange())
+    val change: StateFlow<DataChange> = _change.asStateFlow()
 
     fun items(kind: Kind): StateFlow<List<Item>> = if (kind == Kind.NOTE) _notes else _todos
 
@@ -60,7 +76,7 @@ class ItemRepository(
         val id = withContext(dispatcher) {
             store.insert(Item(kind = kind, text = clean, createdAt = now, updatedAt = now))
         }
-        afterWrite()
+        afterWrite(inserted = true)
         return id
     }
 
@@ -118,11 +134,14 @@ class ItemRepository(
         val clean = normalize(text) ?: return if (id > 0L) id else 0L
         val now = clock()
         var changed = true
+        var inserted = false
         val resolved = withContext(dispatcher) {
             val existing = if (id > 0L) store.findById(id) else null
             when {
-                existing == null ->
+                existing == null -> {
+                    inserted = true
                     store.insert(Item(kind = kind, text = clean, createdAt = now, updatedAt = now))
+                }
 
                 existing.text == clean -> {
                     changed = false
@@ -135,7 +154,7 @@ class ItemRepository(
                 }
             }
         }
-        if (changed) afterWrite()
+        if (changed) afterWrite(inserted)
         return resolved
     }
 
@@ -183,15 +202,18 @@ class ItemRepository(
                 ImportResult(total = sanitized.size, inserted = inserted, updated = updated)
             }
         }
-        afterWrite()
+        afterWrite(inserted = result.inserted > 0)
         return result
     }
 
     // ------------------------------------------------------------------ internals
 
-    private suspend fun afterWrite() {
+    private suspend fun afterWrite(inserted: Boolean = false) {
         reload()
-        _dataVersion.value = _dataVersion.value + 1L
+        _change.update { current ->
+            val next = current.version + 1L
+            current.copy(version = next, insertedAt = if (inserted) next else current.insertedAt)
+        }
     }
 
     companion object {

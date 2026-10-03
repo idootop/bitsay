@@ -19,23 +19,57 @@ import com.del.bitsay.core.model.Kind
  */
 internal object WidgetRenderer {
 
-    fun render(context: Context, manager: AppWidgetManager, widgetId: Int) {
+    /**
+     * @param scrollToTop bring row 0 back into view. Required after an insert: a list sorted
+     *   newest-first re-anchors its scroll to the previously-first row whenever its data changes
+     *   (`AbsListView.rememberSyncState` → `SYNC_FIRST_POSITION`), so a row prepended at index 0
+     *   would stay hidden above the viewport. `ListView.setSelection` is *not* annotated
+     *   `@RemotableViewMethod` and is rejected by RemoteViews; `smoothScrollToPosition` is the
+     *   annotated equivalent and is what we can legally call from here.
+     */
+    fun render(
+        context: Context,
+        manager: AppWidgetManager,
+        widgetId: Int,
+        scrollToTop: Boolean = false,
+    ) {
         val kind = WidgetPrefs(context).kindOf(widgetId)
-        val size = sizeOf(manager, widgetId)
         val items = context.appContainer.repository.snapshot(kind)
 
         val views = RemoteViews(context.packageName, R.layout.widget_bitsay)
-        views.setTextViewText(R.id.widget_title, context.getString(kind.labelRes()))
 
+        // --- the two list tabs ---
+        views.setInt(
+            R.id.widget_tab_notes,
+            "setBackgroundResource",
+            if (kind == Kind.NOTE) R.drawable.widget_tab_notes_on else R.drawable.widget_tab_off,
+        )
+        views.setInt(
+            R.id.widget_tab_todos,
+            "setBackgroundResource",
+            if (kind == Kind.TODO) R.drawable.widget_tab_todos_on else R.drawable.widget_tab_off,
+        )
+        views.setTextColor(
+            R.id.widget_tab_notes,
+            context.getColor(if (kind == Kind.NOTE) R.color.ink else R.color.ink_soft),
+        )
+        views.setTextColor(
+            R.id.widget_tab_todos,
+            context.getColor(if (kind == Kind.TODO) R.color.ink else R.color.ink_soft),
+        )
+        views.setOnClickPendingIntent(R.id.widget_tab_notes, setKindIntent(context, widgetId, Kind.NOTE))
+        views.setOnClickPendingIntent(R.id.widget_tab_todos, setKindIntent(context, widgetId, Kind.TODO))
+
+        // --- list / empty state ---
         val empty = items.isEmpty()
         views.setViewVisibility(R.id.widget_list, if (empty) View.GONE else View.VISIBLE)
         views.setViewVisibility(R.id.widget_empty, if (empty) View.VISIBLE else View.GONE)
         views.setViewVisibility(
             R.id.widget_header,
-            if (size.showHeader) View.VISIBLE else View.GONE,
+            if (showHeader(context, manager, widgetId)) View.VISIBLE else View.GONE,
         )
 
-        val rows = WidgetItems.build(context, items, size)
+        val rows = WidgetItems.build(context, items)
         views.setRemoteAdapter(
             R.id.widget_list,
             RemoteViews.RemoteCollectionItems.Builder()
@@ -58,28 +92,45 @@ internal object WidgetRenderer {
             ),
         )
 
+        // --- buttons ---
         views.setOnClickPendingIntent(R.id.widget_add, quickAddIntent(context, widgetId, kind))
-        views.setOnClickPendingIntent(R.id.widget_switch, toggleIntent(context, widgetId))
-        views.setOnClickPendingIntent(R.id.widget_title, toggleIntent(context, widgetId))
+        views.setOnClickPendingIntent(R.id.widget_open_app, openAppIntent(context, widgetId))
+
+        if (scrollToTop) {
+            views.setInt(R.id.widget_list, "smoothScrollToPosition", 0)
+        }
 
         manager.updateAppWidget(widgetId, views)
     }
 
-    fun sizeOf(manager: AppWidgetManager, widgetId: Int): WidgetSize {
+    /**
+     * The header is dropped on widgets too short to show it *and* a usable list. The thresholds
+     * come from the actual dimens rather than hard-coded numbers, so changing a row height in
+     * `dimens.xml` automatically moves the cutoff.
+     */
+    fun showHeader(context: Context, manager: AppWidgetManager, widgetId: Int): Boolean {
         val options: Bundle = runCatching { manager.getAppWidgetOptions(widgetId) }
             .getOrDefault(Bundle.EMPTY)
-        return WidgetSize.from(
-            options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH),
-            options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT),
+        val res = context.resources
+        val density = res.displayMetrics.density
+        return WidgetLayout.showHeader(
+            minHeightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT),
+            headerHeightDp = (res.getDimension(R.dimen.widget_header_height) / density).toInt(),
+            rowHeightDp = (res.getDimension(R.dimen.widget_row_height) / density).toInt(),
         )
     }
 
-    /** `+` opens the app straight into a blank editor of the kind the widget is showing. */
+    /**
+     * `+` opens the floating home-screen window on a blank editor of the kind on screen. It is
+     * deliberately *not* [MainActivity]: that would drag the app's whole task forward and flash
+     * its list before the editor appeared.
+     */
     private fun quickAddIntent(context: Context, widgetId: Int, kind: Kind): PendingIntent {
-        val intent = Intent(context, MainActivity::class.java).apply {
-            action = MainActivity.ACTION_NEW
+        val intent = Intent(context, WidgetEntryActivity::class.java).apply {
+            action = WidgetContract.ACTION_NEW_ITEM
             putExtra(WidgetContract.EXTRA_KIND, kind.code)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            putExtra(WidgetContract.EXTRA_FROM_WIDGET, true)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         return PendingIntent.getActivity(
             context,
@@ -89,14 +140,29 @@ internal object WidgetRenderer {
         )
     }
 
-    private fun toggleIntent(context: Context, widgetId: Int): PendingIntent =
+    /** The app button: bring up the app's own list, wherever the app was left last time. */
+    private fun openAppIntent(context: Context, widgetId: Int): PendingIntent {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            action = WidgetContract.ACTION_SHOW_LIST
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        }
+        return PendingIntent.getActivity(
+            context,
+            requestCode(widgetId, RC_OPEN_APP),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    private fun setKindIntent(context: Context, widgetId: Int, kind: Kind): PendingIntent =
         PendingIntent.getBroadcast(
             context,
-            requestCode(widgetId, RC_TOGGLE),
+            requestCode(widgetId, RC_TAB_BASE + kind.code),
             Intent(context, BitSayWidgetProvider::class.java).apply {
-                action = WidgetContract.ACTION_TOGGLE_KIND
-                data = Uri.parse("bitsay://widget/$widgetId/toggle")
+                action = WidgetContract.ACTION_SET_KIND
+                data = Uri.parse("bitsay://widget/$widgetId/tab/${kind.code}")
                 putExtra(WidgetContract.EXTRA_WIDGET_ID, widgetId)
+                putExtra(WidgetContract.EXTRA_KIND, kind.code)
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
@@ -105,7 +171,8 @@ internal object WidgetRenderer {
 
     private const val RC_TEMPLATE = 1
     private const val RC_ADD = 2
-    private const val RC_TOGGLE = 3
+    private const val RC_OPEN_APP = 3
+    private const val RC_TAB_BASE = 4
 }
 
 internal fun Kind.labelRes(): Int =

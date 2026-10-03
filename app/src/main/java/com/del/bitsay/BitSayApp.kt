@@ -48,10 +48,19 @@ class BitSayApp : Application() {
         // observes the domain; the domain never learns that widgets exist.
         appScope.launch {
             runCatching { container.repository.reload() }
-            container.repository.dataVersion
+            var revealedUpTo = 0L
+            container.repository.change
                 .drop(1)
                 .debounce(WIDGET_REFRESH_DEBOUNCE_MS)
-                .collect { WidgetUpdater.refreshAll(this@BitSayApp) }
+                .collect { change ->
+                    // A newest-first list keeps its scroll anchored to the previously-first row
+                    // when rows are prepended, so a freshly created entry would sit hidden just
+                    // above the viewport. Only an insert should yank the list back to the top;
+                    // ticking a todo must leave the user exactly where they were.
+                    val scrollToTop = change.insertedAt > revealedUpTo
+                    revealedUpTo = change.insertedAt
+                    WidgetUpdater.refreshAll(this@BitSayApp, scrollToTop)
+                }
         }
     }
 

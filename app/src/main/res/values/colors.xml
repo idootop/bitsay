@@ -20,4 +20,5 @@
     <color name="widget_item_3">#FFDDF3E1</color>
     <color name="widget_item_4">#FFFBE0E4</color>
     <color name="widget_done">#FFEDE9E1</color>
+    <color name="widget_scrollbar">#593D3A38</color>
 </resources>

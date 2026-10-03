@@ -24,12 +24,16 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextDecoration
@@ -38,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.del.bitsay.R
 import com.del.bitsay.core.model.Item
 import com.del.bitsay.core.model.Kind
+import com.del.bitsay.core.util.TextPreview
 import com.del.bitsay.core.util.TimeText
 import com.del.bitsay.ui.AppUiState
 import com.del.bitsay.ui.components.CuteIconButton
@@ -194,6 +199,16 @@ private fun SearchField(
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+
+    // Tapping the search icon already says "I want to type" — making the user then tap the field
+    // as well is a wasted step, so the cursor and the IME come up together with the bar.
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+        keyboard?.show()
+    }
+
     Row(
         modifier
             .clip(CuteShape)
@@ -223,7 +238,9 @@ private fun SearchField(
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = Ink),
                 cursorBrush = SolidColor(Ink),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
             )
         }
     }
@@ -279,16 +296,18 @@ private fun ItemCard(
             Spacer(Modifier.width(12.dp))
         }
         Column(Modifier.weight(1f)) {
+            // One line only, same as the widget: the list is for scanning, the editor is for
+            // reading. Long entries are cut off with an ellipsis.
             Text(
-                text = item.text,
+                text = TextPreview.singleLine(item.text),
                 style = MaterialTheme.typography.bodyLarge,
                 color = if (item.done) InkSoft else Ink,
-                maxLines = 6,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textDecoration = if (item.done) TextDecoration.LineThrough else null,
             )
             Text(
-                text = TimeText.relative(item.updatedAt),
+                text = TimeText.relative(item.createdAt),
                 style = MaterialTheme.typography.bodySmall,
                 color = InkSoft.copy(alpha = 0.85f),
                 modifier = Modifier.padding(top = 6.dp),

@@ -188,16 +188,23 @@ app/src/main/java/com/del/bitsay/
 
 > 需求原文：「笔记在输入的时候，应该随输入自动保存，防止丢失灵感和重要信息」
 
-实现位置：`AppViewModel.setDraft / flushDraft / persistDraft` + `ItemRepository.saveDraft`。
+实现位置：`core/util/WriteThrottle` + `AppViewModel.setDraft / flushDraft / persistDraft`
++ `ItemRepository.saveDraft`。
 
-行为：
+节流策略是**前缘 + 后缘**（`WriteThrottle`，窗口 `AUTO_SAVE_THROTTLE_MS = 400ms`）：
 
-1. **每次按键** → 600 ms 防抖（`AUTO_SAVE_DEBOUNCE_MS`）后写库；
-2. 新笔记**打出第一个字就建行**，之后走 update，不会产生重复记录；
-3. `ON_PAUSE` 时立即 flush（`LifecycleEventEffect`，在 `BitSayRoot` 里）；
-4. 文本没变则**完全不碰数据库**（不写、不 bump `dataVersion`、不刷新小组件）；
-5. 编辑器底部显示状态：`正在输入…` / `✓ 已自动保存 · 刚刚`；
-6. 底部按钮语义从「保存」改为「**完成**」——保存已经不需要用户操心了。
+1. **第一个字立刻写库**（前缘）——新想法不会先在内存里等；
+2. 之后**每个窗口最多写一次**，连续打字时定时落盘；
+3. 每次按键都会重新排程，所以**最后一个字必定有自己的那次写**（后缘），最终内容不会漏；
+4. `ON_PAUSE` 时立即 flush（`LifecycleEventEffect`，在 `BitSayRoot` 里）；
+5. 文本没变则**完全不碰数据库**（不写、不 bump 版本、不刷新小组件）；
+6. 编辑器底部显示状态：`正在输入…` / `✓ 已自动保存 · 刚刚`；
+7. 底部按钮语义从「保存」改为「**完成**」——保存已经不需要用户操心了。
+
+> 为什么不是纯 debounce：纯 debounce 下「第一个字」要等一整个窗口才落盘，而且连续打字期间
+> **一次都不写**。前缘把最坏情况从「窗口 + 一段输入」压到「窗口」，最好情况（第一个字）是 0。
+> 时序策略是纯函数，`WriteThrottleTest` 用事件序列做了确定性回放（如 10 次按键 → 写入
+> `[0, 400, 800]`：前缘一次 + 每窗口一次 + 收尾一次）。
 
 边界情况（已实现且有测试）：
 
@@ -207,6 +214,32 @@ app/src/main/java/com/del/bitsay/
 
 **真机验证**：输入 "IdeaautosaveXYZ" 后直接 `am force-stop`（模拟划掉/崩溃），
 重启 App 该条笔记完整存在（见 §11）。
+
+### 5.1 输入法（软键盘）唤起策略
+
+规则一句话：**键盘跟着「要写字」的意图走，不跟着「打开编辑器」走。**
+
+| 入口 | 意图 | 自动唤起键盘 |
+|---|---|---|
+| App 内 FAB `+` | 创建 | ✅ |
+| 桌面小组件 `+`（快捷记录） | 创建 | ✅ |
+| 点搜索图标 | 搜索 | ✅（同时展开搜索栏） |
+| App 列表点条目 | 查看 | ❌ |
+| 桌面小组件点条目 | 查看 | ❌ |
+
+实现：
+
+- `AppUiState.autoFocusEditor`（只有 `startNew()` 置 true）+ `editorSession`（每次进入编辑器自增）；
+- `EditorScreen` 用 `LaunchedEffect(state.editorSession)` 做一次性 `focusRequester.requestFocus()`
+  + `keyboard?.show()`；
+- **为什么用 `editorSession` 当 key 而不是 `LaunchedEffect(Unit)`**：如果编辑器已经开着，
+  再从桌面点 `+`（`singleTask` → `onNewIntent`），Compose 不会重建 `EditorScreen`，
+  `Unit` 版本的副作用不会重跑，键盘就弹不出来；
+- 搜索栏：`SearchField` 在 `if (state.searchOpen)` 分支里，展开即新组合，
+  `LaunchedEffect(Unit)` 请求焦点并 show 即可。
+
+> 注意一个符合 Android 惯例的细节：键盘弹起时，**第一次按返回是收起键盘**，第二次才退出编辑器。
+> 这是系统行为，不要用 `BackHandler` 去抢。
 
 ---
 
@@ -268,12 +301,16 @@ CREATE INDEX idx_items_kind ON items (kind, done, updated_at DESC);
 
 | 能力 | 实现 |
 |---|---|
-| 显示笔记 / 待办 | 点标题或 ⇄ 图标 → 发 `ACTION_TOGGLE_KIND` 广播 → 写 `WidgetPrefs` → 重绘 |
-| 新建 | `+` → `PendingIntent.getActivity` 打开 `MainActivity`，带 `ACTION_NEW` + 当前 kind |
-| 点击查看 | 列表 template（**必须 `FLAG_MUTABLE`**）+ 行 fill-in intent → 广播 → `startActivity` 打开对应条目 |
+| 显示笔记 / 待办 | 顶部做成 **笔记 / 待办 两个 tab**（替代原来的 ⇄ 单按钮）→ 发 `ACTION_SET_KIND`（带明确的 kind，不做 toggle）→ 写 `WidgetPrefs` → 重绘并滚回顶部 |
+| 进 App 首页 | 顶栏右上角**应用图标**（便签+对勾，与桌面图标同一套视觉）→ `PendingIntent.getActivity(MainActivity, ACTION_SHOW_LIST)`，**强制落在列表页**，不是上次停留的页面 |
+| 新建 | **右下角悬浮 +**（真的浮在列表之上，列表底部**不预留空白**，最后一行可以滑到按钮下面）→ 打开 `WidgetEntryActivity` |
+| 点击查看 | 列表 template（**必须 `FLAG_MUTABLE`**）+ 行 fill-in intent → 广播 → 打开 `WidgetEntryActivity` |
 | 勾选待办 | 行内圆圈自己一个 fill-in intent → `ACTION_ITEM_CLICK` + `ITEM_ACTION_TOGGLE_DONE` → `goAsync()` 写库并刷新 |
-| 宫格缩放 | `onAppWidgetOptionsChanged` → `WidgetSize.from(minWidth, minHeight)` → 三档：`COMPACT`(1 行/无头) / `REGULAR`(2 行) / `EXPANDED`(3 行+时间) |
-| 数据联动 | `BitSayApp` 订阅 `repository.dataVersion`，防抖 120 ms 后 `WidgetUpdater.refreshAll()` |
+| 宫格缩放 | `onAppWidgetOptionsChanged` → `WidgetLayout.showHeader(minHeightDp, headerDp, rowDp)`：**装不下「header + 3 行」就收起顶栏**（阈值由 `dimens.xml` 真实尺寸算出，≈196dp）。最小尺寸 **2×2**（`minResize* = 110dp`），默认放置 3×2 |
+| 数据联动 | `BitSayApp` 订阅 `repository.change`，防抖 120 ms 后 `WidgetUpdater.refreshAll(scrollToTop = 本次是否为新增)` |
+| 行样式 | **单行、无日期、固定 48dp 行高**（`core/util/TextPreview` 把多行内容压成一行，换行变空格）—— App 内列表用同一套规则 |
+| 触摸目标 | 行高、顶栏按钮、标题全部 **48dp**（Android/Material 最小触摸目标）；勾选圆圈的 glyph 只有 18dp，但它的**可点区域是 44×48dp** |
+| 滚动条 | 3dp 圆角 thumb，**滚动时出现、停 1.2s 后 0.5s 淡出**（不常驻、不挡内容）；`outsideOverlay` + 3dp 尾部内边距保证显示时也不压住卡片 |
 
 **踩过的坑（改小组件前必读）**
 
@@ -286,6 +323,68 @@ CREATE INDEX idx_items_kind ON items (kind, done, updated_at DESC);
    且其 `tag` 是 template PendingIntent。所以**不要**把 ListView 换成非 AdapterView 的容器。
 4. `RemoteCollectionItems.Builder.addItem(id, view)` —— **id 在前**，写反了编译期就报错。
 5. 别再用 `notifyAppWidgetViewDataChanged`（Android 17 已废弃）；数据变了直接重新 `updateAppWidget`。
+6. **RemoteViews 只允许调用带 `@RemotableViewMethod` 的方法**（`RemoteViews.getMethod()` 会直接
+   抛 `ActionException`）。所以 `ListView.setSelection(0)` **不能用**；
+   `ListView.smoothScrollToPosition(int)` 有该注解，是唯一可用的滚动手段。
+
+### 8.1 「新建后看不到新条目」的根因（务必先读，别再打补丁）
+
+现象：从桌面 `+` 记一条，回到桌面后小组件里看不到它。**小组件其实刷新成功了**——
+数据一直在，只是**被顶到视口上方**。
+
+根因链条（全部有 AOSP 源码依据，android-37）：
+
+1. 更新时框架**复用** `RemoteCollectionItemsAdapter`，只调 `notifyDataSetChanged()`
+   —— `RemoteViews.java` `SetRemoteAdapterItem.apply()`；
+2. 数据变更回调 → `AdapterView.AdapterDataSetObserver.onChanged()` → `rememberSyncState()`；
+3. `rememberSyncState()` 记录 **`mSyncRowId = adapter.getItemId(mFirstPosition)`**，
+   `mSyncMode = SYNC_FIRST_POSITION` —— 即「把旧的第一可见行」当作滚动锚点，
+   而且**没有 `hasStableIds` 守卫**；
+4. `RemoteCollectionItems.getItemId()` 无条件返回我们传入的 Item id —— 锚点是稳定的。
+
+⇒ 新条目插到 index 0 后，ListView 会把「原来那一行」重新钉在顶部，新条目留在视口上方。
+
+修复：**只在「新增」时**回顶部，其它写入保持用户位置。
+
+- `ItemRepository` 把原来单纯的 `dataVersion: StateFlow<Long>` 换成
+  `change: StateFlow<DataChange>`，其中 `DataChange.insertedAt` 记录最近一次**插入**发生在哪个版本；
+- `BitSayApp` 比较 `insertedAt` 是否比上次处理过的更新 → 只有新增才传 `scrollToTop = true`；
+- `WidgetRenderer.render(..., scrollToTop)` 里发 `setInt(R.id.widget_list, "smoothScrollToPosition", 0)`。
+
+**为什么不做成「任何变更都回顶部」**：勾选待办时用户在列表中部，跳回顶部会丢失上下文。
+真机对比验证过：新增 → 回顶部；勾选 → 保持原位（见 §11）。
+
+> ⚠️ 排查这类问题时不要靠猜。这次我先误判成「进程被杀导致刷新丢失 / 协程被异常打死」，
+> 加了 `runCatching` 兜底和「退出前同步推送」——**全是错的方向，已全部移除**。
+> 正确做法是先读 AOSP 源码确认框架行为，再动手。
+
+### 8.2 为什么桌面入口用独立的窗口（`WidgetEntryActivity`）
+
+**旧行为**：桌面 `+` / 点条目直接 `startActivity(MainActivity)`，两个后果：
+
+1. `MainActivity` 是 `singleTask`。App 的任务若已在后台，会被**整个拉到前台**，先把它上一次的
+   页面（列表）画出来，再走 `onNewIntent` 切到编辑器 —— 这就是「首页一闪而过」；
+2. 退出后 App 的主任务仍留在后台 / 最近任务里。
+
+**现行为**：`WidgetEntryActivity` —— **渲染的是和应用完全一样的界面**（直接复用
+`BitSayRoot` → 同一个 `EditorScreen`、同一个纸纹背景，**没有遮罩、没有圆角卡片**）。
+理由很实际：第二个"长得差不多但不完全一样"的编辑器，就是第二套 bug。
+
+它只做两件不同的事，且只有这两件：
+
+```xml
+android:taskAffinity="com.del.bitsay.widgetentry"   <!-- 自己的任务，永远不拉 App 主任务 -->
+android:excludeFromRecents="true"                   <!-- 不进最近任务 -->
+android:noHistory="true"                            <!-- 离开即销毁 -->
+android:theme="@style/Theme.BitSay"                 <!-- 和 App 同一个主题 -->
+```
+
+- `AppViewModel.leaveEditor(fromWidget = true)` **不再先切到列表页**——切了就会在 `finish()`
+  落地前把列表画一帧，正是要消除的闪烁；现在直接发 `exit` 事件让窗口 `finish()`；
+- `MainActivity` 不再处理 `ACTION_NEW / ACTION_OPEN`，只保留启动页 + 小组件的 `ACTION_SHOW_LIST`。
+
+**真机验证**：退出后 `topResumedActivity` = launcher，`dumpsys activity activities` 里
+**`WidgetEntryActivity` 出现次数为 0**（整个 widgetentry 任务消失，无残留窗口）。
 
 ---
 
@@ -351,6 +450,32 @@ git add -A -n                      # 提交前预演，确认没有产物/密钥
 - [x] 真机（Android 16 / API 36）全流程验证 —— 见 §11
 - [x] release 包体积 **2.11 MB**，R8 + resource shrinking，签名并实机跑通
 - [x] 仓库卫生：完整 `.gitignore` + `.gitattributes` + `keystore/README.md` + 口令模板 —— 见 §9.1
+- [x] 自动保存改为**前缘+后缘节流**（400ms），第一个字立刻落盘 —— 见 §5
+- [x] 列表默认按**创建时间**排序（编辑/勾选不再让列表跳动）
+- [x] 小组件行样式：单行、无日期、固定 48dp 行高
+- [x] 小组件触摸目标全部提到 **48dp**（行高 / 顶栏按钮 / 标题）
+- [x] 小组件滚动条：滚动时出现、停 1.2s 后淡出（不常驻遮挡）
+- [x] 从桌面看详情 → 返回直接回桌面，不再落到 App 首页
+- [x] 从桌面 `+` → 快捷记录：无完成/保存按钮，返回即存并刷新小组件
+- [x] 设置页内「添加到桌面」（`requestPinAppWidget`）
+- [x] **修复「新建后小组件看不到新条目」**（滚动锚点根因）—— 见 §8.1
+- [x] **输入焦点策略**：新建 → 自动唤起输入法；查看已有条目 → 不唤起；搜索 → 展开即唤起 —— 见 §5.1
+- [x] **桌面入口改为独立悬浮窗**：不再先闪一下 App 首页，退出后不残留任何窗口 —— 见 §8.2
+- [x] 编辑器去掉「完成」按钮，完全依赖自动保存
+- [x] 列表预览统一为**单行 + 省略号**（App 内列表与小组件共用 `TextPreview`）
+- [x] 小组件改版：**笔记/待办 tab** + 右上角**进 App**（应用图标） + 右下角**悬浮 +**（浮在列表上，不占空白）
+- [x] 桌面入口窗口改为**全屏、与应用内完全一致**（复用 `BitSayRoot`，无遮罩无圆角）—— 见 §8.2
+- [x] 小组件最小尺寸 **2×2**；装不下「header + 3 行」时自动收起顶栏
+
+### ⚠️ 已知限制（不是 bug，是外部行为）
+
+- **`requestPinAppWidget` 在 OriginOS（vivo）上会「假装成功」**：API 返回 `true`，
+  但桌面既不弹确认框也不真的添加（实测小组件实例数不变）。
+  该 API 在原生/Pixel 桌面上正常。因此设置页那句话保留手动兜底文案：
+  「已请求添加到桌面；若桌面没有反应，请长按桌面空白处手动添加」。
+  代码本身是对的，**不要为了这个再改逻辑**。
+- 小组件被宿主（OriginOS）以约 **0.91 倍密度**渲染：声明 48dp 实测约 43.7 物理 dp。
+  这是桌面自己的缩放，换桌面就不同，所以**保持声明的 48dp 不要补偿**。
 
 ### ⏳ 待办（按建议优先级）
 
@@ -388,6 +513,32 @@ git add -A -n                      # 提交前预演，确认没有产物/密钥
 | 小组件点圆圈勾掉待办 → 数据库 + 界面同步 | ✅ |
 | 小组件随尺寸变化显示时间戳（EXPANDED 档） | ✅ |
 | release 包（R8）启动 + 小组件 receiver 响应 | ✅ |
+| 自动保存：前缘节流，第一个字立刻入库 | ✅ |
+| 列表按创建时间排序；编辑旧条目不会把它顶到前面 | ✅ |
+| 小组件行：单行、无日期、48dp 行高（实测触摸目标 ~44×48 物理 dp） | ✅ |
+| 小组件滚动条：滚动时出现，3 秒后已淡出（前后截图对比） | ✅ |
+| **新增后小组件自动回到顶部并显示新条目**（创建前列表停在列表中段） | ✅ |
+| **勾选待办不会跳回顶部**，保持用户当前位置（前后截图对比） | ✅ |
+| 从桌面看详情 → 返回落在桌面（`topResumedActivity=com.bbk.launcher2/.Launcher`） | ✅ |
+| 从桌面 `+` 快捷记录：无完成按钮 → 返回桌面 → 条目已入库 → 小组件已刷新 | ✅ |
+| 设置页「添加到桌面」入口出现且可点（API 返回已受理；见 §10 已知限制） | ⚠️ |
+| **新建（App FAB）自动弹键盘**（`mInputShown=false → true`） | ✅ |
+| **查看已有条目不弹键盘**（编辑器全屏可见，`mInputShown=false`） | ✅ |
+| **点搜索图标：搜索栏展开 + 键盘弹出 + 光标就位** | ✅ |
+| 搜索输入过滤生效（输入 zz → 「没有找到相关内容」） | ✅ |
+| 关闭搜索键盘自动收起 | ✅ |
+| 小组件 tab 切换笔记/待办（写入 `kind_29`，列表随之切换） | ✅ |
+| 小组件右下角悬浮 + → 打开 `WidgetEntryActivity`（顶层即悬浮窗，无首页闪烁） | ✅ |
+| 小组件点条目 → 悬浮窗查看（无键盘、无完成按钮） | ✅ |
+| **退出悬浮窗后顶层为 launcher，且无任何 bitsay ActivityRecord 残留** | ✅ |
+| 小组件右上角 ↗ → 进入 App 列表页（首页） | ✅ |
+| 悬浮窗内新建 → 返回桌面 → 条目已入库且小组件已自动刷新 | ✅ |
+| App 列表预览为单行省略（「会议纪要1. 确定 Q4 目标 2. 排期评审 …」） | ✅ |
+| 桌面入口窗口全屏、无遮罩无圆角，与应用内编辑器完全一致 | ✅ |
+| 退出入口窗口后 `WidgetEntryActivity` 残留数 = 0 | ✅ |
+| 小组件 + 悬浮在列表之上，底部无预留空白（最后一行可滑到按钮下） | ✅ |
+| 小组件顶栏应用图标（便签+对勾）渲染正常 | ✅ |
+| **小组件缩到 145dp：`widget_header` 从视图树中消失**；放大到 235dp：顶栏回来 | ✅ |
 
 未验证 / 待补：小组件**手动拖拽缩放**的中间档位逐级走查（只验证了当前档位的渲染结果与 `WidgetSize` 单测）、
 深色模式逐屏、Android 12~15 真机（本机只有 Android 16，只能靠 minSdk 与实际 API 使用面推断）。

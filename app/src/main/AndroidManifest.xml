@@ -26,6 +26,24 @@
             </intent-filter>
         </activity>
 
+        <!--
+          The window the widget uses to write or read one entry. It renders the very same screen as
+          the app (no scrim, no card); only the task bookkeeping differs.
+
+          taskAffinity + excludeFromRecents + noHistory keep it completely separate from the app's
+          task: it never drags the app's list to the front (which used to flash it on screen) and
+          it never leaves a window behind once it is dismissed.
+        -->
+        <activity
+            android:name=".widget.WidgetEntryActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:launchMode="singleTop"
+            android:taskAffinity="com.del.bitsay.widgetentry"
+            android:theme="@style/Theme.BitSay"
+            android:windowSoftInputMode="adjustResize" />
+
         <activity
             android:name=".widget.WidgetConfigActivity"
             android:exported="true"

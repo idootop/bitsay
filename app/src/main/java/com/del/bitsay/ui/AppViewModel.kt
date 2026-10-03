@@ -1,6 +1,7 @@
 package com.del.bitsay.ui
 
 import android.net.Uri
+import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -12,10 +13,15 @@ import com.del.bitsay.core.model.Item
 import com.del.bitsay.core.model.Kind
 import com.del.bitsay.core.repo.ImportResult
 import com.del.bitsay.core.repo.ItemRepository
+import com.del.bitsay.core.util.WriteThrottle
+import com.del.bitsay.widget.WidgetPinner
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -34,6 +40,8 @@ sealed interface Notice {
     data class Failed(val reason: String) : Notice
     data class Imported(val result: ImportResult) : Notice
     data object Empty : Notice
+    data object WidgetPinRequested : Notice
+    data object WidgetPinUnsupported : Notice
 }
 
 /** A backup file that has been read and is waiting for the user to pick a restore mode. */
@@ -51,7 +59,32 @@ data class AppUiState(
     val editingKind: Kind = Kind.NOTE,
     val editingCreatedAt: Long = 0L,
     val editingUpdatedAt: Long = 0L,
+    /** Keystrokes typed but not written to the database yet. */
     val dirty: Boolean = false,
+    /**
+     * The editing session was opened from the home-screen widget, so finishing it must drop the
+     * user back on the launcher instead of showing the app's own list.
+     */
+    val fromWidget: Boolean = false,
+    /**
+     * Opened from the widget's `+`: a blank quick-capture editor with no save button — the text
+     * is already being written as it is typed, so the way out is simply "back".
+     */
+    val quickCapture: Boolean = false,
+    /** Whether this launcher supports "pin widget to home screen" from inside the app. */
+    val canPinWidget: Boolean = false,
+    /**
+     * Raise the keyboard as soon as the editor appears. True only when the editor was opened to
+     * **write something new** (the FAB, or the widget's `+`); opening an existing entry is a
+     * "look at it" gesture and should not have half the screen covered by an IME.
+     */
+    val autoFocusEditor: Boolean = false,
+    /**
+     * Increments every time an editor session starts. It is the key the editor uses to run its
+     * one-shot focus effect, so that a second "new entry" arriving while the editor is already
+     * open (e.g. the widget's `+` while the app sits behind it) still focuses the field.
+     */
+    val editorSession: Long = 0L,
     val busy: Boolean = false,
     val notice: Notice? = null,
     val pendingImport: PendingImport? = null,
@@ -78,8 +111,17 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     private val repository: ItemRepository = container.repository
     private val backup: BackupManager = container.backup
 
-    private val _state = MutableStateFlow(AppUiState())
+    private val _state = MutableStateFlow(
+        AppUiState(canPinWidget = WidgetPinner.isSupported(container.context)),
+    )
     val state: StateFlow<AppUiState> = _state.asStateFlow()
+
+    /**
+     * Fired when the user is done with a widget-launched session and the Activity should get out
+     * of the way. An event rather than state, because it is consumed exactly once.
+     */
+    private val _exit = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val exit: SharedFlow<Unit> = _exit.asSharedFlow()
 
     init {
         viewModelScope.launch { repository.reload() }
@@ -105,9 +147,12 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     fun openList() = _state.update { it.copy(screen = Screen.List, query = "") }
 
-    fun startNew(kind: Kind) {
+    /**
+     * @param fromWidget true when the widget's `+` opened the app: the editor runs in quick
+     *   capture mode and backing out returns to the home screen.
+     */
+    fun startNew(kind: Kind, fromWidget: Boolean = false) {
         cancelAutoSave()
-        createdInThisSession = false
         _state.update {
             it.copy(
                 screen = Screen.Editor(id = 0L, kind = kind),
@@ -118,17 +163,34 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                 editingCreatedAt = 0L,
                 editingUpdatedAt = 0L,
                 dirty = false,
+                fromWidget = fromWidget,
+                quickCapture = fromWidget,
+                autoFocusEditor = true,
+                editorSession = it.editorSession + 1L,
             )
         }
     }
 
     fun startNewAsCurrentTab() = startNew(_state.value.tab)
 
-    fun openItem(id: Long) {
+    fun openItem(id: Long, fromWidget: Boolean = false) {
         cancelAutoSave()
-        createdInThisSession = false
+        _state.update {
+            it.copy(
+                fromWidget = fromWidget,
+                quickCapture = false,
+                // Looking at an existing entry: show it, do not shove a keyboard in front of it.
+                autoFocusEditor = false,
+                editorSession = it.editorSession + 1L,
+            )
+        }
         viewModelScope.launch {
-            val item = repository.findById(id) ?: return@launch
+            val item = repository.findById(id)
+            if (item == null) {
+                // Deleted on another surface while the tap was in flight.
+                if (fromWidget) exitToLauncher() else openList()
+                return@launch
+            }
             _state.update {
                 it.copy(
                     screen = Screen.Editor(id = item.id, kind = item.kind),
@@ -144,18 +206,17 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
+    // ------------------------------------------------------------------ auto-save
+
     /**
-     * Every keystroke reaches the database after a short pause, so a thought survives a crash,
-     * a swipe-away, or simply forgetting to press save. Typing the first character of a new
-     * note creates the row right away — nothing is ever held only in memory.
+     * Auto-save with a leading **and** trailing edge (see [WriteThrottle]): the first character
+     * of a new thought hits the database immediately, continuous typing writes at most once per
+     * [AUTO_SAVE_THROTTLE_MS], and the last character always gets its own write. A thought
+     * therefore survives a crash, a swipe-away, or simply forgetting to press save.
      */
     fun setDraft(value: String) {
         _state.update { it.copy(draft = value, dirty = true) }
-        autoSaveJob?.cancel()
-        autoSaveJob = viewModelScope.launch {
-            delay(AUTO_SAVE_DEBOUNCE_MS)
-            persistDraft()
-        }
+        scheduleAutoSave()
     }
 
     /** Writes pending keystrokes immediately — used when the app leaves the foreground. */
@@ -163,6 +224,15 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         if (!_state.value.dirty) return
         autoSaveJob?.cancel()
         autoSaveJob = viewModelScope.launch { persistDraft() }
+    }
+
+    private fun scheduleAutoSave() {
+        autoSaveJob?.cancel()
+        autoSaveJob = viewModelScope.launch {
+            val wait = autoSaveThrottle.delayBeforeNextWrite(SystemClock.elapsedRealtime())
+            if (wait > 0L) delay(wait)
+            persistDraft()
+        }
     }
 
     // ------------------------------------------------------------------ mutations
@@ -176,23 +246,25 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch {
             persistDraft()
             val snapshot = _state.value
-            val emptiedNewEntry = createdInThisSession && snapshot.draft.isBlank()
-            if (emptiedNewEntry && snapshot.editingId > 0L) {
+            val emptiedNewEntry = createdInThisSession &&
+                snapshot.draft.isBlank() &&
+                snapshot.editingId > 0L
+            if (emptiedNewEntry) {
                 repository.delete(snapshot.editingId)
-            } else if (!createdInThisSession && snapshot.draft.isBlank()) {
-                // Editing an existing entry down to nothing: keep the last real content and say so.
-                if (snapshot.editingId > 0L) _state.update { it.copy(notice = Notice.Empty) }
+            } else if (!createdInThisSession && snapshot.draft.isBlank() && snapshot.editingId > 0L) {
+                // Editing an existing entry down to nothing: keep the last real content, say so.
+                _state.update { it.copy(notice = Notice.Empty) }
             }
-            closeEditor()
+            leaveEditor(snapshot.fromWidget)
         }
     }
 
     fun deleteCurrent() {
         cancelAutoSave()
-        val id = _state.value.editingId
+        val snapshot = _state.value
         viewModelScope.launch {
-            if (id > 0L) repository.delete(id)
-            closeEditor()
+            if (snapshot.editingId > 0L) repository.delete(snapshot.editingId)
+            leaveEditor(snapshot.fromWidget)
         }
     }
 
@@ -205,6 +277,16 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch { repository.reload() }
     }
 
+    /** Asks the launcher to drop a widget on the home screen (settings → 桌面小组件). */
+    fun addWidgetToHome() {
+        val accepted = WidgetPinner.request(container.context)
+        _state.update {
+            it.copy(
+                notice = if (accepted) Notice.WidgetPinRequested else Notice.WidgetPinUnsupported,
+            )
+        }
+    }
+
     // ------------------------------------------------------------------ internals
 
     /**
@@ -214,6 +296,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     private suspend fun persistDraft() {
         val snapshot = _state.value
         val id = repository.saveDraft(snapshot.editingId, snapshot.editingKind, snapshot.draft)
+        autoSaveThrottle.onWritten(SystemClock.elapsedRealtime())
         if (id == 0L) {
             _state.update { it.copy(dirty = snapshot.draft.isNotBlank()) }
             return
@@ -231,14 +314,37 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
+    /**
+     * Closes the editor, either back into the app or all the way out to the home screen.
+     *
+     * In the widget's floating window there is nothing to navigate *to*: switching to the list
+     * first would paint it for a frame before `finish()` landed, which is exactly the flicker the
+     * separate window exists to avoid. So the screen is left alone and the window just goes away.
+     */
+    private fun leaveEditor(fromWidget: Boolean) {
+        if (fromWidget) exitToLauncher() else closeEditor()
+    }
+
+    private fun exitToLauncher() {
+        _exit.tryEmit(Unit)
+    }
+
     private fun closeEditor() = _state.update {
-        it.copy(screen = Screen.List, draft = "", editingId = 0L, dirty = false)
+        it.copy(
+            screen = Screen.List,
+            draft = "",
+            editingId = 0L,
+            dirty = false,
+            fromWidget = false,
+            quickCapture = false,
+        )
     }
 
     private fun cancelAutoSave() {
         autoSaveJob?.cancel()
         autoSaveJob = null
         createdInThisSession = false
+        autoSaveThrottle.reset()
     }
 
     // ------------------------------------------------------------------ backup
@@ -307,10 +413,11 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     fun consumeNotice() = _state.update { it.copy(notice = null) }
 
-    // ------------------------------------------------------------------ internals
+    // ------------------------------------------------------------------ state
 
     private var exportPayload: ExportPayload? = null
     private var autoSaveJob: Job? = null
+    private val autoSaveThrottle = WriteThrottle(AUTO_SAVE_THROTTLE_MS)
 
     /** True when the entry now in the editor did not exist until this editing session. */
     private var createdInThisSession = false
@@ -325,7 +432,10 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     companion object {
-        /** Short enough to feel instant, long enough to avoid a write per keystroke. */
-        const val AUTO_SAVE_DEBOUNCE_MS = 600L
+        /**
+         * Upper bound on how long a keystroke can sit unsaved. The *first* keystroke of a burst
+         * is written immediately, so this only bounds the middle of a long burst.
+         */
+        const val AUTO_SAVE_THROTTLE_MS = 400L
     }
 }

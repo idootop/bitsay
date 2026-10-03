@@ -5,7 +5,7 @@ import com.del.bitsay.core.model.Kind
 
 /**
  * In-memory [ItemStore] used by the domain tests. Mirrors the SQLite ordering exactly
- * (`done ASC, updated_at DESC, id DESC`) so tests exercise the same list ordering the app shows.
+ * (`done ASC, created_at DESC, id DESC`) so tests exercise the same list ordering the app shows.
  */
 class FakeItemStore(seed: List<Item> = emptyList()) : ItemStore {
 
@@ -18,10 +18,9 @@ class FakeItemStore(seed: List<Item> = emptyList()) : ItemStore {
 
     override fun list(kind: Kind): List<Item> = rows.values
         .filter { it.kind == kind }
-        .sortedWith(compareBy({ it.done }, { -it.updatedAt }, { -it.id }))
+        .sortedWith(compareBy({ it.done }, { -it.createdAt }, { -it.id }))
 
-    override fun listAll(): List<Item> =
-        rows.values.sortedWith(compareBy({ -it.updatedAt }, { -it.id }))
+    override fun listAll(): List<Item> = rows.values.sortedBy { it.id }
 
     override fun findById(id: Long): Item? = rows[id]
 

@@ -7,7 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import com.del.bitsay.BitSayApp
-import com.del.bitsay.MainActivity
+import com.del.bitsay.core.model.Kind
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -17,10 +17,11 @@ import kotlinx.coroutines.launch
  * The desktop widget.
  *
  * Supported interactions (all of them work without opening the app):
- *  * tap the title / ⇄ button — switch this widget between notes and todos;
+ *  * tap the 笔记 / 待办 tabs — switch this widget between the two lists;
  *  * tap `+` — open the editor on a blank note/todo of the kind on screen;
  *  * tap a row — open that note/todo;
  *  * tap the circle on a todo row — tick it off in place;
+ *  * tap the ↗ button — open the app itself;
  *  * resize — the host reports new options and the rows re-render at the new density.
  */
 class BitSayWidgetProvider : AppWidgetProvider() {
@@ -45,9 +46,10 @@ class BitSayWidgetProvider : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
-            WidgetContract.ACTION_TOGGLE_KIND -> {
+            WidgetContract.ACTION_SET_KIND -> {
                 val widgetId = intent.getIntExtra(WidgetContract.EXTRA_WIDGET_ID, -1)
-                if (widgetId != -1) toggleKind(context, widgetId)
+                val kind = Kind.ofCode(intent.getIntExtra(WidgetContract.EXTRA_KIND, Kind.NOTE.code))
+                if (widgetId != -1) setKind(context, widgetId, kind)
                 return
             }
 
@@ -64,10 +66,12 @@ class BitSayWidgetProvider : AppWidgetProvider() {
         super.onReceive(context, intent)
     }
 
-    private fun toggleKind(context: Context, widgetId: Int) {
+    private fun setKind(context: Context, widgetId: Int, kind: Kind) {
         val prefs = WidgetPrefs(context)
-        prefs.setKind(widgetId, prefs.kindOf(widgetId).other)
-        WidgetRenderer.render(context, AppWidgetManager.getInstance(context), widgetId)
+        if (prefs.kindOf(widgetId) == kind) return
+        prefs.setKind(widgetId, kind)
+        // The whole list is replaced, so start the other kind at its top.
+        WidgetRenderer.render(context, AppWidgetManager.getInstance(context), widgetId, scrollToTop = true)
     }
 
     private fun handleItemClick(context: Context, intent: Intent) {
@@ -77,11 +81,14 @@ class BitSayWidgetProvider : AppWidgetProvider() {
         when (intent.getStringExtra(WidgetContract.EXTRA_ACTION)) {
             WidgetContract.ITEM_ACTION_TOGGLE_DONE -> toggleDone(context, itemId)
 
+            // Open the floating window rather than MainActivity: the app's own task must not be
+            // dragged to the front just to show one entry.
             else -> context.startActivity(
-                Intent(context, MainActivity::class.java).apply {
-                    action = MainActivity.ACTION_OPEN
+                Intent(context, WidgetEntryActivity::class.java).apply {
+                    action = WidgetContract.ACTION_OPEN_ITEM
                     putExtra(WidgetContract.EXTRA_ITEM_ID, itemId)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    putExtra(WidgetContract.EXTRA_FROM_WIDGET, true)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 },
             )
         }
@@ -108,12 +115,16 @@ class BitSayWidgetProvider : AppWidgetProvider() {
 /** Re-renders every live instance of the widget. Called whenever the database changes. */
 object WidgetUpdater {
 
-    fun refreshAll(context: Context) {
+    /**
+     * @param scrollToTop true only when a row was just inserted, so the widget reveals it instead
+     *   of keeping the user's current scroll position (see [WidgetRenderer.render]).
+     */
+    fun refreshAll(context: Context, scrollToTop: Boolean = false) {
         val manager = AppWidgetManager.getInstance(context) ?: return
         val ids = manager.getAppWidgetIds(
             ComponentName(context.applicationContext, BitSayWidgetProvider::class.java),
         )
         if (ids == null || ids.isEmpty()) return
-        ids.forEach { WidgetRenderer.render(context, manager, it) }
+        ids.forEach { WidgetRenderer.render(context, manager, it, scrollToTop) }
     }
 }

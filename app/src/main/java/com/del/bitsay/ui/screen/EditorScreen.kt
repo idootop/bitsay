@@ -2,8 +2,6 @@ package com.del.bitsay.ui.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,11 +16,15 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -34,19 +36,29 @@ import com.del.bitsay.ui.components.CuteIconButton
 import com.del.bitsay.ui.theme.CuteShape
 import com.del.bitsay.ui.theme.Ink
 import com.del.bitsay.ui.theme.InkSoft
-import com.del.bitsay.ui.theme.Mint
 import com.del.bitsay.ui.theme.Paper
-import com.del.bitsay.ui.theme.Sun
 
 @Composable
 fun EditorScreen(
     state: AppUiState,
     onDraftChange: (String) -> Unit,
     onBack: () -> Unit,
-    onSave: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+
+    // Opened to write something new → go straight into typing. Opening an existing entry is a
+    // "look at it" gesture, so the keyboard stays away until the text is actually tapped.
+    // Keyed on the session so a second "new entry" (widget `+` while the app sits behind it)
+    // still focuses even though this composable was never disposed.
+    LaunchedEffect(state.editorSession) {
+        if (!state.autoFocusEditor) return@LaunchedEffect
+        focusRequester.requestFocus()
+        keyboard?.show()
+    }
+
     Column(
         modifier
             .fillMaxSize()
@@ -103,25 +115,27 @@ fun EditorScreen(
                 onValueChange = onDraftChange,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = Ink),
                 cursorBrush = SolidColor(Ink),
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .focusRequester(focusRequester),
             )
         }
 
         Spacer(Modifier.height(14.dp))
 
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                SaveStatus(state)
-                if (state.editingCreatedAt > 0L) {
-                    Text(
-                        text = "创建于 ${TimeText.absolute(state.editingCreatedAt)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = InkSoft,
-                        modifier = Modifier.padding(top = 2.dp),
-                    )
-                }
+        // No save button on purpose: every keystroke is already in the database, and leaving the
+        // screen (back, or the gesture) is the only action left. A button would only imply that
+        // saving is something the user still has to remember to do.
+        Column(Modifier.fillMaxWidth()) {
+            SaveStatus(state)
+            if (state.editingCreatedAt > 0L) {
+                Text(
+                    text = "创建于 ${TimeText.absolute(state.editingCreatedAt)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InkSoft,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
             }
-            DoneButton(onClick = onSave)
         }
     }
 }
@@ -136,6 +150,7 @@ private fun SaveStatus(state: AppUiState) {
     val (label, tint) = when {
         state.dirty -> stringResource(R.string.editor_saving) to InkSoft
         saved -> stringResource(R.string.editor_saved) to Ink
+        state.quickCapture -> stringResource(R.string.editor_quick_capture_hint) to InkSoft
         else -> stringResource(R.string.editor_autosave_hint) to InkSoft
     }
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -156,34 +171,3 @@ private fun SaveStatus(state: AppUiState) {
     }
 }
 
-@Composable
-private fun DoneButton(onClick: () -> Unit) {
-    Box(
-        Modifier
-            .clip(CuteShape)
-            .background(Mint)
-            .border(1.5.dp, Ink.copy(alpha = 0.13f), CuteShape)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick,
-            )
-            .padding(horizontal = 22.dp, vertical = 12.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            androidx.compose.material3.Icon(
-                painter = painterResource(R.drawable.ic_check),
-                contentDescription = null,
-                tint = Ink,
-                modifier = Modifier.size(18.dp),
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = stringResource(R.string.action_done),
-                style = MaterialTheme.typography.labelLarge,
-                color = Ink,
-            )
-        }
-    }
-}

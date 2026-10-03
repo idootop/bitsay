@@ -7,15 +7,19 @@ import android.view.View
 import android.widget.RemoteViews
 import com.del.bitsay.R
 import com.del.bitsay.core.model.Item
-import com.del.bitsay.core.util.TimeText
+import com.del.bitsay.core.util.TextPreview
 
 /**
  * Turns domain [Item]s into the row [RemoteViews] the widget scrolls through.
  *
- * Android 12's `RemoteViews.RemoteCollectionItems` is used instead of a
- * `RemoteViewsService` + `RemoteViewsFactory`: on Android 17 the service-based collection API
- * is deprecated, and building the rows here removes an entire binder round-trip and a manifest
- * entry. The price is that all rows are built eagerly, hence [MAX_ROWS].
+ * Rows are deliberately uniform: **one line of text, no timestamp, one fixed height**. A glance
+ * at the home screen should answer "what is on my list", not "when did I touch it" — and a fixed
+ * row height keeps scrolling predictable and makes the scrollbar a useful length indicator.
+ *
+ * Android 12's `RemoteViews.RemoteCollectionItems` is used instead of a `RemoteViewsService` +
+ * `RemoteViewsFactory`: on Android 17 the service-based collection API is deprecated, and
+ * building the rows here removes a binder round-trip and a manifest entry. The price is that all
+ * rows are built eagerly, hence [MAX_ROWS].
  */
 internal object WidgetItems {
 
@@ -32,14 +36,13 @@ internal object WidgetItems {
         R.drawable.widget_item_bg_4,
     )
 
-    fun build(context: Context, items: List<Item>, size: WidgetSize): List<Row> =
-        items.take(MAX_ROWS).mapIndexed { index, item -> row(context, item, index, size) }
+    fun build(context: Context, items: List<Item>): List<Row> =
+        items.take(MAX_ROWS).mapIndexed { index, item -> row(context, item, index) }
 
-    private fun row(context: Context, item: Item, index: Int, size: WidgetSize): Row {
+    private fun row(context: Context, item: Item, index: Int): Row {
         val views = RemoteViews(context.packageName, R.layout.widget_item)
 
-        views.setTextViewText(R.id.widget_item_text, item.text)
-        views.setInt(R.id.widget_item_text, "setMaxLines", size.maxLines)
+        views.setTextViewText(R.id.widget_item_text, TextPreview.singleLine(item.text))
         views.setTextColor(
             R.id.widget_item_text,
             context.getColor(if (item.done) R.color.ink_soft else R.color.ink),
@@ -64,13 +67,6 @@ internal object WidgetItems {
             )
         } else {
             views.setViewVisibility(R.id.widget_item_icon, View.GONE)
-        }
-
-        if (size.showTime) {
-            views.setViewVisibility(R.id.widget_item_time, View.VISIBLE)
-            views.setTextViewText(R.id.widget_item_time, TimeText.relative(item.updatedAt))
-        } else {
-            views.setViewVisibility(R.id.widget_item_time, View.GONE)
         }
 
         views.setInt(

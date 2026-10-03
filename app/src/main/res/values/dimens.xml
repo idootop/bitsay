@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Widget metrics follow the Android/Material minimum touch target of 48dp: a launcher card
+      is used with a thumb, often one-handed, so a 30dp button or a 38dp row is a miss-tap
+      generator. Uniform row height also keeps scrolling predictable and makes the fade-out
+      scrollbar a trustworthy indicator of how long the list is.
+    -->
+    <dimen name="widget_row_height">48dp</dimen>
+    <dimen name="widget_header_height">52dp</dimen>
+
+    <!-- The two list tabs: 48dp tall for the touch target, 36dp of visible pill inside it. -->
+    <dimen name="widget_tab_height">40dp</dimen>
+
+    <!-- The circle glyph stays small visually; the *touch* target around it is 44x48dp. -->
+    <dimen name="widget_tick_size">44dp</dimen>
+    <dimen name="widget_tick_glyph_padding">13dp</dimen>
+
+    <!-- Header icon buttons: 48x48dp tap area with a ~22dp glyph centred inside. -->
+    <dimen name="widget_button_size">48dp</dimen>
+    <dimen name="widget_button_padding">13dp</dimen>
+
+    <!-- Floating + button, mirroring the app's own FAB. -->
+    <dimen name="widget_fab_size">48dp</dimen>
+    <dimen name="widget_fab_padding">12dp</dimen>
+</resources>

@@ -37,7 +37,9 @@ fun SettingsScreen(
     noteCount: Int,
     todoCount: Int,
     openTodoCount: Int,
+    canPinWidget: Boolean,
     onBack: () -> Unit,
+    onAddWidget: () -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit,
     modifier: Modifier = Modifier,
@@ -104,11 +106,22 @@ fun SettingsScreen(
         }
 
         SectionTitle("桌面小组件")
-        CuteCard(color = Sky) {
+        CuteCard(color = Sky, contentPadding = PaddingValues(0.dp)) {
+            if (canPinWidget) {
+                // One tap inside the app beats making the user hunt through the launcher's
+                // widget drawer. The launcher still shows its own confirm sheet.
+                SettingRow(
+                    painter = painterResource(R.drawable.ic_plus),
+                    title = stringResource(R.string.settings_widget_add),
+                    subtitle = stringResource(R.string.settings_widget_add_desc),
+                    onClick = onAddWidget,
+                )
+            }
             Text(
                 text = stringResource(R.string.settings_widget_hint),
-                style = MaterialTheme.typography.bodyMedium,
-                color = Ink,
+                style = MaterialTheme.typography.bodySmall,
+                color = Ink.copy(alpha = 0.75f),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
             )
         }
 

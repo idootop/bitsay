@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>比特记 bitsay · UI/UX 预览稿</title>
+<style>
+  /* ============================================================
+     比特记 bitsay — 可爱 / 手绘方向的设计预览
+     这个文件是 UI 的「设计源」：在这里调好，再回填到 Android。
+     映射关系见 PROGERSS.md §13。
+     ============================================================ */
+
+  :root{
+    --bg:        #FCF3E8;
+    --paper:     #FFFDF7;
+    --ink:       #3D3A38;
+    --ink-soft:  #8A8279;
+    --line:      #E6DDCB;
+
+    --sun:   #FFD34E;
+    --mint:  #B7E4C7;
+    --sky:   #AEDCEB;
+    --blush: #FFC2C9;
+    --lilac: #D9CCF0;
+    --peach: #FFD3B6;
+    --done:  #EDE9E1;
+
+    --radius: 20px;
+    --radius-sm: 14px;
+    --border: 2px;
+    --dots: 1;
+    --wobble: 2.5;
+    --shadow: 0 3px 0 rgba(61,58,56,.07);
+  }
+
+  *{ box-sizing: border-box; }
+
+  html,body{ margin:0; padding:0; }
+
+  body{
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+                 "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    padding: 32px 24px 96px;
+  }
+
+  /* 纸纹点阵 ------------------------------------------------------ */
+  body::before{
+    content:"";
+    position: fixed; inset: 0;
+    background-image: radial-gradient(circle, var(--line) 1.1px, transparent 1.2px);
+    background-size: 26px 26px;
+    opacity: calc(var(--dots) * .55);
+    pointer-events: none;
+    z-index: 0;
+  }
+  body > *{ position: relative; z-index: 1; }
+
+  /* 手绘抖动：只作用在描边上，不影响文字 ---------------------------- */
+  .sketch{ position: relative; }
+  .sketch::after{
+    content:"";
+    position:absolute; inset:0;
+    border: var(--border) solid var(--sketch-color, rgba(61,58,56,.16));
+    border-radius: inherit;
+    filter: url(#wobble);
+    pointer-events:none;
+  }
+
+  h1{ font-size: 26px; margin: 0 0 4px; letter-spacing: .5px; }
+  h2{ font-size: 17px; margin: 40px 0 14px; letter-spacing: .5px; }
+  .sub{ color: var(--ink-soft); font-size: 13px; margin: 0 0 24px; }
+  .sub code{ background: var(--paper); padding: 1px 6px; border-radius: 6px; }
+
+  .wrap{ max-width: 1180px; margin: 0 auto; }
+
+  /* ---- 控制面板（实时调参，方便验收） ---------------------------- */
+  .panel{
+    background: var(--paper);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin-bottom: 8px;
+    box-shadow: var(--shadow);
+  }
+  .panel .row{ display:flex; flex-wrap: wrap; gap: 22px; align-items:center; }
+  .ctrl{ display:flex; align-items:center; gap:10px; font-size:13px; color:var(--ink-soft); }
+  .ctrl input[type=range]{ width: 130px; accent-color: var(--ink); }
+  .ctrl output{ min-width: 34px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .swatches{ display:flex; gap:8px; }
+  .sw{ width: 26px; height:26px; border-radius: 50%; cursor:pointer;
+       border: 2px solid rgba(61,58,56,.18); }
+  .sw.on{ outline: 2px solid var(--ink); outline-offset: 2px; }
+  .btn{
+    font: inherit; font-size: 13px; cursor: pointer;
+    background: var(--sun); color: var(--ink);
+    border: var(--border) solid rgba(61,58,56,.18);
+    border-radius: var(--radius-sm); padding: 6px 14px;
+  }
+
+  /* ---- 手机 mockup ---------------------------------------------- */
+  .stage{ display:flex; flex-wrap: wrap; gap: 34px; align-items: flex-start; }
+
+  .phone{
+    width: 320px; flex: 0 0 auto;
+    background: var(--bg);
+    border-radius: 34px; padding: 14px 14px 20px;
+    box-shadow: var(--shadow), 0 0 0 8px #2c2a27, 0 0 0 11px #4a4643;
+  }
+  .phone + .phone{ margin-left: 0; }
+  .pill{ width: 74px; height: 6px; border-radius: 99px; background: #d9d2c4; margin: 0 auto 12px; }
+  .screen{ height: 560px; overflow: hidden; display:flex; flex-direction:column; }
+
+  .statusbar{
+    display:flex; justify-content:space-between; font-size:11px; color:var(--ink-soft);
+    padding: 0 6px 10px; letter-spacing:.3px;
+  }
+
+  .appbar{ display:flex; align-items:center; padding: 2px 6px 12px; }
+  .appbar .titles{ flex:1; }
+  .appbar h3{ margin:0; font-size: 23px; letter-spacing:.5px; }
+  .appbar .count{ font-size: 12px; color: var(--ink-soft); }
+  .iconbtn{
+    width: 36px; height:36px; border-radius:50%;
+    display:grid; place-items:center; color: var(--ink-soft); font-size:17px;
+  }
+
+  /* 分段切换 */
+  .seg{
+    display:flex; gap:4px; margin: 0 6px 14px;
+    background: var(--done); border-radius: var(--radius-sm); padding: 4px;
+  }
+  .seg div{
+    flex:1; text-align:center; padding: 8px 0; border-radius: var(--radius-sm);
+    font-size: 14px; font-weight: 600; color: var(--ink-soft);
+  }
+  .seg div.on{ background: var(--seg-accent, var(--sun)); color: var(--ink); }
+
+  /* 列表 */
+  .list{ flex:1; overflow:hidden; padding: 0 6px; display:flex; flex-direction:column; gap:10px; }
+  .card{
+    background: var(--c, var(--sun));
+    border-radius: var(--radius);
+    padding: 13px 16px;
+    box-shadow: var(--shadow);
+  }
+  .card .txt{ font-size: 15px; white-space: pre-line; }
+  .card .meta{ margin-top: 6px; font-size: 11.5px; color: rgba(61,58,56,.55); }
+  .card.done{ background: var(--done); }
+  .card.done .txt{ color: var(--ink-soft); text-decoration: line-through; }
+  .card.done .meta{ color: rgba(138,130,121,.8); }
+
+  .row-todo{ display:flex; align-items:center; gap: 12px; }
+  .check{
+    width: 22px; height:22px; flex:0 0 auto; border-radius:50%;
+    border: 2px solid rgba(61,58,56,.45);
+  }
+  .check.on{
+    border-color: transparent;
+    background: #7ED0A0;
+    position: relative;
+  }
+  .check.on::after{
+    content:""; position:absolute; left:6px; top:2px;
+    width:5px; height:10px; border:2px solid #fff; border-top:0; border-left:0;
+    transform: rotate(40deg); border-radius:1px;
+  }
+
+  .fab{
+    align-self: flex-end; margin: 14px 6px 0;
+    width: 56px; height:56px; border-radius:50%;
+    background: var(--sun); display:grid; place-items:center;
+    font-size: 27px; color: var(--ink); box-shadow: var(--shadow);
+  }
+
+  /* 编辑器 */
+  .sheet{
+    flex:1; background: var(--paper); border-radius: var(--radius);
+    padding: 16px; margin: 0 6px; box-shadow: var(--shadow);
+    font-size: 15px; white-space: pre-line;
+  }
+  .sheet .ph{ color: rgba(138,130,121,.7); }
+  .editor-foot{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 12px 6px 0; font-size: 11.5px; color: var(--ink-soft);
+  }
+  .done-btn{
+    display:flex; align-items:center; gap:7px;
+    background: var(--mint); color: var(--ink);
+    border-radius: var(--radius-sm); padding: 10px 18px;
+    font-weight: 600; font-size: 14px; box-shadow: var(--shadow);
+  }
+
+  /* 设置 */
+  .setcard{
+    background: var(--paper); border-radius: var(--radius);
+    margin: 0 6px 10px; padding: 14px 16px; box-shadow: var(--shadow);
+  }
+  .setcard.accent{ background: var(--sun); }
+  .setcard.tip{ background: var(--sky); }
+  .setcard.about{ background: var(--lilac); }
+  .set-title{ font-size: 15px; font-weight: 600; }
+  .set-desc{ font-size: 12px; color: rgba(61,58,56,.6); margin-top: 3px; }
+  .set-item{ display:flex; gap: 12px; align-items:center; padding: 11px 0; }
+  .set-item + .set-item{ border-top: 1px dashed rgba(61,58,56,.14); }
+  .set-item .glyph{ font-size: 18px; width: 24px; text-align:center; }
+  .kicker{ font-size: 12px; color: var(--ink-soft); margin: 16px 6px 8px; }
+
+  /* ---- 桌面 / 小组件 -------------------------------------------- */
+  .desk{
+    width: 320px; flex: 0 0 auto; border-radius: 30px; padding: 22px 16px;
+    background:
+      radial-gradient(120% 80% at 15% 8%, #cfe9ff 0%, #a9d6f5 42%, #86c46f 78%, #6bb35c 100%);
+    box-shadow: var(--shadow), 0 0 0 8px #2c2a27;
+    display:flex; flex-direction:column; gap: 16px;
+  }
+  .desk .icons{ display:flex; gap: 18px; }
+  .desk .appicon{
+    width: 46px; height:46px; border-radius: 13px;
+    background: var(--sun); display:grid; place-items:center; font-size: 22px;
+    box-shadow: 0 2px 4px rgba(0,0,0,.18);
+  }
+  .desk .appicon.alt{ background:#fff; }
+
+  .widget{
+    background: var(--paper); border-radius: var(--radius);
+    padding: 6px; box-shadow: 0 4px 12px rgba(0,0,0,.18);
+    display:flex; flex-direction:column; gap: 5px;
+  }
+  .w-head{
+    display:flex; align-items:center; gap: 6px;
+    background: var(--sun); border-radius: 14px 12px 14px 12px;
+    padding: 5px 8px 5px 12px;
+  }
+  .w-head .w-title{ flex:1; font-size: 13px; font-weight: 700; }
+  .w-head .w-btn{
+    width: 24px; height:24px; display:grid; place-items:center;
+    font-size: 14px; color: var(--ink);
+  }
+  .w-item{
+    display:flex; align-items:center; gap: 9px;
+    padding: 7px 10px; border-radius: 12px 14px 12px 14px;
+    font-size: 13px; background: var(--c, var(--sun));
+  }
+  .w-item .w-txt{ flex:1; overflow:hidden;
+    display: -webkit-box; -webkit-box-orient: vertical; }
+  .w-item .w-time{ font-size: 10.5px; color: rgba(61,58,56,.55); white-space:nowrap; }
+  .w-item.done{ background: var(--done); }
+  .w-item.done .w-txt{ color: var(--ink-soft); text-decoration: line-through; }
+  .w-item .check{ width: 17px; height:17px; border-width: 1.6px; }
+  .w-item .check.on::after{ left:4.4px; top:1px; width:4px; height:8px; border-width:1.7px; }
+
+  .caption{ font-size: 12px; color: var(--ink-soft); text-align:center; margin-top: 8px; }
+
+  /* 调色板 */
+  .palette{ display:flex; flex-wrap:wrap; gap: 12px; }
+  .chip{
+    width: 108px; border-radius: var(--radius-sm); padding: 12px;
+    font-size: 11px; color: var(--ink); box-shadow: var(--shadow);
+  }
+
+  footer{ margin-top: 60px; color: var(--ink-soft); font-size: 12.5px; }
+  footer code{ background: var(--paper); padding: 1px 6px; border-radius: 6px; }
+</style>
+</head>
+<body>
+
+<!-- 手绘描边用的 SVG 滤镜 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="wobble">
+    <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="3" seed="7" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="3"
+                       xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+
+<div class="wrap">
+
+  <h1>比特记 bitsay · UI/UX 预览稿</h1>
+  <p class="sub">
+    可爱 · 手绘 · 纸感。这一页是<strong>设计源</strong>：下面所有参数都能实时拖，
+    调满意了再回填到 Android（映射表见 <code>PROGERSS.md §13</code>）。
+  </p>
+
+  <!-- ============ 实时调参 ============ -->
+  <h2>① 调参台</h2>
+  <div class="panel sketch">
+    <div class="row">
+      <label class="ctrl">圆角
+        <input type="range" id="r" min="6" max="30" value="20">
+        <output id="rv">20</output>
+      </label>
+      <label class="ctrl">描边
+        <input type="range" id="b" min="0" max="4" step="0.5" value="2">
+        <output id="bv">2</output>
+      </label>
+      <label class="ctrl">手绘抖动
+        <input type="range" id="w" min="0" max="6" step="0.5" value="2.5">
+        <output id="wv">2.5</output>
+      </label>
+      <label class="ctrl">纸纹点阵
+        <input type="range" id="d" min="0" max="2" step="0.1" value="1">
+        <output id="dv">1</output>
+      </label>
+      <div class="ctrl">主色
+        <div class="swatches" id="accents">
+          <div class="sw on" data-c="#FFD34E" style="background:#FFD34E"></div>
+          <div class="sw" data-c="#B7E4C7" style="background:#B7E4C7"></div>
+          <div class="sw" data-c="#AEDCEB" style="background:#AEDCEB"></div>
+          <div class="sw" data-c="#FFC2C9" style="background:#FFC2C9"></div>
+          <div class="sw" data-c="#D9CCF0" style="background:#D9CCF0"></div>
+          <div class="sw" data-c="#FFD3B6" style="background:#FFD3B6"></div>
+        </div>
+      </div>
+      <button class="btn" id="reset">恢复默认</button>
+    </div>
+  </div>
+
+  <!-- ============ 手机界面 ============ -->
+  <h2>② App 界面</h2>
+  <div class="stage">
+
+    <!-- 笔记列表 -->
+    <div class="phone">
+      <div class="pill"></div>
+      <div class="screen">
+        <div class="statusbar"><span>18:07</span><span>5G &nbsp; 87%</span></div>
+        <div class="appbar">
+          <div class="titles">
+            <h3>笔记</h3>
+            <div class="count">3 条笔记</div>
+          </div>
+          <div class="iconbtn">🔍</div>
+          <div class="iconbtn">⚙</div>
+        </div>
+        <div class="seg" style="--seg-accent: var(--sun)">
+          <div class="on">笔记</div><div>待办</div>
+        </div>
+        <div class="list">
+          <div class="card sketch" style="--c: var(--sun)">
+            <div class="txt">中文笔记：今天天气不错，去公园走走吧 🌿</div>
+            <div class="meta">刚刚</div>
+          </div>
+          <div class="card sketch" style="--c: var(--mint)">
+            <div class="txt">会议纪要
+1. 确定 Q4 目标
+2. 排期评审</div>
+            <div class="meta">今天 17:00</div>
+          </div>
+          <div class="card sketch" style="--c: var(--sky)">
+            <div class="txt">读书笔记：不完美的完美</div>
+            <div class="meta">昨天 18:00</div>
+          </div>
+          <div class="card sketch" style="--c: var(--blush)">
+            <div class="txt">灵感：把「记一条」做成桌面上的一个按钮</div>
+            <div class="meta">3月8日</div>
+          </div>
+        </div>
+        <div class="fab sketch" style="--sketch-color: rgba(61,58,56,.2)">＋</div>
+      </div>
+    </div>
+
+    <!-- 待办列表 -->
+    <div class="phone">
+      <div class="pill"></div>
+      <div class="screen">
+        <div class="statusbar"><span>18:07</span><span>5G &nbsp; 87%</span></div>
+        <div class="appbar">
+          <div class="titles">
+            <h3>待办</h3>
+            <div class="count">3 条待办 · 1 条未完成</div>
+          </div>
+          <div class="iconbtn">🔍</div>
+          <div class="iconbtn">⚙</div>
+        </div>
+        <div class="seg" style="--seg-accent: var(--mint)">
+          <div>笔记</div><div class="on">待办</div>
+        </div>
+        <div class="list">
+          <div class="card sketch" style="--c: var(--sky)">
+            <div class="row-todo">
+              <div class="check"></div>
+              <div>
+                <div class="txt">回复客户邮件</div>
+                <div class="meta">13 分钟前</div>
+              </div>
+            </div>
+          </div>
+          <div class="card sketch" style="--c: var(--mint)">
+            <div class="row-todo">
+              <div class="check"></div>
+              <div>
+                <div class="txt">买牛奶和鸡蛋</div>
+                <div class="meta">刚刚</div>
+              </div>
+            </div>
+          </div>
+          <div class="card done sketch" style="--c: var(--done)">
+            <div class="row-todo">
+              <div class="check on"></div>
+              <div>
+                <div class="txt">预约牙医</div>
+                <div class="meta">9月29日</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="fab sketch" style="--sketch-color: rgba(61,58,56,.2)">＋</div>
+      </div>
+    </div>
+
+    <!-- 编辑器 -->
+    <div class="phone">
+      <div class="pill"></div>
+      <div class="screen">
+        <div class="statusbar"><span>18:07</span><span>5G &nbsp; 87%</span></div>
+        <div class="appbar">
+          <div class="iconbtn">‹</div>
+          <div class="titles" style="padding-left:6px"><h3 style="font-size:19px">笔记</h3></div>
+          <div class="iconbtn">🗑</div>
+        </div>
+        <div class="sheet sketch">
+          灵感：把「记一条」做成桌面上的一个按钮
+          <span style="opacity:.35">|</span>
+        </div>
+        <div class="editor-foot">
+          <div>
+            <div>✓ 已自动保存 · 刚刚</div>
+            <div style="opacity:.7">创建于 2026-10-01 18:07</div>
+          </div>
+          <div class="done-btn sketch">✓ 完成</div>
+        </div>
+        <div style="flex:1"></div>
+      </div>
+    </div>
+
+    <!-- 设置 -->
+    <div class="phone">
+      <div class="pill"></div>
+      <div class="screen">
+        <div class="statusbar"><span>18:07</span><span>5G &nbsp; 87%</span></div>
+        <div class="appbar">
+          <div class="iconbtn">‹</div>
+          <div class="titles" style="padding-left:6px"><h3 style="font-size:19px">设置</h3></div>
+        </div>
+        <div class="kicker">概览</div>
+        <div class="setcard accent sketch">
+          <div class="set-title">6 条笔记 · 4 条待办</div>
+          <div class="set-desc">其中 2 条待办还没完成</div>
+        </div>
+        <div class="kicker">备份与恢复</div>
+        <div class="setcard sketch">
+          <div class="set-item">
+            <div class="glyph">⬇</div>
+            <div><div class="set-title">导出备份</div>
+                 <div class="set-desc">把所有笔记和待办导出成一个 .json 文件</div></div>
+          </div>
+          <div class="set-item">
+            <div class="glyph">⬆</div>
+            <div><div class="set-title">导入备份</div>
+                 <div class="set-desc">从备份文件恢复（可选择覆盖或合并）</div></div>
+          </div>
+        </div>
+        <div class="kicker">桌面小组件</div>
+        <div class="setcard tip sketch">
+          <div class="set-desc" style="color:var(--ink);font-size:13px">
+            长按桌面空白处 → 小组件 → 找到「比特记」，即可把列表放到桌面上。
+          </div>
+        </div>
+        <div class="kicker">关于</div>
+        <div class="setcard about sketch">
+          <div class="set-title">比特记 Bitsay</div>
+          <div class="set-desc">版本 1.0.0 (1)</div>
+          <div class="set-desc" style="margin-top:8px">纯文字笔记 + 待办，零权限，数据只在你自己手里。</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============ 桌面小组件 ============ -->
+  <h2>③ 桌面小组件（同一套配色，三种尺寸）</h2>
+  <div class="stage">
+
+    <!-- 笔记 · 大 -->
+    <div>
+      <div class="desk">
+        <div class="icons">
+          <div class="appicon alt">🌤</div>
+          <div class="appicon">📝</div>
+        </div>
+        <div class="widget sketch">
+          <div class="w-head">
+            <div class="w-title">笔记</div>
+            <div class="w-btn">⇄</div>
+            <div class="w-btn">＋</div>
+          </div>
+          <div class="w-item" style="--c: var(--sun)">
+            <div class="w-txt" style="-webkit-line-clamp:3">中文笔记：今天天气不错，去公园走走吧 🌿</div>
+            <div class="w-time">刚刚</div>
+          </div>
+          <div class="w-item" style="--c: var(--sky)">
+            <div class="w-txt" style="-webkit-line-clamp:3">会议纪要
+1. 确定 Q4 目标
+2. 排期评审</div>
+            <div class="w-time">今天 17:00</div>
+          </div>
+          <div class="w-item" style="--c: var(--mint)">
+            <div class="w-txt" style="-webkit-line-clamp:3">读书笔记：不完美的完美</div>
+            <div class="w-time">昨天 18:00</div>
+          </div>
+          <div class="w-item" style="--c: var(--blush)">
+            <div class="w-txt" style="-webkit-line-clamp:3">灵感：把「记一条」做成桌面上的一个按钮</div>
+            <div class="w-time">3月8日</div>
+          </div>
+        </div>
+      </div>
+      <div class="caption">EXPANDED · 3 行文字 + 时间</div>
+    </div>
+
+    <!-- 待办 · 中 -->
+    <div>
+      <div class="desk">
+        <div class="icons">
+          <div class="appicon alt">🌤</div>
+          <div class="appicon">📝</div>
+        </div>
+        <div class="widget sketch">
+          <div class="w-head">
+            <div class="w-title">待办</div>
+            <div class="w-btn">⇄</div>
+            <div class="w-btn">＋</div>
+          </div>
+          <div class="w-item" style="--c: var(--sky)">
+            <div class="check"></div>
+            <div class="w-txt" style="-webkit-line-clamp:2">回复客户邮件</div>
+          </div>
+          <div class="w-item" style="--c: var(--mint)">
+            <div class="check"></div>
+            <div class="w-txt" style="-webkit-line-clamp:2">买牛奶和鸡蛋</div>
+          </div>
+          <div class="w-item done" style="--c: var(--done)">
+            <div class="check on"></div>
+            <div class="w-txt" style="-webkit-line-clamp:2">预约牙医</div>
+          </div>
+        </div>
+      </div>
+      <div class="caption">REGULAR · 2 行文字，点圆圈直接勾掉</div>
+    </div>
+
+    <!-- 待办 · 小 -->
+    <div>
+      <div class="desk">
+        <div class="icons">
+          <div class="appicon alt">🌤</div>
+          <div class="appicon">📝</div>
+        </div>
+        <div class="widget sketch">
+          <div class="w-item" style="--c: var(--sky)">
+            <div class="check"></div>
+            <div class="w-txt" style="-webkit-line-clamp:1">回复客户邮件</div>
+          </div>
+          <div class="w-item" style="--c: var(--mint)">
+            <div class="check"></div>
+            <div class="w-txt" style="-webkit-line-clamp:1">买牛奶和鸡蛋</div>
+          </div>
+        </div>
+      </div>
+      <div class="caption">COMPACT · 单行、无顶栏，最省地方</div>
+    </div>
+
+  </div>
+
+  <!-- ============ 调色板 ============ -->
+  <h2>④ 调色板</h2>
+  <div class="panel sketch">
+    <div class="palette">
+      <div class="chip" style="background:var(--bg)">bg<br>#FCF3E8</div>
+      <div class="chip" style="background:var(--paper)">paper<br>#FFFDF7</div>
+      <div class="chip" style="background:var(--sun)">sun<br>#FFD34E</div>
+      <div class="chip" style="background:var(--mint)">mint<br>#B7E4C7</div>
+      <div class="chip" style="background:var(--sky)">sky<br>#AEDCEB</div>
+      <div class="chip" style="background:var(--blush)">blush<br>#FFC2C9</div>
+      <div class="chip" style="background:var(--lilac)">lilac<br>#D9CCF0</div>
+      <div class="chip" style="background:var(--peach)">peach<br>#FFD3B6</div>
+      <div class="chip" style="background:var(--done)">done<br>#EDE9E1</div>
+      <div class="chip" style="background:var(--ink);color:#fff">ink<br>#3D3A38</div>
+      <div class="chip" style="background:var(--ink-soft);color:#fff">ink-soft<br>#8A8279</div>
+    </div>
+  </div>
+
+  <footer>
+    <p>
+      这一页只用了 HTML/CSS，没有任何外部依赖，直接双击打开即可。<br>
+      左边调参台改的是 CSS 变量，Android 端对应
+      <code>ui/theme/Color.kt</code>、<code>ui/theme/Theme.kt</code>（圆角 / Shapes）、
+      <code>res/values/colors.xml</code>（小组件共用）、<code>ui/components/Common.kt</code>（纸纹、卡片描边）。<br>
+      小组件外观对应 <code>res/layout/widget_bitsay.xml</code> + <code>widget_item.xml</code>
+      + <code>res/drawable/widget_*.xml</code>。
+    </p>
+  </footer>
+
+</div>
+
+<script>
+  const root = document.documentElement;
+  const bind = (id, out, cssVar, suffix = '') => {
+    const el = document.getElementById(id), o = document.getElementById(out);
+    const apply = () => { root.style.setProperty(cssVar, el.value + suffix); o.textContent = el.value; };
+    el.addEventListener('input', apply); apply();
+  };
+  bind('r', 'rv', '--radius', 'px');
+  bind('b', 'bv', '--border', 'px');
+  bind('w', 'wv', '--wobble');
+  bind('d', 'dv', '--dots');
+
+  // 手绘抖动强度作用在 SVG 滤镜上
+  const wobbleFilter = document.querySelector('#wobble feDisplacementMap');
+  document.getElementById('w').addEventListener('input', e => {
+    wobbleFilter.setAttribute('scale', e.target.value);
+  });
+
+  // 主色（分段切换 / 强调）
+  document.getElementById('accents').addEventListener('click', e => {
+    const sw = e.target.closest('.sw'); if (!sw) return;
+    document.querySelectorAll('.sw').forEach(s => s.classList.remove('on'));
+    sw.classList.add('on');
+    const c = sw.dataset.c;
+    document.querySelectorAll('.seg').forEach(seg => seg.style.setProperty('--seg-accent', c));
+    document.querySelectorAll('.fab, .done-btn').forEach(el => {
+      el.style.background = el.classList.contains('done-btn')
+        ? getComputedStyle(root).getPropertyValue('--mint') : c;
+    });
+    document.querySelectorAll('.w-head').forEach(h => h.style.background = c);
+    root.style.setProperty('--sun', c);
+  });
+
+  document.getElementById('reset').addEventListener('click', () => {
+    const d = {r:20, b:2, w:2.5, d:1};
+    for (const k in d) { const el = document.getElementById(k); el.value = d[k]; el.dispatchEvent(new Event('input')); }
+    document.querySelectorAll('.sw').forEach((s,i) => s.classList.toggle('on', i === 0));
+    root.style.setProperty('--sun', '#FFD34E');
+    document.querySelectorAll('.w-head').forEach(h => h.style.background = '');
+    document.querySelectorAll('.seg').forEach(seg => seg.style.removeProperty('--seg-accent'));
+    document.querySelectorAll('.fab').forEach(el => el.style.background = '');
+    document.querySelectorAll('.done-btn').forEach(el => el.style.background = '');
+  });
+</script>
+</body>
+</html>

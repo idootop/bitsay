@@ -1,0 +1,116 @@
+# =============================================================================
+#  bitsay — .gitignore
+#
+#  分节：Gradle / Android 构建产物 / Kotlin / IDE / 签名与密钥
+#        / 本机专有文件 / 参考资料 / 系统垃圾
+#
+#  排查技巧：
+#    · 某文件为什么被忽略？  git check-ignore -v path/to/file
+#    · 有没有漏网之鱼？      git status --short -uall
+#    · 提交前预演一次：      git add -A -n
+#
+#  注意：不要加 `*.jar` / `*.aar`。那会连 gradle/wrapper/gradle-wrapper.jar
+#        一起干掉，clone 下来直接没法构建。构建产物本来就都在 build/ 下面。
+# =============================================================================
+
+
+# ---------------------------------------------------------------- Gradle
+.gradle/
+build/
+gradle-app.setting
+.gradletasknamecache
+# 构建扫描 / 依赖分析产物
+build-scans/
+*.buildscan
+
+
+# ---------------------------------------------------------------- Android 构建产物
+# 绝大多数落在 build/ 下，这里再兜一层，防止有人手动拷出来
+*.apk
+*.aab
+*.apks
+*.idsig
+*.ap_
+*.dex
+*.class
+*.hprof
+*.trace
+captures/
+output-metadata.json
+# 原生构建（NDK / CMake）
+.externalNativeBuild/
+.cxx/
+
+
+# ---------------------------------------------------------------- Kotlin
+# Kotlin 2.x 会在项目根写会话 / 增量编译状态（真实踩过：不忽略会脏化仓库）
+.kotlin/
+# KSP / KAPT 生成物（本项目当前没用，留着防以后引入）
+ksp/
+.kaptBuildCache/
+
+
+# ---------------------------------------------------------------- Android Studio / IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+.navigation/
+# 若以后想共享团队代码风格，把 `.idea/` 换成 `.idea/*` 再反向放行：
+# !.idea/codeStyles/
+# !.idea/inspectionProfiles/
+
+
+# ---------------------------------------------------------------- 签名与密钥（绝不入库）
+# ⚠️ 删掉这几行 = 把正式分发签名和口令公开出去，不要动。
+#    反面代价：密钥不进库，所以 keystore/ 与 keystore.properties 必须另行备份，
+#    否则换电脑 / 丢盘之后就永远无法给 com.del.bitsay 发更新。
+keystore/*
+!keystore/README.md
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pepk
+keystore.properties
+signing.properties
+!keystore.properties.example
+
+
+# ---------------------------------------------------------------- 本机专有 / SDK 路径
+local.properties
+sdk.dir
+ndk.dir
+.env
+.env.*
+!.env.example
+
+
+# ---------------------------------------------------------------- 参考资料（只读，不属于本仓库）
+# refs/ 下是第三方同类应用源码与截图，仅作参考，不参与构建也不进版本库
+/refs/
+
+
+# ---------------------------------------------------------------- 系统与编辑器垃圾
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+Thumbs.db
+desktop.ini
+*~
+*.swp
+*.swo
+*.orig
+*.rej
+*.bak
+*.tmp
+.vscode/
+.fleet/
+.history/
+*.log
+hs_err_pid*
+replay_pid*

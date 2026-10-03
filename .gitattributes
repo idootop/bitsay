@@ -1,0 +1,58 @@
+# =============================================================================
+#  bitsay — .gitattributes
+#
+#  目的：统一换行符，避免「在 Windows 上提交过一次，macOS/Linux 上就跑不起来」。
+#  为什么现在加：仓库里只有 LICENSE / README.md 两个文本文件入过库，
+#  此刻引入 `text=auto` 不会产生任何重新规范化的巨型 diff。以后再加就麻烦了。
+# =============================================================================
+
+# 默认：git 自动识别文本文件，入库一律 LF
+* text=auto eol=lf
+
+
+# ---------------------------------------------------------------- 换行符必须锁死的文件
+# Gradle wrapper 的启动脚本必须是 LF。这是 Android 项目最经典的坑：
+# 一旦被写成 CRLF，macOS/Linux 执行 ./gradlew 会直接报
+#   /usr/bin/env: 'sh\r': No such file or directory
+gradlew  text eol=lf
+*.sh     text eol=lf
+
+# Windows 批处理必须是 CRLF
+*.bat    text eol=crlf
+*.cmd    text eol=crlf
+
+
+# ---------------------------------------------------------------- 源码与配置（显式声明便于 diff / merge）
+*.kt          text eol=lf
+*.kts         text eol=lf
+*.java        text eol=lf
+*.xml         text eol=lf
+*.json        text eol=lf
+*.md          text eol=lf
+*.pro         text eol=lf
+*.toml        text eol=lf
+*.properties  text eol=lf
+*.gitignore   text eol=lf
+*.gitattributes text eol=lf
+
+
+# ---------------------------------------------------------------- 二进制：禁止换行符转换与文本 diff
+*.jks       binary
+*.keystore  binary
+*.p12       binary
+*.pfx       binary
+*.apk       binary
+*.aab       binary
+*.jar       binary
+*.aar       binary
+*.so        binary
+*.dex       binary
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.webp      binary
+*.gif       binary
+*.ico       binary
+*.ttf       binary
+*.otf       binary
+*.zip       binary

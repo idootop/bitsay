@@ -1,0 +1,293 @@
+package com.del.bitsay.core.repo
+
+import com.del.bitsay.core.model.Item
+import com.del.bitsay.core.model.Kind
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class ItemRepositoryTest {
+
+    private var now = 1_000_000L
+    private val store = FakeItemStore()
+    private val repository = ItemRepository(
+        store = store,
+        clock = { now },
+        dispatcher = UnconfinedTestDispatcher(),
+    )
+
+    @Test
+    fun `add trims text and stamps both timestamps`() = runTest {
+        val id = repository.add(Kind.NOTE, "  买牛奶  ")
+
+        assertNotNull(id)
+        val saved = store.findById(id!!)!!
+        assertEquals("买牛奶", saved.text)
+        assertEquals(1_000_000L, saved.createdAt)
+        assertEquals(1_000_000L, saved.updatedAt)
+        assertNull(saved.doneAt)
+        assertFalse(saved.done)
+    }
+
+    @Test
+    fun `add refuses blank text`() = runTest {
+        assertNull(repository.add(Kind.NOTE, "   "))
+        assertNull(repository.add(Kind.TODO, "\n\t"))
+        assertEquals(0, store.count(Kind.NOTE))
+    }
+
+    @Test
+    fun `add caps runaway text`() = runTest {
+        val huge = "x".repeat(ItemRepository.MAX_TEXT_LENGTH + 500)
+        val id = repository.add(Kind.NOTE, huge)!!
+        assertEquals(ItemRepository.MAX_TEXT_LENGTH, store.findById(id)!!.text.length)
+    }
+
+    @Test
+    fun `notes and todos stay in separate lists`() = runTest {
+        repository.add(Kind.NOTE, "a note")
+        repository.add(Kind.TODO, "a todo")
+
+        assertEquals(1, repository.notes.value.size)
+        assertEquals(1, repository.todos.value.size)
+        assertEquals(Kind.NOTE, repository.notes.value.single().kind)
+        assertEquals(Kind.TODO, repository.todos.value.single().kind)
+    }
+
+    @Test
+    fun `updateText bumps updatedAt but never createdAt`() = runTest {
+        val id = repository.add(Kind.NOTE, "first")!!
+        now = 2_000_000L
+
+        assertTrue(repository.updateText(id, "  second  "))
+
+        val saved = store.findById(id)!!
+        assertEquals("second", saved.text)
+        assertEquals(1_000_000L, saved.createdAt)
+        assertEquals(2_000_000L, saved.updatedAt)
+    }
+
+    @Test
+    fun `updateText is a no-op when nothing changed`() = runTest {
+        val id = repository.add(Kind.NOTE, "same")!!
+        now = 2_000_000L
+
+        assertFalse(repository.updateText(id, "same"))
+        assertEquals(1_000_000L, store.findById(id)!!.updatedAt)
+    }
+
+    @Test
+    fun `updateText refuses to blank out an existing note`() = runTest {
+        val id = repository.add(Kind.NOTE, "keep me")!!
+        assertFalse(repository.updateText(id, "   "))
+        assertEquals("keep me", store.findById(id)!!.text)
+    }
+
+    @Test
+    fun `setDone records and clears doneAt`() = runTest {
+        val id = repository.add(Kind.TODO, "walk the dog")!!
+
+        now = 3_000_000L
+        assertTrue(repository.setDone(id, true))
+        assertEquals(3_000_000L, store.findById(id)!!.doneAt)
+        assertTrue(store.findById(id)!!.done)
+
+        now = 4_000_000L
+        assertTrue(repository.setDone(id, false))
+        assertNull(store.findById(id)!!.doneAt)
+        assertFalse(store.findById(id)!!.done)
+    }
+
+    @Test
+    fun `setDone refuses to tick a note`() = runTest {
+        val id = repository.add(Kind.NOTE, "just a note")!!
+        assertFalse(repository.setDone(id, true))
+        assertFalse(store.findById(id)!!.done)
+    }
+
+    @Test
+    fun `toggleDone flips the state`() = runTest {
+        val id = repository.add(Kind.TODO, "flip")!!
+        assertTrue(repository.toggleDone(id))
+        assertTrue(store.findById(id)!!.done)
+        assertTrue(repository.toggleDone(id))
+        assertFalse(store.findById(id)!!.done)
+    }
+
+    @Test
+    fun `delete removes the row and refreshes the cache`() = runTest {
+        val id = repository.add(Kind.NOTE, "bye")!!
+        assertTrue(repository.delete(id))
+        assertTrue(repository.notes.value.isEmpty())
+        assertFalse(repository.delete(id))
+    }
+
+    @Test
+    fun `open todos sort above finished ones`() = runTest {
+        val first = repository.add(Kind.TODO, "done one")!!
+        now = 2_000_000L
+        repository.add(Kind.TODO, "open one")
+        repository.setDone(first, true)
+
+        assertEquals(listOf("open one", "done one"), repository.todos.value.map { it.text })
+    }
+
+    @Test
+    fun `dataVersion increments only on real writes`() = runTest {
+        val before = repository.dataVersion.value
+        repository.add(Kind.NOTE, "   ") // rejected
+        assertEquals(before, repository.dataVersion.value)
+
+        val id = repository.add(Kind.NOTE, "real")!!
+        assertEquals(before + 1, repository.dataVersion.value)
+
+        repository.updateText(id, "real") // no change
+        assertEquals(before + 1, repository.dataVersion.value)
+
+        repository.updateText(id, "changed")
+        assertEquals(before + 2, repository.dataVersion.value)
+    }
+
+    // ------------------------------------------------------------------ autosave
+
+    @Test
+    fun `saveDraft on a brand new entry creates the row and returns its id`() = runTest {
+        val id = repository.saveDraft(id = 0L, kind = Kind.NOTE, text = "半句话")
+
+        assertTrue(id > 0L)
+        assertEquals("半句话", store.findById(id)!!.text)
+        assertEquals(1, repository.notes.value.size)
+    }
+
+    @Test
+    fun `saveDraft keeps updating the same row instead of inserting again`() = runTest {
+        val id = repository.saveDraft(0L, Kind.NOTE, "一")
+        now = 2_000_000L
+        val again = repository.saveDraft(id, Kind.NOTE, "一句话")
+        now = 3_000_000L
+        val third = repository.saveDraft(again, Kind.NOTE, "一句话，写完")
+
+        assertEquals(id, again)
+        assertEquals(id, third)
+        assertEquals(1, store.count(Kind.NOTE))
+        assertEquals("一句话，写完", store.findById(id)!!.text)
+        assertEquals(1_000_000L, store.findById(id)!!.createdAt)
+        assertEquals(3_000_000L, store.findById(id)!!.updatedAt)
+    }
+
+    @Test
+    fun `saveDraft with unchanged text does not touch the database`() = runTest {
+        val id = repository.saveDraft(0L, Kind.NOTE, "稳定")
+        val version = repository.dataVersion.value
+        now = 5_000_000L
+
+        assertEquals(id, repository.saveDraft(id, Kind.NOTE, "稳定"))
+
+        assertEquals(version, repository.dataVersion.value)
+        assertEquals(1_000_000L, store.findById(id)!!.updatedAt)
+    }
+
+    @Test
+    fun `saveDraft of blank text never creates anything`() = runTest {
+        assertEquals(0L, repository.saveDraft(0L, Kind.NOTE, "   "))
+        assertEquals(0, store.count(Kind.NOTE))
+    }
+
+    @Test
+    fun `saveDraft of blank text leaves an existing row alone`() = runTest {
+        val id = repository.saveDraft(0L, Kind.NOTE, "别删我")
+        now = 9_000_000L
+
+        assertEquals(id, repository.saveDraft(id, Kind.NOTE, ""))
+
+        assertEquals("别删我", store.findById(id)!!.text)
+        assertEquals(1_000_000L, store.findById(id)!!.updatedAt)
+    }
+
+    @Test
+    fun `saveDraft trims and caps like the other writes`() = runTest {
+        val id = repository.saveDraft(0L, Kind.TODO, "   padded   ")
+        assertEquals("padded", store.findById(id)!!.text)
+
+        val huge = repository.saveDraft(id, Kind.TODO, "y".repeat(ItemRepository.MAX_TEXT_LENGTH + 9))
+        assertEquals(ItemRepository.MAX_TEXT_LENGTH, store.findById(huge)!!.text.length)
+    }
+
+    // ------------------------------------------------------------------ restore
+
+    @Test
+    fun `restore with replace wipes everything first`() = runTest {
+        repository.add(Kind.NOTE, "local only")
+        val incoming = listOf(
+            Item(id = 7, kind = Kind.NOTE, text = "from backup", createdAt = 10, updatedAt = 20),
+            Item(id = 8, kind = Kind.TODO, text = "todo from backup", createdAt = 10, updatedAt = 30),
+        )
+
+        val result = repository.restore(incoming, replace = true)
+
+        assertEquals(2, result.inserted)
+        assertEquals(0, result.updated)
+        assertEquals(listOf("from backup", "todo from backup"), store.snapshot().map { it.text })
+        assertEquals(listOf("from backup"), repository.notes.value.map { it.text })
+    }
+
+    @Test
+    fun `restore merge keeps local copies that are newer`() = runTest {
+        val localId = repository.add(Kind.NOTE, "local new text")!!
+        now = 5_000_000L
+        repository.updateText(localId, "local newer text")
+
+        val result = repository.restore(
+            listOf(
+                // older than the local row -> must be ignored
+                Item(id = localId, kind = Kind.NOTE, text = "stale", createdAt = 1, updatedAt = 2),
+                // brand new -> must be inserted
+                Item(id = 99, kind = Kind.NOTE, text = "brand new", createdAt = 1, updatedAt = 3),
+            ),
+            replace = false,
+        )
+
+        assertEquals(1, result.inserted)
+        assertEquals(0, result.updated)
+        assertTrue(store.snapshot().any { it.text == "local newer text" })
+        assertTrue(store.snapshot().any { it.text == "brand new" })
+        assertFalse(store.snapshot().any { it.text == "stale" })
+    }
+
+    @Test
+    fun `restore merge overwrites local copies that are older`() = runTest {
+        val localId = repository.add(Kind.NOTE, "old")!! // updatedAt = 1_000_000
+
+        val result = repository.restore(
+            listOf(
+                Item(id = localId, kind = Kind.NOTE, text = "restored", createdAt = 1, updatedAt = 9_000_000),
+            ),
+            replace = false,
+        )
+
+        assertEquals(0, result.inserted)
+        assertEquals(1, result.updated)
+        assertEquals("restored", store.findById(localId)!!.text)
+    }
+
+    @Test
+    fun `restore drops blank entries from a hand edited backup`() = runTest {
+        val result = repository.restore(
+            listOf(
+                Item(id = 1, kind = Kind.NOTE, text = "  ", createdAt = 1, updatedAt = 1),
+                Item(id = 2, kind = Kind.NOTE, text = "  keep  ", createdAt = 1, updatedAt = 1),
+            ),
+            replace = true,
+        )
+
+        assertEquals(1, result.total)
+        assertEquals(listOf("keep"), store.snapshot().map { it.text })
+    }
+}

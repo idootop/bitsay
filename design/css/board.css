@@ -14,7 +14,7 @@
 .knob__cap{ font-size:12px; color:var(--sh-ink-soft); margin-bottom:10px; letter-spacing:.3px; }
 .knob__row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 /* 组件库里的预览需要 App 的令牌，所以套一层 app-root，但不铺满屏幕 */
-.demo-list{ display:flex; flex-direction:column; gap:var(--gap-list); }
+.demo-list{ display:flex; flex-direction:column; gap:var(--list-gap); }
 
 /* 调色板 */
 .pal{ display:flex; flex-wrap:wrap; gap:12px; }

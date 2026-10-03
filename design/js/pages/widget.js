@@ -54,23 +54,17 @@ BitSay.pages.widget = (function () {
       const items = S.list(kind);
       const { withHeader: showHeader, rows: visible } = layout();
 
-      const palette = kind === 'todo'
-        ? ['--c-sky', '--c-mint', '--c-blush']
-        : ['--c-sun', '--c-mint', '--c-sky', '--c-blush', '--c-lilac', '--c-peach'];
-
       box.innerHTML = `
         <div class="widget__head" ${showHeader ? '' : 'hidden'}>
           <button class="widget__icon" type="button" data-act="openapp" title="打开应用">${I.openApp()}</button>
           <button class="widget__tab ${kind === 'note' ? 'widget__tab--on' : ''}" type="button"
-            data-kind="note" style="--w-accent:var(--c-sun)">笔记</button>
+            data-kind="note">笔记</button>
           <button class="widget__tab ${kind === 'todo' ? 'widget__tab--on' : ''}" type="button"
-            data-kind="todo" style="--w-accent:var(--c-mint)">待办</button>
+            data-kind="todo">待办</button>
           <button class="widget__icon" type="button" data-act="search" title="搜索">${I.search()}</button>
         </div>
         ${items.length ? `<div class="widget__list">${items.slice(0, Math.max(visible, 1)).map((it, i) => {
-          const fill = it.done ? 'var(--c-done)' : `var(${palette[i % palette.length]})`;
-          return `<div class="widget__row ${it.done ? 'widget__row--done' : ''}" data-id="${it.id}"
-                    style="--row-fill:${fill}">
+          return `<div class="widget__row ${it.done ? 'widget__row--done' : ''} ${it.kind === 'todo' ? '' : 'widget__row--plain'}" data-id="${it.id}">
             ${it.kind === 'todo'
               ? `<span class="widget__tick" data-act="tick">${it.done ? I.check() : I.todoOpen()}</span>`
               : ''}

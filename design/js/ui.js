@@ -18,26 +18,21 @@ BitSay.ui = (function () {
   const ICON_BUTTON = (name, cls = '') =>
     `<button class="icon-btn ${cls}" data-icon="${name}" type="button">${I[name]()}</button>`;
 
-  /** 分段 tab（对应 SegmentedTabs）：accent 是选中色 */
-  function seg(items, activeKey, opts = {}) {
-    return `<div class="seg" ${opts.attr || ''}>` + items.map((it) =>
+  /** 分段 tab（对应 SegmentedTabs）：选中态是浮起的白色药丸，不需要传颜色 */
+  function seg(items, activeKey) {
+    return `<div class="seg">` + items.map((it) =>
       `<button type="button" class="seg__item ${it.key === activeKey ? 'seg__item--on' : ''}"
-        data-seg="${it.key}" style="--seg-accent:var(${it.accent})">${esc(it.label)}</button>`
+        data-seg="${it.key}">${esc(it.label)}</button>`
     ).join('') + `</div>`;
   }
 
   /**
    * 列表条目卡片 —— 全站唯一实现。
    * @param item  数据
-   * @param idx   在列表中的序号（决定粉彩轮转色）
+   * @param idx   在列表中的序号（保留参数，当前不用于配色）
    * @param opts  { selecting, selected }  多选态
    */
   function card(item, idx, opts = {}) {
-    const palette = item.kind === 'todo'
-      ? ['--c-sky', '--c-mint', '--c-blush']
-      : ['--c-sun', '--c-mint', '--c-sky', '--c-blush', '--c-lilac', '--c-peach'];
-    const fill = item.done ? 'var(--c-done)' : `var(${palette[idx % palette.length]})`;
-
     let lead = '';
     if (opts.selecting) {
       lead = `<span class="pick ${opts.selected ? 'pick--on' : ''}">
@@ -48,8 +43,7 @@ BitSay.ui = (function () {
                 title="勾选完成">${item.done ? I.check() : ''}</button>`;
     }
 
-    return `<article class="card inked ${item.done ? 'card--done' : ''}" data-id="${item.id}"
-              style="--card-fill:${fill}" tabindex="0">
+    return `<article class="card inked ${item.done ? 'card--done' : ''}" data-id="${item.id}" tabindex="0">
       ${lead}
       <div class="card__body">
         <div class="card__text">${esc(singleLine(item.text))}</div>

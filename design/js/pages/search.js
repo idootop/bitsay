@@ -30,20 +30,26 @@ BitSay.pages.search = (function () {
 
     function renderTabs() {
       el('tabs').innerHTML = U.seg([
-        { key: 'note', label: '笔记', accent: '--c-sun' },
-        { key: 'todo', label: '待办', accent: '--c-mint' }
+        { key: 'note', label: '笔记' },
+        { key: 'todo', label: '待办' }
       ], tab);
     }
 
     function renderResults() {
       const q = input.value;
       if (!q.trim()) {
-        el('list').innerHTML = `<div class="empty">输入关键词搜索笔记和待办</div>`;
+        el('list').innerHTML = `<div class="empty">
+          <div class="empty__title">想找什么？</div>
+          <div class="empty__hint">输入关键词，笔记和待办一起搜</div>
+        </div>`;
         return;
       }
       const hits = S.search(tab, q);          // ← 同一个词，在当前分类下重查
       if (!hits.length) {
-        el('list').innerHTML = `<div class="empty">没有找到相关内容</div>`;
+        el('list').innerHTML = `<div class="empty">
+          <div class="empty__title">没找到</div>
+          <div class="empty__hint">换个词试试</div>
+        </div>`;
         return;
       }
       el('list').innerHTML = hits.map((it, i) =>

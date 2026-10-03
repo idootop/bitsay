@@ -76,7 +76,7 @@ kbd{ background:#EFEBE4; border:1px solid var(--sh-line); border-bottom-width:2p
 .phone__screen{
   width:var(--screen-w); height:var(--screen-h);
   border-radius:30px; overflow:hidden; position:relative;
-  background:var(--c-bg);
+  background:var(--c-canvas);
   transition:background var(--dur) var(--ease);
 }
 /* 纸纹点阵铺满整屏（含状态栏下方），对应 PaperBackground */
@@ -95,7 +95,7 @@ kbd{ background:#EFEBE4; border:1px solid var(--sh-line); border-bottom-width:2p
 .statusbar{
   position:absolute; top:0; left:0; right:0; height:var(--safe-top); z-index:8;
   display:flex; justify-content:space-between; align-items:center;
-  font-size:11px; color:var(--c-ink-soft); padding:6px 14px 0; letter-spacing:.3px;
+  font-size:11px; color:var(--c-ink-3); padding:6px 14px 0; letter-spacing:.3px;
 }
 .statusbar__icons{ letter-spacing:1px; }
 /* 桌面上的状态栏是白字（压在壁纸上） */

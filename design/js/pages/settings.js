@@ -23,7 +23,7 @@ BitSay.pages.settings = (function () {
     const root = document.createElement('div');
     root.className = 'app-root page settings-page';
     root.innerHTML = `
-      <header class="topbar">
+      <header class="topbar topbar--page">
         <button class="icon-btn icon-btn--ink" type="button" data-act="back" title="返回">${I.back()}</button>
         <div class="topbar__titles"><h3 class="topbar__title">设置</h3></div>
       </header>
@@ -36,7 +36,7 @@ BitSay.pages.settings = (function () {
       const th = S.state.settings.theme, lg = S.state.settings.lang;
       el('body').innerHTML = `
         <div class="sect">概览</div>
-        <div class="block block--tinted inked" style="--block-fill:var(--c-sun)">
+        <div class="block inked">
           <div class="block__pad">
             <div class="big-stat">${c.notes} 条笔记 · ${c.todos} 个待办</div>
             <div class="note-text" style="margin-top:5px">其中 ${c.openTodos} 个还没完成</div>
@@ -60,7 +60,7 @@ BitSay.pages.settings = (function () {
         </div>
 
         <div class="sect">桌面小组件</div>
-        <div class="block block--tinted inked" style="--block-fill:var(--c-sky)">
+        <div class="block inked">
           <div class="srow" data-act="pin">
             <span class="srow__icon">${I.widget()}</span>
             <div class="srow__text"><div class="srow__title">添加到桌面</div>
@@ -89,7 +89,7 @@ BitSay.pages.settings = (function () {
         </div>
 
         <div class="sect">关于</div>
-        <div class="block block--tinted inked" style="--block-fill:var(--c-lilac)">
+        <div class="block inked">
           <div class="block__pad">
             <div style="font-weight:700">比特记</div>
             <div class="note-text" style="margin-top:3px">版本 1.0.0</div>

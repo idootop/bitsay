@@ -4,25 +4,27 @@
 
 /* ---------- 本页可调参数（只影响列表页，覆盖 tokens.css 的共享默认值） ---------- */
 .list-page{
-  --list-pad-x:      18px;   /* 左右留白（实测卡片 x 18..342） */
-  --list-pad-top:    12px;   /* tab 底 162 → 首卡顶 184 */
-  --list-pad-bottom: 104px;  /* 给 FAB 让位，对应 contentPadding bottom = 104.dp */
-  --list-gap:        10px;   /* 条目间距 */
-  --card-pad-y:      14px;
-  --card-pad-x:      16px;
+  --list-pad-x:      20px;   /* 左右留白 */
+  --list-pad-top:    14px;   /* tab 到首张卡片 */
+  --list-pad-bottom: 108px;  /* 给 FAB 让位 */
+  --list-gap:        10px;   /* 色卡之间的呼吸 */
+  --card-pad-y:      15px;
+  --card-pad-x:      17px;
 }
 
-/* ---------- 顶部栏：标题 22dp 起、y48 起；图标按钮贴右 12dp ---------- */
-.list-page .topbar{ padding:12px 12px 14px 22px; }
+/* ---------- 顶部栏：大标题 + 弱化的计数 ---------- */
+.list-page .topbar{ padding:14px 12px 12px var(--pad-page); }
+.list-page .seg{ margin:2px var(--pad-page) 0; }
 
-/* 多选态：整条顶栏被替换（标题、搜索、设置全部让位，tab 也一起收掉）
-   SelectionHeader: padding(start=12, end=12, top=12, bottom=14) */
+/* 多选态：整条顶栏被替换（标题、搜索、设置、tab 全部让位） */
 .list-page .selbar{
   display:flex; align-items:center; flex:0 0 auto;
-  padding:12px 12px 14px 12px;
+  padding:14px 12px 12px 12px;
 }
 .list-page .selbar__count{
-  flex:1 1 auto; padding-left:6px; font-size:17px; font-weight:700;
+  flex:1 1 auto; padding-left:8px;
+  font-size:var(--fs-title); line-height:var(--lh-title);
+  font-weight:700; letter-spacing:-.01em;
 }
 
 /* ---------- 列表 ---------- */

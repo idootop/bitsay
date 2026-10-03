@@ -58,17 +58,19 @@ BitSay.pages.list = (function () {
 
     function renderTabs() {
       el('tabs').innerHTML = selecting ? '' : U().seg([
-        { key: 'note', label: '笔记', accent: '--c-sun' },
-        { key: 'todo', label: '待办', accent: '--c-mint' }
+        { key: 'note', label: '笔记' },
+        { key: 'todo', label: '待办' }
       ], tab);
     }
 
     function renderList() {
       const items = S().list(tab);
       if (!items.length) {
-        el('list').innerHTML = `<div class="empty">${tab === 'note'
-          ? '还没有笔记\n点 + 写下第一条'
-          : '还没有待办\n点 + 添加一条'}</div>`;
+        const note = tab === 'note';
+        el('list').innerHTML = `<div class="empty">
+          <div class="empty__title">${note ? '还没有笔记' : '今天没事要做'}</div>
+          <div class="empty__hint">点右下角的 <b>+</b> ${note ? '写下第一条' : '加一条待办'}</div>
+        </div>`;
         return;
       }
       el('list').innerHTML = items.map((it, i) =>
@@ -95,6 +97,7 @@ BitSay.pages.list = (function () {
       root.classList.toggle('list-page--selecting', selecting);
       renderHead(); renderTabs(); renderList();
     }
+
 
     /* ---------------- 事件 ---------------- */
     root.addEventListener('click', (e) => {

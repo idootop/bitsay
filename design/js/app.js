@@ -11,11 +11,11 @@
 window.BitSay = window.BitSay || {};
 BitSay.app = (function () {
   const PAL = [
-    ['--c-bg', '背景 Bg'], ['--c-paper', '纸面 Paper'], ['--c-ink', '文字 Ink'],
-    ['--c-ink-soft', '次要 InkSoft'], ['--c-line', '分隔 Line'], ['--c-track', 'Tab 底槽'],
-    ['--c-sun', 'Sun · 强调'], ['--c-mint', 'Mint · 待办'], ['--c-sky', 'Sky'],
-    ['--c-blush', 'Blush'], ['--c-lilac', 'Lilac'], ['--c-peach', 'Peach'],
-    ['--c-done', '已完成 Done']
+    ['--c-canvas', '页面底 Canvas'], ['--c-surface', '纸面 Surface'],
+    ['--c-ink', '主文字 Ink'], ['--c-ink-2', '次要 Ink-2'], ['--c-ink-3', '更弱 Ink-3'],
+    ['--c-line', '发丝线 Line'],
+    ['--c-accent', '强调色 纯黑'], ['--c-accent-soft', '强调浅底'],
+    ['--c-card', '条目底 Card'], ['--c-card-done', '已完成条目']
   ];
 
   const el = (sel, root = document) => root.querySelector(sel);
@@ -208,10 +208,10 @@ BitSay.app = (function () {
       </div>
       <div class="knob">
         <div class="knob__cap">分段 tab</div>
-        <div style="margin:0">${U.seg([{ key: 'note', label: '笔记', accent: '--c-sun' },
-          { key: 'todo', label: '待办', accent: '--c-mint' }], 'note')}</div>
-        <div style="margin-top:10px">${U.seg([{ key: 'note', label: '笔记', accent: '--c-sun' },
-          { key: 'todo', label: '待办', accent: '--c-mint' }], 'todo')}</div>
+        <div style="margin:0">${U.seg([{ key: 'note', label: '笔记' },
+          { key: 'todo', label: '待办' }], 'note')}</div>
+        <div style="margin-top:10px">${U.seg([{ key: 'note', label: '笔记' },
+          { key: 'todo', label: '待办' }], 'todo')}</div>
       </div>
       <div class="knob">
         <div class="knob__cap">图标按钮 / FAB / 勾选圈</div>

@@ -1,42 +1,44 @@
 /* ==========================================================================
    搜索页 —— 对应 ui/screen/SearchScreen.kt
    独立成页；结果复用列表页的 .card，不另做一套。
-   实测：返回 12..52，输入框 58..348（高 38），tab 95..151
+   输入框用最亮的白 + 发丝线，比纸面更"近"，视线自然落上去。
    ========================================================================== */
 
 /* ---------- 本页可调参数 ---------- */
 .search-page{
-  --bar-pad-top: 12px;
-  --bar-pad-x: 12px;
-  --field-gap: 6px;         /* 返回按钮到输入框 */
-  --field-pad-y: 10px;      /* 输入框上下内边距（高度 = 10+18+10 = 38） */
-  --field-pad-x: 14px;
-  --icon-gap: 10px;         /* 放大镜到文字 */
+  --bar-pad-top: 14px;
+  --bar-pad-x: 14px;
+  --field-gap: 6px;
+  --field-pad-y: 12px;
+  --field-pad-x: 16px;
+  --icon-gap: 10px;
 
   /* 搜索页也用 .list / .card（结果和首页共用同一套卡片）。
      这里只覆盖不一样的两项，其余从 tokens.css 的共享默认值继承 ——
-     注意**必须**保证这些变量有值，否则 padding 简写会整条失效。 */
-  --list-pad-top:    12px;
-  --list-pad-bottom: 24px;  /* 没有 FAB，底部不用留 104 */
+     注意必须保证这些变量有值，否则 padding 简写会整条失效。 */
+  --list-pad-top:    14px;
+  --list-pad-bottom: 24px;  /* 没有 FAB，底部不用留 108 */
 }
 
 .search-page__bar{
   display:flex; align-items:center; gap:var(--field-gap); flex:0 0 auto;
   padding:var(--bar-pad-top) var(--bar-pad-x) 0;
 }
+/* 返回图标和编辑器 / 设置页的顶栏用同一规格，字形粗细才一致 */
+.search-page__bar .icon-btn{ width:38px; height:38px; }
+.search-page__bar .icon-btn svg{ width:20px; height:20px; }
 .field{
   flex:1 1 auto; display:flex; align-items:center; gap:var(--icon-gap);
   padding:var(--field-pad-y) var(--field-pad-x);
-  background:var(--c-paper); border-radius:var(--r-card-sm);
-  color:var(--c-ink-soft); font-size:16px;
+  background:var(--c-surface-2); border-radius:var(--r-pill);
+  --inked-border:var(--c-line);
+  color:var(--c-ink-3); font-size:16px;
 }
 .field svg{ width:18px; height:18px; flex:0 0 auto; }
 .field__input{
   flex:1 1 auto; min-width:0; border:none; outline:none; background:transparent;
-  font:inherit; font-size:16px; line-height:18.9px; color:var(--c-ink);
+  font:inherit; font-size:16px; line-height:21px; color:var(--c-ink);
 }
-.field__input::placeholder{ color:var(--c-ink-soft); }
+.field__input::placeholder{ color:var(--c-ink-3); }
 
-/* tab 与输入框之间 12dp（SearchScreen 里的 Spacer） */
-.search-page .seg{ margin-top:12px; }
-/* 搜索页的列表不需要给 FAB 留位（见上面「本页可调参数」） */
+.search-page .seg{ margin-top:14px; }

@@ -1,154 +1,205 @@
 /* ==========================================================================
    components.css —— 跨页面复用的组件
    --------------------------------------------------------------------------
-   所有数值来自真机实测（1260×2800 @560dpi → ÷3.5 = dp），
-   括号里标的是 Android 侧的来源，方便两边对照。
-   只想调某一个页面时**不要改这里**，去 css/pages/<页面>.css。
+   设计语言的落点：
+     1. 不用描边分层，用色卡 + 极浅阴影 + 留白；
+     2. 圆角统一，不再四角不等；
+     3. 排版承担主要表现：大标题紧字距、正文行高 23、元信息弱化；
+     4. 全站只有一个强调色（陶土橘），只出现在 FAB、已完成勾选、选中态。
+   只想调某一个页面时不要改这里，去 css/pages/<页面>.css。
    ========================================================================== */
 
 /* ---------- 页面骨架 ---------- */
 .app-root{
   position:relative; flex:1 1 auto; min-height:0;
   display:flex; flex-direction:column;
-  padding-top:var(--safe-top);          /* enableEdgeToEdge + safeDrawing */
-  background:transparent; color:var(--c-ink);
+  padding-top:var(--safe-top);
+  background:linear-gradient(180deg,var(--c-canvas-2) 0%,var(--c-canvas) 38%,var(--c-canvas) 100%);
+  color:var(--c-ink);
   font-size:var(--fs-body); line-height:var(--lh-body);
+  -webkit-font-smoothing:antialiased;
 }
 .page{ flex:1 1 auto; display:flex; flex-direction:column; min-height:0; }
 
-/* ---------- 顶部栏 ----------
-   ListScreen.Header: padding(start=22, end=12, top=12, bottom=14)
-   标题 22dp 起、y48 起；副标题紧跟其下 2dp */
+/* ---------- 顶部栏：编辑级标题 ---------- */
 .topbar{
-  display:flex; align-items:center; flex:0 0 auto;
-  padding:12px 12px 14px 22px;
+  display:flex; align-items:flex-start; flex:0 0 auto;
+  padding:16px 12px 12px var(--pad-page);
 }
 .topbar__titles{ flex:1 1 auto; min-width:0; }
 .topbar__title{
-  font-size:28px; line-height:36px; font-weight:700; margin:0;   /* headlineMedium */
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  font-size:var(--fs-display); line-height:var(--lh-display);
+  font-weight:800; letter-spacing:var(--ls-display);
+  margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-.topbar__sub{ font-size:12px; line-height:16px; color:var(--c-ink-soft); margin-top:2px; }
-.topbar__actions{ display:flex; align-items:center; }
+.topbar__sub{
+  font-size:13px; line-height:18px; color:var(--c-ink-2);
+  margin-top:4px; letter-spacing:.01em;
+}
+.topbar__actions{ display:flex; align-items:center; gap:2px; padding-top:2px; }
 
-/* 编辑器 / 设置页的顶栏：Column 的 padding 是 vertical=12, horizontal=18，
-   顶栏行高 40，标题 22sp/28sp，前面留 6dp */
-.topbar--page{ padding:12px 12px 8px 18px; }
-.topbar--page .topbar__title{ font-size:22px; line-height:28px; }   /* titleLarge */
-.topbar--page .topbar__titles{ padding-left:6px; }
+/* 编辑器 / 设置页：次级页面。
+   标题要比图标字形（21px）略大一档才有主次，但不能用列表页那个 38px；
+   图标按钮 40px 高，所以整行改垂直居中，标题才不会吊在顶上。 */
+.topbar--page{
+  align-items:center;
+  padding:14px 12px 10px var(--pad-page);
+}
+.topbar--page .topbar__title{
+  font-size:24px; line-height:30px; font-weight:700; letter-spacing:-.015em;
+}
+/* 返回图标到标题留 8px，贴着读起来像连在一起 */
+.topbar--page .topbar__titles{ padding-left:8px; }
+/* 次级页的图标按钮收小一点，别跟标题抢 */
+.topbar--page .icon-btn{ width:38px; height:38px; }
+.topbar--page .icon-btn svg{ width:20px; height:20px; }
 
-/* ---------- 图标按钮 ----------
-   CuteIconButton：视觉 40×40（真机上被 Compose 扩到 48×48 的触摸目标，
-   但**画出来的**是 40，所以这里按 40 画） */
+/* ---------- 图标按钮：无边框，只在悬停时给一点底 ---------- */
 .icon-btn{
   width:40px; height:40px; flex:0 0 auto; display:grid; place-items:center;
-  color:var(--c-ink-soft); border-radius:var(--r-pill);
-}
-.icon-btn:hover{ background:rgba(128,128,128,.10); }
-.icon-btn--ink{ color:var(--c-ink); }
-.icon-btn svg{ width:22px; height:22px; display:block; }   /* 图标字形 22dp */
-
-/* ---------- 分段 tab ----------
-   SegmentedTabs = 轨道(左右各留 18dp，内部 4dp 内边距) + 按钮 48dp 高 */
-.seg{
-  display:flex; gap:4px; margin:0 var(--pad-page);
-  padding:4px; background:var(--c-track); border-radius:var(--r-block);
-  flex:0 0 auto;
-}
-.seg__item{
-  flex:1 1 0; height:48px; display:grid; place-items:center;
-  font-size:14px; line-height:20px; font-weight:700;      /* labelLarge */
-  color:var(--c-ink-soft); border-radius:var(--r-tab);
+  color:var(--c-ink-2); border-radius:var(--r-pill);
   transition:background var(--dur) var(--ease), color var(--dur) var(--ease);
 }
-.seg__item--on{ background:var(--seg-accent,var(--c-sun)); color:var(--c-on-accent); }
+.icon-btn:hover{ background:rgba(34,29,24,.06); color:var(--c-ink); }
+.icon-btn--ink{ color:var(--c-ink); }
+.icon-btn svg{ width:21px; height:21px; display:block; }
 
-/* ---------- 条目卡片 ----------
-   实测：整卡 68.9dp 高 = 14 + 文字行 18.9 + 6 + 时间行 16 + 14 */
+/* ---------- 分段 tab：内凹底槽 + 白色浮起药丸 ---------- */
+.seg{
+  display:flex; gap:4px; margin:0 var(--pad-page);
+  padding:4px; flex:0 0 auto;
+  background:rgba(23,20,15,.06);
+  border-radius:var(--r-pill);
+}
+.seg__item{
+  flex:1 1 0; height:40px; display:grid; place-items:center;
+  font-size:var(--fs-ui); line-height:var(--lh-ui); font-weight:600;
+  color:var(--c-ink-3); border-radius:var(--r-pill);
+  transition:background var(--dur) var(--ease), color var(--dur) var(--ease),
+             box-shadow var(--dur) var(--ease);
+}
+.seg__item--on{
+  background:var(--c-accent); color:var(--c-accent-ink);
+  font-weight:700;
+}
+
+/* ---------- 条目卡片：统一白卡，靠留白和底色区分，不靠颜色 ---------- */
 .card{
   position:relative; display:flex; align-items:center;
-  padding:14px 16px; border-radius:var(--r-card);
-  background:var(--card-fill,var(--c-paper));
-  box-shadow:var(--shadow-card);
+  padding:var(--card-pad-y) var(--card-pad-x);
+  border-radius:var(--r-card);
+  background:var(--c-card);
   cursor:pointer; -webkit-user-select:none; user-select:none;
+  transition:transform .12s var(--ease), filter var(--dur) var(--ease);
 }
-.card:active{ transform:scale(.99); }
+.card:active{ transform:scale(.985); }
 .card__body{ flex:1 1 auto; min-width:0; }
 .card__text{
-  font-size:16px; line-height:18.9px; color:var(--card-ink,var(--c-ink));
+  font-size:16.5px; line-height:22px; letter-spacing:-.01em;
+  color:var(--card-ink,var(--c-ink));
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-.card__meta{ font-size:12px; line-height:16px; color:var(--c-ink-soft); margin-top:6px; }
-.card--done{ --card-fill:var(--c-done); --card-ink:var(--c-ink-soft); }
-.card--done .card__text{ text-decoration:line-through; }
+.card__meta{
+  font-size:var(--fs-meta); line-height:var(--lh-meta);
+  color:var(--c-ink-2); opacity:.85; margin-top:5px;
+  font-variant-numeric:tabular-nums;
+}
+.card--done{ background:var(--c-card-done); --card-ink:var(--c-ink-3); }
+.card--done .card__text{ text-decoration:line-through; text-decoration-thickness:1px; }
+.card--done .card__meta{ opacity:.55; }
 
-/* 描边单独一层：不参与内部布局，改 --bw/--bc 也不会挤到内容 */
+/* 可选发丝描边：只有显式给了 --inked-border 的元素才画 */
 .inked{ position:relative; }
 .inked::after{
   content:""; position:absolute; inset:0; pointer-events:none; border-radius:inherit;
-  border:var(--bw) solid var(--bc);
+  border:var(--hairline) solid var(--inked-border,transparent);
 }
 
-/* ---------- 待办勾选圈：26dp，右侧 12dp 间距 ---------- */
+/* ---------- 待办勾选圈 ---------- */
 .tick{
-  width:26px; height:26px; flex:0 0 auto; margin-right:12px;
+  width:23px; height:23px; flex:0 0 auto; margin-right:13px;
   display:grid; place-items:center; border-radius:var(--r-pill);
-  border:2px solid var(--c-ink); background:transparent;
+  border:1.5px solid rgba(34,29,24,.22); background:transparent;
+  color:var(--c-accent-ink);
+  transition:background var(--dur) var(--ease), border-color var(--dur) var(--ease),
+             transform .12s var(--ease);
 }
-.tick--on{ background:var(--c-mint); }
-.tick svg{ width:15px; height:15px; }
+.tick:hover{ border-color:rgba(34,29,24,.4); }
+.tick:active{ transform:scale(.9); }
+.tick--on{ background:var(--c-accent); border-color:var(--c-accent); }
+.tick svg{ width:13px; height:13px; stroke-width:3; }
 
-/* ---------- 多选圈：24dp ---------- */
+/* ---------- 多选圈 ---------- */
 .pick{
-  width:24px; height:24px; flex:0 0 auto; margin-right:12px;
+  width:22px; height:22px; flex:0 0 auto; margin-right:13px;
   display:grid; place-items:center; border-radius:var(--r-pill);
-  border:2px solid var(--c-ink-soft);
+  border:1.5px solid rgba(34,29,24,.22);
+  color:var(--c-accent-ink);
+  transition:background var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
-.pick--on{ background:var(--c-sun); border-color:var(--c-ink); }
-.pick svg{ width:13px; height:13px; }
+.pick--on{ background:var(--c-accent); border-color:var(--c-accent); }
+.pick svg{ width:12px; height:12px; stroke-width:3; }
 
-/* ---------- FAB：58dp，右下各留 22 / 26dp，字形 26dp ---------- */
+/* ---------- FAB：全站唯一的"响" ---------- */
 .fab{
-  position:absolute; right:22px; bottom:26px; width:58px; height:58px;
-  border-radius:var(--r-pill); background:var(--c-sun); color:var(--c-on-accent);
-  display:grid; place-items:center; box-shadow:var(--shadow-fab); z-index:4;
+  position:absolute; right:20px; bottom:26px; width:62px; height:62px;
+  border-radius:var(--r-pill);
+  background:var(--c-accent); color:var(--c-accent-ink);
+  display:grid; place-items:center;
+  z-index:4;   /* 平的就够醒目了，不需要阴影撑场面 */
+  transition:transform .12s var(--ease);
 }
-.fab:active{ transform:scale(.95); }
-.fab svg{ width:26px; height:26px; }
+.fab:active{ transform:scale(.94); }
+.fab svg{ width:26px; height:26px; stroke-width:2.6; }
 
-/* ---------- 空状态 ----------
-   EmptyHint = 整行 + 上下各 56dp 内边距 + 居中，用 bodyLarge（16sp） */
+/* ---------- 空状态：没有插图，靠排版本身撑住 ---------- */
 .empty{
-  padding:56px var(--pad-page); text-align:center;
-  color:var(--c-ink-soft); font-size:16px; line-height:24px; white-space:pre-line;
+  padding:72px var(--pad-page) 64px; text-align:center;
+  display:flex; flex-direction:column; align-items:center;
 }
+.empty__title{
+  font-size:19px; line-height:26px; font-weight:800; letter-spacing:-.02em;
+  color:var(--c-ink);
+}
+.empty__hint{
+  margin-top:10px; font-size:13.5px; line-height:21px; color:var(--c-ink-2);
+}
+.empty__hint b{ color:var(--c-ink); font-weight:700; }
 
 /* ---------- 轻提示 / 对话框 ---------- */
 .toast{
   position:absolute; left:50%; bottom:110px; transform:translateX(-50%) translateY(8px);
-  background:var(--c-ink); color:var(--c-bg); font-size:12.5px;
-  padding:8px 16px; border-radius:var(--r-pill); z-index:20;
+  background:var(--c-ink); color:var(--c-canvas); font-size:12.5px;
+  padding:9px 17px; border-radius:var(--r-pill); z-index:20;
   opacity:0; pointer-events:none; max-width:80%; text-align:center;
+  box-shadow:var(--e-overlay);
   transition:opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
 }
 .toast--on{ opacity:1; transform:translateX(-50%) translateY(0); }
 
 .scrim{
-  position:absolute; inset:0; background:rgba(0,0,0,.38); z-index:30;
+  position:absolute; inset:0; background:rgba(28,22,16,.42); z-index:30;
   display:grid; place-items:center; padding:24px;
   opacity:0; pointer-events:none; transition:opacity var(--dur) var(--ease);
 }
 .scrim--on{ opacity:1; pointer-events:auto; }
 .dialog{
-  width:100%; background:var(--c-paper); border-radius:var(--r-card);
-  padding:18px 8px 8px; box-shadow:0 12px 30px rgba(0,0,0,.25);
+  width:100%; background:var(--c-surface); border-radius:22px;
+  padding:20px 10px 10px; box-shadow:var(--e-overlay);
 }
-.dialog__title{ font-size:17px; font-weight:700; padding:0 16px 8px; }
+.dialog__title{
+  font-size:var(--fs-label); line-height:var(--lh-label); letter-spacing:var(--ls-label);
+  text-transform:uppercase; color:var(--c-ink-3); font-weight:700; padding:0 16px 10px;
+}
 .dialog__opt{
-  display:flex; align-items:center; gap:10px; padding:13px 16px; border-radius:12px;
-  font-size:16px; cursor:pointer;
+  display:flex; align-items:center; gap:10px; padding:13px 16px;
+  border-radius:14px; font-size:var(--fs-body); cursor:pointer;
 }
-.dialog__opt:hover{ background:rgba(128,128,128,.10); }
-.dialog__opt .check{ width:18px; color:var(--c-ink); }
-.dialog__actions{ display:flex; justify-content:flex-end; padding:6px 10px 4px; }
-.dialog__actions button{ font-size:14px; font-weight:700; padding:8px 14px; border-radius:10px; }
+.dialog__opt:hover{ background:rgba(34,29,24,.05); }
+.dialog__opt .check{ width:18px; color:var(--c-accent); }
+.dialog__actions{ display:flex; justify-content:flex-end; padding:8px 10px 2px; }
+.dialog__actions button{
+  font-size:var(--fs-ui); font-weight:700; padding:9px 15px; border-radius:var(--r-pill);
+  color:var(--c-ink-2);
+}
+.dialog__actions button:hover{ background:rgba(34,29,24,.05); }

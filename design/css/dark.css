@@ -1,26 +1,29 @@
 /* ==========================================================================
    dark.css —— 深色模式
    --------------------------------------------------------------------------
-   只做一件事：把 tokens.css 里的浅色令牌换成对应的 -d 值。
-   页面样式一行都不用改 —— 这就是"颜色只走 token"的意义。
-
-   由 <body data-dark="1"> 触发（演示台右上角切换，或 URL 加 &dark=1）。
+   只做一件事：把 tokens.css 的浅色令牌换成 -d 值。页面样式一行都不用改。
+   深色不是把颜色反过来：暖纸变成暖炭，色卡整体降到 ~18% 亮度，
+   强调色反而提亮一点（它要在暗底上跳出来）。
+   由 <body data-dark="1"> 触发。
    ========================================================================== */
 [data-dark="1"]{
-  --c-bg:       var(--c-bg-d);
-  --c-paper:    var(--c-paper-d);
-  --c-ink:      var(--c-ink-d);
-  --c-ink-soft: var(--c-ink-soft-d);
-  --c-line:     var(--c-line-d);
-  --c-track:    var(--c-track-d);
-  --c-sun:      var(--c-sun-d);
-  --c-mint:     var(--c-mint-d);
-  --c-sky:      var(--c-sky-d);
-  --c-blush:    var(--c-blush-d);
-  --c-lilac:    var(--c-lilac-d);
-  --c-peach:    var(--c-peach-d);
-  --c-done:     var(--c-done-d);
-  --c-on-accent:var(--c-on-accent-d);
-  --c-shadow:   var(--c-shadow-d);
-  --bc:         rgba(242,237,228,.14);
+  --c-canvas:    var(--c-canvas-d);
+  --c-canvas-2:  var(--c-canvas-2-d);
+  --c-surface:   var(--c-surface-d);
+  --c-surface-2: var(--c-surface-2-d);
+  --c-ink:       var(--c-ink-d);
+  --c-ink-2:     var(--c-ink-2-d);
+  --c-ink-3:     var(--c-ink-3-d);
+  --c-line:      var(--c-line-d);
+  --c-card:      var(--c-card-d);
+  --c-card-done: var(--c-card-done-d);
+
+  --c-accent:        var(--c-accent-d);
+  --c-accent-ink:    var(--c-accent-ink-d);
+  --c-accent-soft:   var(--c-accent-soft-d);
+  --c-accent-shadow: var(--c-accent-shadow-d);
+
+
+  --e-overlay: 0 8px 28px rgba(0,0,0,.5);
+  --e-widget:  0 1px 3px rgba(0,0,0,.4);
 }

@@ -24,7 +24,7 @@ BitSay.pages.editor = (function () {
     const root = document.createElement('div');
     root.className = 'app-root page editor-page';
     root.innerHTML = `
-      <header class="topbar">
+      <header class="topbar topbar--page">
         <button class="icon-btn icon-btn--ink" type="button" data-act="back" title="返回">${I.back()}</button>
         <div class="topbar__titles"><h3 class="topbar__title" data-el="kind"></h3></div>
         <button class="icon-btn" type="button" data-act="delete" title="删除" data-el="del">${I.delete()}</button>

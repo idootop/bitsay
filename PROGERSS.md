@@ -816,10 +816,11 @@ git add -A -n                      # 提交前预演，确认没有产物/密钥
 
 | 设计台 | Android |
 |---|---|
-| `tokens.css` 的 `--c-*` | `ui/theme/Color.kt`（`BitSayPalette`）+ `res/values/colors.xml`（小组件） |
-| `--r-card` / `--r-card-sm` | `ui/theme/Theme.kt` 的 `CuteShape` / `CuteShapeSmall` |
-| `--bw` / `--bc`（描边） | `CuteCard` 的 `border(1.5.dp, Ink.copy(alpha=.13f))` |
-| `.app-root::before` 点阵 | `PaperBackground` 的 `Canvas` |
+| `tokens.css` 的 `--c-*` / `--tint-*` | `ui/theme/Color.kt`（`BitSayPalette`）+ `res/values/colors.xml`（小组件） |
+| `--r-card` / `--r-sm`（统一圆角 20/14） | `ui/theme/Theme.kt` 的 `CuteShape`（需从"四角不等"改成统一圆角） |
+| `--e1` / `--e-accent`（阴影分层） | `CuteCard` 现在用 `border(1.5.dp, …)` 分层，要改成 `shadow(...)` |
+| `--c-accent` 陶土橘 | 新增：目前 `Color.kt` 里没有这个角色 |
+| `.app-root::before` 点阵 | `PaperBackground` 的 `Canvas`（`--dots` 已降到 .34） |
 | `.seg` / `.seg__item` | `ui/components/SegmentedTabs.kt` |
 | `js/ui.js` 的 `card()` | **`ui/components/ItemList.kt`**（首页与搜索页共用，只有这一处实现） |
 | `js/pages/list.js` | `ui/screen/ListScreen.kt`（含多选顶栏） |
@@ -920,6 +921,10 @@ val CardColors: List<Color> @Composable @ReadOnlyComposable get() = LocalPalette
 在里面调不了取值器 —— 在 `ListScreen` 顶部先取到局部变量再传进去。
 
 ### 15.2 深色不是"把颜色反一下"
+
+（**注**：下面这段描述的是 §15 当时的旧配色 —— 六个高饱和粉彩。
+UI 重做后色卡已换成 `--tint-1..6` 的低饱和纸色，但"深色要同色相压暗、
+不能直接拿浅色往暗底上放"这条结论仍然成立。）
 
 浅色粉彩（#FFD34E 等）直接放到深色背景上会像"屏幕上挖了六个洞"，
 而且它们配的是**深色文字**，深色模式下文字是浅色的，两者一撞就不可读。

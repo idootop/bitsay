@@ -50,14 +50,13 @@ import com.del.bitsay.ui.AppUiState
 import com.del.bitsay.ui.components.CuteIconButton
 import com.del.bitsay.ui.components.EmptyHint
 import com.del.bitsay.ui.components.SegmentedTabs
-import com.del.bitsay.ui.theme.Blush
+import com.del.bitsay.ui.theme.Mint
 import com.del.bitsay.ui.theme.CardColors
+import com.del.bitsay.ui.theme.TodoCardColors
 import com.del.bitsay.ui.theme.CuteShape
 import com.del.bitsay.ui.theme.Done
 import com.del.bitsay.ui.theme.Ink
 import com.del.bitsay.ui.theme.InkSoft
-import com.del.bitsay.ui.theme.Mint
-import com.del.bitsay.ui.theme.Sky
 import com.del.bitsay.ui.theme.Sun
 
 @Composable
@@ -77,6 +76,10 @@ fun ListScreen(
     modifier: Modifier = Modifier,
 ) {
     val wording = rememberTimeWording()
+    // Read once here: the tab's accent lambda is a plain lambda, where a @Composable colour
+    // accessor cannot be called.
+    val sunAccent = Sun
+    val mintAccent = Mint
 
     Box(modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
@@ -98,7 +101,7 @@ fun ListScreen(
                     options = listOf(Kind.NOTE, Kind.TODO),
                     selected = state.tab,
                     label = { stringResource(if (it == Kind.NOTE) R.string.tab_notes else R.string.tab_todos) },
-                    accent = { if (it == Kind.NOTE) Sun else Mint },
+                    accent = { if (it == Kind.NOTE) sunAccent else mintAccent },
                     onSelect = onSelectTab,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -336,7 +339,7 @@ private fun ItemCard(
 ) {
     val background = when {
         item.done -> Done
-        item.isTodo -> TODO_COLORS[index % TODO_COLORS.size]
+        item.isTodo -> TodoCardColors[index % TodoCardColors.size]
         else -> CardColors[index % CardColors.size]
     }
     Row(
@@ -412,4 +415,3 @@ private fun ItemCard(
     }
 }
 
-private val TODO_COLORS = listOf(Sky, Mint, Blush)

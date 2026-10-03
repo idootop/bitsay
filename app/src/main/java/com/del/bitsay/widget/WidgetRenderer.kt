@@ -5,13 +5,18 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.View
 import android.widget.RemoteViews
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import com.del.bitsay.MainActivity
 import com.del.bitsay.R
 import com.del.bitsay.core.model.Kind
 import com.del.bitsay.i18n.withAppLanguage
+import com.del.bitsay.ui.theme.ThemePrefs
+import com.del.bitsay.ui.theme.paletteFor
 
 /**
  * Builds the [RemoteViews] for one widget instance. Stateless: everything it needs comes from
@@ -42,29 +47,32 @@ internal object WidgetRenderer {
         // visible is assigned here from a context pinned to the chosen language.
         val ui = context.withAppLanguage()
 
+        // The widget follows the APP's theme choice, not the launcher's night mode: the host
+        // inflates the layout with its own configuration, so anything resource-driven would
+        // ignore the setting entirely. Colours are therefore assigned explicitly here.
+        val dark = ThemePrefs.isDark(context)
+        val palette = paletteFor(dark)
+
         val views = RemoteViews(context.packageName, R.layout.widget_bitsay)
+        views.setInt(
+            R.id.widget_root,
+            "setBackgroundResource",
+            if (dark) R.drawable.widget_bg_dark else R.drawable.widget_bg,
+        )
         views.setTextViewText(R.id.widget_tab_notes, ui.getString(R.string.tab_notes))
         views.setTextViewText(R.id.widget_tab_todos, ui.getString(R.string.tab_todos))
         views.setTextViewText(R.id.widget_empty, ui.getString(R.string.widget_empty))
 
         // --- the two list tabs ---
-        views.setInt(
-            R.id.widget_tab_notes,
-            "setBackgroundResource",
-            if (kind == Kind.NOTE) R.drawable.widget_tab_notes_on else R.drawable.widget_tab_off,
-        )
-        views.setInt(
-            R.id.widget_tab_todos,
-            "setBackgroundResource",
-            if (kind == Kind.TODO) R.drawable.widget_tab_todos_on else R.drawable.widget_tab_off,
-        )
+        tint(views, R.id.widget_tab_notes, if (kind == Kind.NOTE) palette.sun else palette.line)
+        tint(views, R.id.widget_tab_todos, if (kind == Kind.TODO) palette.mint else palette.line)
         views.setTextColor(
             R.id.widget_tab_notes,
-            context.getColor(if (kind == Kind.NOTE) R.color.ink else R.color.ink_soft),
+            (if (kind == Kind.NOTE) palette.ink else palette.inkSoft).toArgb(),
         )
         views.setTextColor(
             R.id.widget_tab_todos,
-            context.getColor(if (kind == Kind.TODO) R.color.ink else R.color.ink_soft),
+            (if (kind == Kind.TODO) palette.ink else palette.inkSoft).toArgb(),
         )
         views.setOnClickPendingIntent(R.id.widget_tab_notes, setKindIntent(context, widgetId, Kind.NOTE))
         views.setOnClickPendingIntent(R.id.widget_tab_todos, setKindIntent(context, widgetId, Kind.TODO))
@@ -78,7 +86,7 @@ internal object WidgetRenderer {
             if (showHeader(context, manager, widgetId)) View.VISIBLE else View.GONE,
         )
 
-        val rows = WidgetItems.build(context, items)
+        val rows = WidgetItems.build(context, items, palette)
         views.setRemoteAdapter(
             R.id.widget_list,
             RemoteViews.RemoteCollectionItems.Builder()
@@ -175,6 +183,11 @@ internal object WidgetRenderer {
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+
+    /** One white rounded shape, coloured per state — no second set of drawables for dark mode. */
+    private fun tint(views: RemoteViews, viewId: Int, color: Color) {
+        views.setColorStateList(viewId, "setBackgroundTintList", ColorStateList.valueOf(color.toArgb()))
+    }
 
     private fun requestCode(widgetId: Int, slot: Int) = widgetId * 8 + slot
 

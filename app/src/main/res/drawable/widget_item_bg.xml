@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  White on purpose: the actual colour is applied with `setBackgroundTintList` at render time, so
+  one drawable serves every pastel in both light and dark. Shape and colour stay independent.
+-->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="@color/widget_item_1" />
+    <solid android:color="#FFFFFFFF" />
     <corners
         android:bottomLeftRadius="12dp"
         android:bottomRightRadius="14dp"

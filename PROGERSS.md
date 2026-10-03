@@ -538,6 +538,7 @@ git add -A -n                      # 提交前预演，确认没有产物/密钥
 - [x] 真机（Android 16 / API 36）全流程验证 —— 见 §11
 - [x] release 包体积 **2.11 MB**，R8 + resource shrinking，签名并实机跑通
 - [x] **i18n**：中英双语，默认跟随系统，找不到回落到英文（默认资源集）—— 见 §14
+- [x] **亮暗色模式**：跟随系统 / 浅色 / 深色；小组件同样跟随 App 设置并在切换时刷新 —— 见 §15
 - [x] 仓库卫生：完整 `.gitignore` + `.gitattributes` + `keystore/README.md` + 口令模板 —— 见 §9.1
 - [x] 自动保存改为**前缘+后缘节流**（400ms），第一个字立刻落盘 —— 见 §5
 - [x] 列表默认按**创建时间**排序（编辑/勾选不再让列表跳动）
@@ -648,6 +649,10 @@ git add -A -n                      # 提交前预演，确认没有产物/密钥
 | 切回「跟随系统」→ 恢复中文，偏好键被移除 | ✅ |
 | **系统中文 + App 设为 English → 小组件立即显示 Notes / Todos**（无需其它操作触发） | ✅ |
 | 切回「跟随系统」→ 小组件立即恢复 笔记 / 待办 | ✅ |
+| 主题默认跟随系统（系统浅色 → 浅色界面） | ✅ |
+| 切「深色」→ App 全部页面深色；设置页概览卡对比度正常 | ✅ |
+| **系统浅色 + App 设为深色 → 小组件立即变深色**（无需其它操作触发） | ✅ |
+| 切回「跟随系统」→ App 与小组件同时恢复浅色，偏好键被移除 | ✅ |
 | 导入后 done / doneAt 一一对应（5000 待办中 1281 完成、1281 个 doneAt） | ✅ |
 
 未验证 / 待补：小组件**手动拖拽缩放**的中间档位逐级走查（只验证了当前档位的渲染结果与 `WidgetSize` 单测）、
@@ -746,3 +751,70 @@ RemoteViews 交给宿主了，除非重新渲染一次，否则它会一直停�
 
 这条容易被漏掉，因为它和"数据变了就刷新"是两条独立的触发路径 ——
 语言切换**不**会产生 `repository.change`，订阅数据的那个观察者不会醒。
+
+---
+
+## 15. 亮暗色模式
+
+三档：**跟随系统（默认）/ 浅色 / 深色**，存在 `bitsay_theme.xml`，`SYSTEM` = 不写键。
+
+### 15.1 让 100 多个调用点不用改
+
+原来 `Ink` / `InkSoft` / `Paper` / `Bg` / `Line` / `Sun` / `Mint` … 都是**顶层颜色常量**，
+散落在各页面里（光 `Ink` 就 54 处）。逐个改成 `MaterialTheme.colorScheme.xxx` 既啰嗦又容易漏。
+
+改成**主题感知取值器**：
+
+```kotlin
+val Ink: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.ink
+val CardColors: List<Color> @Composable @ReadOnlyComposable get() = LocalPalette.current.cards
+```
+
+`BitSayTheme` 用 `CompositionLocalProvider(LocalPalette provides …)` 注入亮/暗两套
+`BitSayPalette`。**调用点一行没动**，整套 UI 就跟着主题走了。
+
+只有一处例外：`SegmentedTabs` 的 `accent` 是普通 lambda（非 @Composable），
+在里面调不了取值器 —— 在 `ListScreen` 顶部先取到局部变量再传进去。
+
+### 15.2 深色不是"把颜色反一下"
+
+浅色粉彩（#FFD34E 等）直接放到深色背景上会像"屏幕上挖了六个洞"，
+而且它们配的是**深色文字**，深色模式下文字是浅色的，两者一撞就不可读。
+
+所以 `DarkPalette` 里的粉彩是**同色相压暗**的版本（`#FFD34E → #6B5320` 等），
+文字统一用浅色。**重点色（sun）也一起压暗** —— 我第一版留了亮黄，结果设置页那张
+概览卡变成"亮黄底 + 近白字"，截图一看就废了。
+
+### 15.3 小组件跟随的是 App 设置，不是系统
+
+宿主用**它自己的** configuration inflate 布局，所以任何走资源（含 `values-night`）的颜色
+都会跟随**系统**夜间模式，而不是 App 里的选择。
+
+解法：**颜色全部在渲染时显式赋值**。关键发现是 `View.setBackgroundTintList` 是
+`@RemotableViewMethod` —— 于是：
+
+- 所有圆角形状 drawable 改成**纯白**，运行时用 `setColorStateList(..., "setBackgroundTintList", …)` 染色；
+- 颜色直接取 `paletteFor(dark)`，也就是**和 App 同一套 `BitSayPalette`**，
+  亮暗同步是构造上保证的，不会漂移；
+- 顺带**删掉 8 个 drawable**（`widget_item_bg_1..5`、`widget_tab_notes_on/todos_on/off`
+  合并成一个 `widget_item_bg.xml` / `widget_tab_bg.xml`）。
+
+只有根卡片保留了亮/暗两个文件（它有描边，染色会把描边一起吃掉）。
+FAB 保持不变的亮黄 —— 它是重点色点缀，两种模式下都成立。
+
+### 15.4 切主题要刷新小组件
+
+和语言一样，主题切换**不产生 `repository.change`**，数据观察者不会醒。
+`setThemeMode()` 里主动 `WidgetUpdater.refreshAll()`。
+
+和语言不同的是：**不需要 `recreate()`** —— Compose 会直接按新调色板重组。
+
+窗口背景另外处理：Activity 在 `setContent` 之前按解析出的模式 `setBackgroundDrawable`，
+否则深色启动会先闪一下主题资源里的浅色 `windowBackground`。
+`values-night/colors.xml` 只负责系统夜间模式下的启动底色。
+
+### 15.5 一个工具坑
+
+用脚本批量清理"未使用 import"时要小心：`kotlinx.coroutines.flow.getValue` /
+`androidx.compose.runtime.getValue` / `setValue` 是 **`by` 委托用的操作符扩展**，
+文本里根本不出现这两个名字，正则判定为"未使用"，删掉后整个文件编译不过。

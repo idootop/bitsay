@@ -18,6 +18,7 @@ import com.del.bitsay.core.repo.ImportResult
 import com.del.bitsay.core.repo.ItemRepository
 import com.del.bitsay.core.util.WriteThrottle
 import com.del.bitsay.i18n.AppLanguage
+import com.del.bitsay.ui.theme.ThemeMode
 import com.del.bitsay.widget.WidgetPinner
 import com.del.bitsay.widget.WidgetUpdater
 import kotlinx.coroutines.Dispatchers
@@ -93,6 +94,8 @@ data class AppUiState(
     val canPinWidget: Boolean = false,
     /** The language the app is displayed in; [AppLanguage.SYSTEM] means "follow the phone". */
     val language: AppLanguage = AppLanguage.SYSTEM,
+    /** Light/dark choice; [ThemeMode.SYSTEM] means "follow the phone". */
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
     /**
      * Ids ticked for a batch operation. Empty means "not in selection mode" — there is no
      * separate boolean to keep in sync.
@@ -143,6 +146,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         AppUiState(
             canPinWidget = WidgetPinner.isSupported(container.context),
             language = container.languagePrefs.current(),
+            themeMode = container.themePrefs.current(),
         ),
     )
     val state: StateFlow<AppUiState> = _state.asStateFlow()
@@ -379,6 +383,20 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             withContext(Dispatchers.Default) { WidgetUpdater.refreshAll(container.context) }
         }
         _relaunch.tryEmit(Unit)
+    }
+
+    /**
+     * Unlike the language, a theme change needs no activity restart: Compose simply recomposes
+     * against the new palette. The widget still has to be pushed, because its colours were baked
+     * into the RemoteViews it already handed to the launcher.
+     */
+    fun setThemeMode(mode: ThemeMode) {
+        if (_state.value.themeMode == mode) return
+        container.themePrefs.set(mode)
+        _state.update { it.copy(themeMode = mode) }
+        viewModelScope.launch {
+            withContext(Dispatchers.Default) { WidgetUpdater.refreshAll(container.context) }
+        }
     }
 
     /** Asks the launcher to drop a widget on the home screen. */

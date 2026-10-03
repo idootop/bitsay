@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Window/launch background for system-dark devices, so the first frame is not a flash of light.
+  The widget does NOT rely on these: it is rendered with explicit colours from BitSayPalette so
+  it can follow the in-app theme setting rather than the launcher's night mode.
+-->
+<resources>
+    <color name="bg">#FF211F1D</color>
+    <color name="paper">#FF2C2A27</color>
+    <color name="ink">#FFF2EDE4</color>
+    <color name="ink_soft">#FFA79F94</color>
+</resources>

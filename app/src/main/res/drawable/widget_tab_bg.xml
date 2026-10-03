@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Tinted at render time: active tab, inactive tab and dark mode all use this one shape. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="@color/sun" />
+    <solid android:color="#FFFFFFFF" />
     <corners
         android:bottomLeftRadius="13dp"
         android:bottomRightRadius="15dp"

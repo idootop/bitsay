@@ -2,12 +2,15 @@ package com.del.bitsay.widget
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Paint
 import android.view.View
 import android.widget.RemoteViews
+import androidx.compose.ui.graphics.toArgb
 import com.del.bitsay.R
 import com.del.bitsay.core.model.Item
 import com.del.bitsay.core.util.TextPreview
+import com.del.bitsay.ui.theme.BitSayPalette
 
 /**
  * Turns domain [Item]s into the row [RemoteViews] the widget scrolls through.
@@ -15,6 +18,11 @@ import com.del.bitsay.core.util.TextPreview
  * Rows are deliberately uniform: **one line of text, no timestamp, one fixed height**. A glance
  * at the home screen should answer "what is on my list", not "when did I touch it" — and a fixed
  * row height keeps scrolling predictable and makes the scrollbar a useful length indicator.
+ *
+ * Colours come from the same [BitSayPalette] the app uses, applied as a background *tint* on one
+ * white shape (`setBackgroundTintList` is a `@RemotableViewMethod`). That is what lets the widget
+ * follow the app's light/dark choice without shipping two sets of drawables — and it keeps the
+ * widget's colours in step with the app's by construction.
  *
  * Android 12's `RemoteViews.RemoteCollectionItems` is used instead of a `RemoteViewsService` +
  * `RemoteViewsFactory`: on Android 17 the service-based collection API is deprecated, and
@@ -29,23 +37,16 @@ internal object WidgetItems {
      */
     const val MAX_ROWS = 50
 
-    private val BACKGROUNDS = intArrayOf(
-        R.drawable.widget_item_bg_1,
-        R.drawable.widget_item_bg_2,
-        R.drawable.widget_item_bg_3,
-        R.drawable.widget_item_bg_4,
-    )
+    fun build(context: Context, items: List<Item>, palette: BitSayPalette): List<Row> =
+        items.take(MAX_ROWS).mapIndexed { index, item -> row(context, item, index, palette) }
 
-    fun build(context: Context, items: List<Item>): List<Row> =
-        items.take(MAX_ROWS).mapIndexed { index, item -> row(context, item, index) }
-
-    private fun row(context: Context, item: Item, index: Int): Row {
+    private fun row(context: Context, item: Item, index: Int, palette: BitSayPalette): Row {
         val views = RemoteViews(context.packageName, R.layout.widget_item)
 
         views.setTextViewText(R.id.widget_item_text, TextPreview.singleLine(item.text))
         views.setTextColor(
             R.id.widget_item_text,
-            context.getColor(if (item.done) R.color.ink_soft else R.color.ink),
+            if (item.done) palette.inkSoft.toArgb() else palette.ink.toArgb(),
         )
         views.setInt(
             R.id.widget_item_text,
@@ -69,11 +70,17 @@ internal object WidgetItems {
             views.setViewVisibility(R.id.widget_item_icon, View.GONE)
         }
 
-        views.setInt(
+        val background = when {
+            item.done -> palette.done
+            item.isTodo -> palette.todoCards[index % palette.todoCards.size]
+            else -> palette.cards[index % palette.cards.size]
+        }
+        views.setColorStateList(
             R.id.widget_item_root,
-            "setBackgroundResource",
-            if (item.done) R.drawable.widget_item_bg_5 else BACKGROUNDS[index % BACKGROUNDS.size],
+            "setBackgroundTintList",
+            ColorStateList.valueOf(background.toArgb()),
         )
+
         views.setOnClickFillInIntent(
             R.id.widget_item_root,
             Intent().putExtra(WidgetContract.EXTRA_ITEM_ID, item.id)

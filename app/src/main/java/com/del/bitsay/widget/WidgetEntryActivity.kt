@@ -1,6 +1,8 @@
 package com.del.bitsay.widget
 
+import androidx.compose.runtime.getValue
 import android.content.Context
+import android.graphics.drawable.ColorDrawable
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -10,9 +12,11 @@ import androidx.activity.viewModels
 import com.del.bitsay.BitSayApp
 import com.del.bitsay.core.model.Kind
 import com.del.bitsay.i18n.withAppLanguage
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.del.bitsay.ui.AppViewModel
 import com.del.bitsay.ui.BitSayRoot
 import com.del.bitsay.ui.theme.BitSayTheme
+import com.del.bitsay.ui.theme.ThemePrefs
 
 /**
  * The window the home-screen widget opens to write or read one entry.
@@ -54,8 +58,15 @@ class WidgetEntryActivity : ComponentActivity() {
             return
         }
 
+        // Paint the window in the resolved scheme before the first frame, otherwise a dark-theme
+        // launch flashes the light `windowBackground` from the theme resource.
+        window.setBackgroundDrawable(
+            ColorDrawable(if (ThemePrefs.isDark(this)) DARK_WINDOW else LIGHT_WINDOW),
+        )
+
         setContent {
-            BitSayTheme {
+            val state by viewModel.state.collectAsStateWithLifecycle()
+            BitSayTheme(mode = state.themeMode) {
                 BitSayRoot(viewModel, onExit = { finish() }, onRelaunch = { recreate() })
             }
         }
@@ -81,5 +92,10 @@ class WidgetEntryActivity : ComponentActivity() {
 
             else -> false
         }
+    }
+
+    private companion object {
+        const val DARK_WINDOW = 0xFF211F1D.toInt()
+        const val LIGHT_WINDOW = 0xFFFCF3E8.toInt()
     }
 }

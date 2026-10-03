@@ -121,4 +121,11 @@
     <!-- Widget configuration -->
     <string name="widget_config_notes_desc">A clean block of text, ready to jot into</string>
     <string name="widget_config_todos_desc">Tap the circle to tick one off</string>
+
+    <!-- Appearance -->
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="theme_system">Follow system</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
 </resources>

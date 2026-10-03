@@ -116,4 +116,11 @@
     <!-- 小组件配置 -->
     <string name="widget_config_notes_desc">干净的一段文字，随手记</string>
     <string name="widget_config_todos_desc">点一下圆圈就能勾掉</string>
+
+    <!-- Appearance -->
+    <string name="settings_appearance">外观</string>
+    <string name="settings_theme">主题</string>
+    <string name="theme_system">跟随系统</string>
+    <string name="theme_light">浅色</string>
+    <string name="theme_dark">深色</string>
 </resources>

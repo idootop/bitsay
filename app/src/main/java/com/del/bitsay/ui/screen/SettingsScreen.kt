@@ -1,5 +1,7 @@
 package com.del.bitsay.ui.screen
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
@@ -19,10 +21,8 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.pm.PackageInfoCompat
 import com.del.bitsay.R
 import com.del.bitsay.i18n.AppLanguage
+import com.del.bitsay.ui.theme.ThemeMode
 import com.del.bitsay.ui.components.CuteCard
 import com.del.bitsay.ui.components.CuteIconButton
 import com.del.bitsay.ui.components.SectionTitle
@@ -49,6 +50,8 @@ fun SettingsScreen(
     canPinWidget: Boolean,
     language: AppLanguage,
     onLanguage: (AppLanguage) -> Unit,
+    themeMode: ThemeMode,
+    onThemeMode: (ThemeMode) -> Unit,
     onBack: () -> Unit,
     onAddWidget: () -> Unit,
     onExport: () -> Unit,
@@ -57,10 +60,25 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     var showLanguage by remember { mutableStateOf(false) }
+    var showTheme by remember { mutableStateOf(false) }
+
+    if (showTheme) {
+        ChoiceDialog(
+            title = stringResource(R.string.settings_theme),
+            options = ThemeMode.entries,
+            current = themeMode,
+            label = { stringResource(it.labelRes()) },
+            onPick = { onThemeMode(it); showTheme = false },
+            onDismiss = { showTheme = false },
+        )
+    }
 
     if (showLanguage) {
-        LanguageDialog(
+        ChoiceDialog(
+            title = stringResource(R.string.settings_language),
+            options = AppLanguage.entries,
             current = language,
+            label = { stringResource(it.labelRes()) },
             onPick = { onLanguage(it); showLanguage = false },
             onDismiss = { showLanguage = false },
         )
@@ -145,8 +163,14 @@ fun SettingsScreen(
             )
         }
 
-        SectionTitle(stringResource(R.string.settings_language))
+        SectionTitle(stringResource(R.string.settings_appearance))
         CuteCard(contentPadding = PaddingValues(0.dp)) {
+            SettingRow(
+                painter = painterResource(R.drawable.ic_theme),
+                title = stringResource(R.string.settings_theme),
+                subtitle = stringResource(themeMode.labelRes()),
+                onClick = { showTheme = true },
+            )
             SettingRow(
                 painter = painterResource(R.drawable.ic_language),
                 title = stringResource(R.string.settings_language_display),
@@ -176,19 +200,22 @@ fun SettingsScreen(
     }
 }
 
-/** Three options, no free-form picker: the app only ships two languages plus "follow system". */
+/** Three options, no free-form picker: each setting only ships a couple of values. */
 @Composable
-private fun LanguageDialog(
-    current: AppLanguage,
-    onPick: (AppLanguage) -> Unit,
+private fun <T> ChoiceDialog(
+    title: String,
+    options: List<T>,
+    current: T,
+    label: @Composable (T) -> String,
+    onPick: (T) -> Unit,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_language)) },
+        title = { Text(title) },
         text = {
             Column {
-                AppLanguage.entries.forEach { option ->
+                options.forEach { option ->
                     Row(
                         Modifier
                             .fillMaxWidth()
@@ -201,7 +228,7 @@ private fun LanguageDialog(
                     ) {
                         RadioButton(selected = option == current, onClick = { onPick(option) })
                         Text(
-                            text = stringResource(option.labelRes()),
+                            text = label(option),
                             style = MaterialTheme.typography.bodyLarge,
                             color = Ink,
                             modifier = Modifier.padding(start = 8.dp),
@@ -220,4 +247,10 @@ private fun AppLanguage.labelRes(): Int = when (this) {
     AppLanguage.SYSTEM -> R.string.language_system
     AppLanguage.CHINESE -> R.string.language_chinese
     AppLanguage.ENGLISH -> R.string.language_english
+}
+
+private fun ThemeMode.labelRes(): Int = when (this) {
+    ThemeMode.SYSTEM -> R.string.theme_system
+    ThemeMode.LIGHT -> R.string.theme_light
+    ThemeMode.DARK -> R.string.theme_dark
 }

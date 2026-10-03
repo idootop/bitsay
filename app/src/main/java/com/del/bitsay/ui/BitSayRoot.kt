@@ -1,5 +1,6 @@
 package com.del.bitsay.ui
 
+import androidx.compose.runtime.getValue
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,7 +21,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -148,6 +148,8 @@ fun BitSayRoot(
                     canPinWidget = state.canPinWidget,
                     language = state.language,
                     onLanguage = viewModel::setLanguage,
+                    themeMode = state.themeMode,
+                    onThemeMode = viewModel::setThemeMode,
                     onBack = viewModel::openList,
                     onAddWidget = viewModel::addWidgetToHome,
                     onExport = { viewModel.prepareExport { name -> exportLauncher.launch(name) } },

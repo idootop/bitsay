@@ -63,6 +63,14 @@ internal object WidgetRenderer {
         views.setTextViewText(R.id.widget_tab_todos, ui.getString(R.string.tab_todos))
         views.setTextViewText(R.id.widget_empty, ui.getString(R.string.widget_empty))
 
+        // The three icon buttons are static ink vectors, and a RemoteViews layout cannot follow the
+        // app's theme choice through resources (the host inflates it with its own configuration).
+        // Untinted they stayed #3D3A38 on the dark background #2C2A27 — a contrast ratio of 1.26:1,
+        // i.e. effectively invisible. Tint them from the same palette as the rest of the widget.
+        iconTint(views, R.id.widget_open_app, palette.ink)
+        iconTint(views, R.id.widget_search, palette.ink)
+        iconTint(views, R.id.widget_add, palette.ink)
+
         // --- the two list tabs ---
         tint(views, R.id.widget_tab_notes, if (kind == Kind.NOTE) palette.sun else palette.line)
         tint(views, R.id.widget_tab_todos, if (kind == Kind.TODO) palette.mint else palette.line)
@@ -210,6 +218,16 @@ internal object WidgetRenderer {
     /** One white rounded shape, coloured per state — no second set of drawables for dark mode. */
     private fun tint(views: RemoteViews, viewId: Int, color: Color) {
         views.setColorStateList(viewId, "setBackgroundTintList", ColorStateList.valueOf(color.toArgb()))
+    }
+
+    /**
+     * Tint an ImageView's drawable. [ImageView.setImageTintList] is `@RemotableViewMethod`
+     * (android/widget/ImageView.java), which RemoteViews enforces at apply time, so this is the
+     * supported way to recolour a vector in a widget. `setColorFilter` is NOT annotated and would
+     * throw ActionException.
+     */
+    private fun iconTint(views: RemoteViews, viewId: Int, color: Color) {
+        views.setColorStateList(viewId, "setImageTintList", ColorStateList.valueOf(color.toArgb()))
     }
 
     private fun requestCode(widgetId: Int, slot: Int) = widgetId * 8 + slot

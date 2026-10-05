@@ -49,10 +49,20 @@ BitSay.pages.widget = (function () {
       return { withHeader, rows: rowsFor(avail - (withHeader ? HEAD_H : 0)) };
     }
 
+    /* 渲染签名：内容没变就不重绘。
+       ResizeObserver 挂载后会立刻回调一次，如果无条件重绘，就会把
+       DOM 整体换掉 —— 空状态里那株嫩芽的绘制动画会被打回起点，看起来像没画。
+       （真机上小组件是 RemoteViews，没有这个问题；但设计台里必须防住。） */
+    let lastSig = null;
+
     function render() {
       const kind = opts.kind || S.state.widgetKind;
       const items = S.list(kind);
       const { withHeader: showHeader, rows: visible } = layout();
+      const sig = kind + '|' + (showHeader ? 1 : 0) + '|' + visible + '|' +
+                  items.slice(0, Math.max(visible, 1)).map((i) => i.id + (i.done ? 'd' : '') + i.text).join(',');
+      if (sig === lastSig) return;
+      lastSig = sig;
 
       box.innerHTML = `
         <div class="widget__head" ${showHeader ? '' : 'hidden'}>
@@ -66,12 +76,15 @@ BitSay.pages.widget = (function () {
         ${items.length ? `<div class="widget__list">${items.slice(0, Math.max(visible, 1)).map((it, i) => {
           return `<div class="widget__row ${it.done ? 'widget__row--done' : ''} ${it.kind === 'todo' ? '' : 'widget__row--plain'}" data-id="${it.id}">
             ${it.kind === 'todo'
-              ? `<span class="widget__tick" data-act="tick">${it.done ? I.check() : I.todoOpen()}</span>`
+              ? `<span class="widget__tick" data-act="tick">${it.done ? I.todoDone() : I.todoOpen()}</span>`
               : ''}
             <span class="widget__text">${BitSay.ui.esc(BitSay.ui.singleLine(it.text))}</span>
           </div>`;
         }).join('')}</div>`
-        : `<div class="widget__empty">这里还什么都没有\n去 App 里加一条吧</div>`}
+        : `<div class="widget__empty">
+             ${BitSay.sprout.svg({ size: dims.h >= 400 ? 74 : dims.h >= 250 ? 60 : 38 })}
+             <span>这里还什么都没有\n去 App 里加一条吧</span>
+           </div>`}
         <button class="widget__fab" type="button" data-act="new" title="新建">${I.plus()}</button>`;
 
       if (!interactive) box.style.pointerEvents = 'none';
@@ -100,11 +113,14 @@ BitSay.pages.widget = (function () {
     const unsub = S.subscribe(render);
     render();
     // 尺寸变化后重新判断能不能放下顶栏
-    if (window.ResizeObserver) {
-      const ro = new ResizeObserver(() => render());
-      ro.observe(box);
-    }
-    return { unmount: unsub, render };
+    const ro = window.ResizeObserver ? new ResizeObserver(() => render()) : null;
+    if (ro) ro.observe(box);
+    /* unmount 必须同时断开 observer —— 只退订的话，尺寸回调还会再触发一次 render，
+       调用方以为已经"冻住"了，其实没有。 */
+    return {
+      render,
+      unmount() { unsub(); if (ro) ro.disconnect(); },
+    };
   }
   return { mount };
 })();

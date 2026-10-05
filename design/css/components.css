@@ -14,9 +14,13 @@
   position:relative; flex:1 1 auto; min-height:0;
   display:flex; flex-direction:column;
   padding-top:var(--safe-top);
-  background:linear-gradient(180deg,var(--c-canvas-2) 0%,var(--c-canvas) 38%,var(--c-canvas) 100%);
+  /* 天光 → 纸面 → 土壤。顶部那一层白光让整屏像"被晨光照着" */
+  background:
+    radial-gradient(124% 66% at 50% -14%, rgba(255,255,255,.92), rgba(255,255,255,0) 64%),
+    linear-gradient(180deg, var(--c-sky) 0%, var(--c-canvas) 46%, var(--c-moss) 100%);
   color:var(--c-ink);
   font-size:var(--fs-body); line-height:var(--lh-body);
+  font-family:var(--font-body);
   -webkit-font-smoothing:antialiased;
 }
 .page{ flex:1 1 auto; display:flex; flex-direction:column; min-height:0; }
@@ -28,8 +32,9 @@
 }
 .topbar__titles{ flex:1 1 auto; min-width:0; }
 .topbar__title{
+  font-family:var(--font-display);           /* 绘本感来自字形，不来自装饰 */
   font-size:var(--fs-display); line-height:var(--lh-display);
-  font-weight:800; letter-spacing:var(--ls-display);
+  font-weight:700; letter-spacing:var(--ls-display);
   margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .topbar__sub{
@@ -82,6 +87,8 @@
   background:var(--c-accent); color:var(--c-accent-ink);
   font-weight:700;
 }
+@keyframes swell{ from{ transform:scale(.9); } to{ transform:none; } }
+.seg__item--on{ animation:swell .3s var(--ease); }
 
 /* ---------- 条目卡片：统一白卡，靠留白和底色区分，不靠颜色 ---------- */
 .card{
@@ -92,6 +99,16 @@
   cursor:pointer; -webkit-user-select:none; user-select:none;
   transition:transform .12s var(--ease), filter var(--dur) var(--ease);
 }
+/* 条目的"生长"进场：只给新增的那一条，不是每次重绘都播一遍。
+   由 js 在新建/首次渲染时挂上 .card--sprout，播完自己摘掉。 */
+@keyframes sprout{
+  0%   { opacity:0; transform:translateY(14px) scale(.955); }
+  60%  { opacity:1; }
+  100% { opacity:1; transform:none; }
+}
+.card--sprout{ animation:sprout .46s cubic-bezier(.16,.9,.3,1) backwards; }
+/* 一排一起冒出来时错开一点，像依次发芽；单条新增时只有一个，不影响 */
+.card--sprout{ animation-delay:calc(var(--i, 0) * 26ms); }
 .card:active{ transform:scale(.985); }
 .card__body{ flex:1 1 auto; min-width:0; }
 .card__text{
@@ -119,21 +136,28 @@
 .tick{
   width:23px; height:23px; flex:0 0 auto; margin-right:13px;
   display:grid; place-items:center; border-radius:var(--r-pill);
-  border:1.5px solid rgba(34,29,24,.22); background:transparent;
+  /* 颜色和小组件里的勾选圈对齐（都用 --c-ink-3）。
+     原来这里是 rgba(34,29,24,.22)≈#D5D3CF，在白卡上几乎看不见，
+     而小组件用的是 --c-ink-2，两边深浅对不上。 */
+  border:1.5px solid var(--c-ink-3); background:transparent;
   color:var(--c-accent-ink);
   transition:background var(--dur) var(--ease), border-color var(--dur) var(--ease),
              transform .12s var(--ease);
 }
-.tick:hover{ border-color:rgba(34,29,24,.4); }
+.tick:hover{ border-color:var(--c-ink-2); }
 .tick:active{ transform:scale(.9); }
 .tick--on{ background:var(--c-accent); border-color:var(--c-accent); }
+@keyframes settle{
+  0%{ transform:scale(1); } 38%{ transform:scale(.82); } 100%{ transform:scale(1); }
+}
+.tick--settle{ animation:settle .42s cubic-bezier(.2,1.4,.4,1); }
 .tick svg{ width:13px; height:13px; stroke-width:3; }
 
 /* ---------- 多选圈 ---------- */
 .pick{
   width:22px; height:22px; flex:0 0 auto; margin-right:13px;
   display:grid; place-items:center; border-radius:var(--r-pill);
-  border:1.5px solid rgba(34,29,24,.22);
+  border:1.5px solid var(--c-ink-3);   /* 和 .tick / 小组件保持同一档 */
   color:var(--c-accent-ink);
   transition:background var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
@@ -150,7 +174,36 @@
   transition:transform .12s var(--ease);
 }
 .fab:active{ transform:scale(.94); }
-.fab svg{ width:26px; height:26px; stroke-width:2.6; }
+/* 呼吸放在图标上，不和按钮自己的 :active 缩放打架。
+   幅度只有 3.5%、周期 5.6s —— 是"活着"，不是"在跳"。 */
+@keyframes breathe{
+  0%,100%{ transform:scale(1) rotate(0deg); }
+  50%    { transform:scale(1.035) rotate(2deg); }
+}
+.fab svg{ width:26px; height:26px; stroke-width:2.6; animation:breathe 5.6s var(--ease) infinite; }
+
+/* ---------- 空状态里的植物：自己长出来 ----------
+   三个 stroke-dashoffset 动画错开：茎(0s) → 左叶(.42s) → 右叶(.66s)。
+   画完就停在原地，不循环 —— 循环会变成"在闪"，不是"在长"。 */
+@keyframes drawIn{ from{ stroke-dashoffset:var(--len,240); } }
+/* 基态是【已经画完】(dashoffset 0)，只有动画的 from 才是"没画"。
+   写成"基态=未画 + forwards"是脆的：动画一旦没跑（时序、离屏、降级），
+   嫩芽就永远隐形，而布局位置还占着，看起来像组件坏了。
+   fill-mode 用 backwards：延迟期间显示 from（空），跑完回到基态（画完）。 */
+.sprout path{
+  stroke-dasharray:var(--len,240);
+  stroke-dashoffset:0;
+  animation:drawIn 1.15s cubic-bezier(.22,.8,.3,1) backwards;
+}
+.sprout__stem  { --len:130; }              /* 茎变短了（不再长到顶） */
+.sprout__leaf-l{ --len:100; animation-delay:.42s; }
+.sprout__leaf-r{ --len:100; animation-delay:.46s; }  /* 两片顶叶几乎同时张开 */
+/* 长完之后叶片极缓地呼吸（幅度 1.5%），像有风 */
+@keyframes sway{
+  0%,100%{ transform:rotate(0deg); }
+  50%    { transform:rotate(1.4deg); }
+}
+.sprout{ transform-origin:32px 84px; animation:sway 7s ease-in-out 1.9s infinite; }
 
 /* ---------- 空状态：没有插图，靠排版本身撑住 ---------- */
 .empty{
@@ -158,7 +211,8 @@
   display:flex; flex-direction:column; align-items:center;
 }
 .empty__title{
-  font-size:19px; line-height:26px; font-weight:800; letter-spacing:-.02em;
+  font-family:var(--font-display);
+  font-size:21px; line-height:30px; font-weight:700; letter-spacing:-.01em;
   color:var(--c-ink);
 }
 .empty__hint{

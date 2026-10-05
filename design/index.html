@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>比特记 bitsay · UI/UX 设计台</title>
+<title>碎碎念 Bitsay · UI/UX 设计台</title>
 <!-- 顺序有讲究：tokens → base → components → 各页面 → 深色 → 演示台 -->
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/base.css">
@@ -16,13 +16,14 @@
 <link rel="stylesheet" href="css/pages/homescreen.css">
 <link rel="stylesheet" href="css/dark.css">
 <link rel="stylesheet" href="css/board.css">
+<link rel="stylesheet" href="css/appicon.css">
 </head>
 <body data-dark="0">
 
 
 
 <div class="shell">
-  <h1 class="shell__title">比特记 bitsay · UI/UX 设计台</h1>
+  <h1 class="shell__title">碎碎念 Bitsay · UI/UX 设计台</h1>
   <p class="shell__sub">
     一个页面看完整 App：<b>所有页面、所有组件、小组件三种尺寸</b>，而且<strong>都能点</strong>——
     所有视图共用同一份数据，在任一视图里勾一条待办，其它视图会立刻跟着变。
@@ -63,11 +64,24 @@
   <div class="stage" id="widgets"></div>
 
 
-  <h2 class="sect-title"><span class="n">④</span>组件库</h2>
+  <h2 class="sect-title"><span class="n">④</span>空状态</h2>
+  <p class="sect-sub">空状态里那株<b>植物线描</b>会自己长出来：茎 0s → 左叶 .42s → 右叶 .66s（`stroke-dashoffset`），
+    长完停在原地，整体再以 7s 周期极缓摆 1.4°。它是<b>静物，不是角色</b> —— 没有五官、不参与交互、不进常驻界面。</p>
+  <div class="grid" id="empties"></div>
+
+  <h2 class="sect-title"><span class="n">⑤</span>应用图标</h2>
+  <p class="sect-sub">概念是<b>空状态那株嫩芽</b> —— 它在页面里已经建立了"生长"的语言，图标就是把它压缩成一个能被认出来的记号。
+    底色<b>统一墨黑</b>（绿底已删，纸色底不受欢迎）。画布按 Android 自适应图标规范（108×108，可见区 72，安全区半径 33），
+    每个方案的最远点都核过 ≤32.6，所以圆形 / 圆角方 / 方形三种裁切都不会切到主体。</p>
+  <div id="appicon-final"></div>
+  <h3 class="sect-sub3">备选（未采用，留作设计记录）</h3>
+  <div class="icons-grid" id="appicons"></div>
+
+  <h2 class="sect-title"><span class="n">⑥</span>组件库</h2>
   <p class="sect-sub">卡片、分段 tab、图标按钮、勾选圈、空状态 —— 全站复用同一套。</p>
   <div class="knobs" id="components"></div>
 
-  <h2 class="sect-title"><span class="n">⑤</span>设计令牌</h2>
+  <h2 class="sect-title"><span class="n">⑦</span>设计令牌</h2>
   <p class="sect-sub">与 <code>ui/theme/Color.kt</code> 一一对应；切亮暗时这里的值会跟着变。改颜色只改 <code>css/tokens.css</code>。</p>
   <div class="pal" id="palette"></div>
 
@@ -76,6 +90,8 @@
 
 <script src="js/icons.js"></script>
 <script src="js/store.js"></script>
+<script src="js/sprout.js"></script>
+<script src="js/appicon.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/pages/list.js"></script>
 <script src="js/pages/editor.js"></script>

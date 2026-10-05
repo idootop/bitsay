@@ -15,7 +15,12 @@
   --w-head-h: 47px;
   --w-btn: 44px;
   --w-tab-h: 32px;
-  --w-tick-w: 42px;      /* 勾选圈占位宽（真机 44dp，笔记行 GONE 不占位） */
+  /* 勾选圈占位宽。真机声明 44dp、按 0.91 缩放后实测 40dp —— 这里直接用 40，
+     点击区和真机一致；文字的左边距 = (40 − 字形)/2 ≈ 7，所以前端不会显空。 */
+  --w-tick-w: 40px;
+  --w-tick-glyph: 26px;  /* 字形盒子。注意 icon 的 viewBox 有留白：
+                            r=8.6/24 → 实际画出来的圆只有盒子的 72%，
+                            所以这里必须给大一点，否则圆只有 11px，看着就是"浮着一个小点" */
   --w-row-pad-l: 11px;   /* 笔记行的左边距（真机 6dp，这里是圆角色卡，给多一点） */
   --w-row-pad-r: 11px;   /* 右边距（真机 8dp） */
   --w-fab: 44px;
@@ -70,9 +75,15 @@
 .widget__row:active{ filter:brightness(.97); }
 .widget__tick{
   width:var(--w-tick-w); height:var(--w-row-h); flex:0 0 auto;
-  display:grid; place-items:center; color:var(--c-ink-2);
+  display:grid; place-items:center; color:var(--c-ink-3);
 }
-.widget__tick svg{ width:16px; height:16px; }
+.widget__tick svg{
+  width:var(--w-tick-glyph); height:var(--w-tick-glyph);
+  /* 归一化描边粗细：App 里的圈是 23px + 1.5px 边框，这边 26px 的盒子
+     要 1.45 才渲染成 ~1.57px，两边的"笔画/直径"比才一致。
+     用 1.8 会显得比 App 重一档。 */
+  stroke-width:1.45;
+}
 .widget__text{
   flex:1 1 auto; min-width:0; font-size:13.5px; line-height:17px;
   color:var(--row-ink,var(--c-ink)); letter-spacing:-.005em;
@@ -81,10 +92,15 @@
 .widget__row--done{ --row-fill:var(--c-card-done); --row-ink:var(--c-ink-3); }
 .widget__row--done .widget__text{ text-decoration:line-through; }
 
+/* 空状态：和列表 / 搜索用同一株嫩芽。2×2 里给最小的尺寸，
+   但**不隐藏** —— 藏起来就变成"这个组件坏了"，小一点反而像刚发芽。 */
 .widget__empty{
-  flex:1 1 auto; display:grid; place-items:center; text-align:center;
-  color:var(--c-ink-3); font-size:12.5px; white-space:pre-line; line-height:1.9;
+  flex:1 1 auto; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:9px;
+  text-align:center; color:var(--c-ink-3);
+  font-size:12.5px; white-space:pre-line; line-height:1.9;
 }
+.widget__empty .sprout{ opacity:.85; flex:0 0 auto; }
 
 /* + 悬浮在列表之上：列表不预留底部空白 */
 .widget__fab{

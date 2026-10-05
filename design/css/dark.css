@@ -7,14 +7,16 @@
    由 <body data-dark="1"> 触发。
    ========================================================================== */
 [data-dark="1"]{
+  --c-sky:       var(--c-sky-d);
   --c-canvas:    var(--c-canvas-d);
-  --c-canvas-2:  var(--c-canvas-2-d);
+  --c-moss:      var(--c-moss-d);
   --c-surface:   var(--c-surface-d);
   --c-surface-2: var(--c-surface-2-d);
   --c-ink:       var(--c-ink-d);
   --c-ink-2:     var(--c-ink-2-d);
   --c-ink-3:     var(--c-ink-3-d);
   --c-line:      var(--c-line-d);
+  --c-leaf:      var(--c-leaf-d);
   --c-card:      var(--c-card-d);
   --c-card-done: var(--c-card-done-d);
 

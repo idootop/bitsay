@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">比特记</string>
-    <string name="widget_label">比特记 · 列表</string>
+    <string name="app_name">碎碎念</string>
+    <string name="widget_label">碎碎念 · 列表</string>
     <string name="widget_description">在桌面查看笔记或待办，点一下就能记。</string>
 
     <string name="tab_notes">笔记</string>
@@ -46,7 +46,7 @@
     <string name="settings_import_desc">选择 .bitsay.gz 备份文件恢复，可覆盖或合并</string>
     <string name="settings_about">关于</string>
     <string name="settings_stats">共 %1$d 条笔记 · %2$d 条待办</string>
-    <string name="settings_widget_hint">长按桌面空白处 → 小组件 → 找到「比特记」，即可把列表放到桌面上。</string>
+    <string name="settings_widget_hint">长按桌面空白处 → 小组件 → 找到「碎碎念」，即可把列表放到桌面上。</string>
     <string name="settings_widget_add">添加到桌面</string>
     <string name="settings_widget_add_desc">把笔记或待办列表放到桌面，点一下就能记</string>
     <string name="widget_pin_requested">已请求添加到桌面；若桌面没有反应，请长按桌面空白处手动添加</string>
@@ -108,7 +108,7 @@
     <string name="time_pattern_full">yyyy-MM-dd HH:mm</string>
 
     <!-- 备份错误 -->
-    <string name="backup_error_not_a_backup">这不是比特记的备份文件</string>
+    <string name="backup_error_not_a_backup">这不是碎碎念的备份文件</string>
     <string name="backup_error_empty">备份文件是空的</string>
     <string name="backup_error_corrupt">备份文件已损坏</string>
     <string name="backup_error_newer">备份来自更新的版本（schema=%1$d），请先升级 App</string>

@@ -125,6 +125,67 @@ BitSay.app = (function () {
     });
   }
 
+  /* ---------------- ③.5 空状态 ---------------- */
+  function mountEmptyStates(root) {
+    const box = el('#empties', root);
+    if (!box) return;
+    const S = BitSay.store;
+
+    /* 让某个页面在"空数据"下渲染一帧，然后立刻退订把它**冻住**，
+       再把数据还原 —— 这样设计台里能同时看到"有数据"和"没数据"两种样子，
+       而不需要给页面加任何测试专用的开关。 */
+    function frozen(host, mount, label) {
+      const real = S.state.items;
+      S.state.items = [];
+      const inst = mount(host);
+      if (inst && inst.unmount) inst.unmount();   // list / search 返回的是退订函数
+      S.state.items = real;
+      S.emit();
+      return label;
+    }
+
+    const specs = [
+      ['空列表 · 笔记', (h) => frozen(h, (host) =>
+        BitSay.pages.list.mount(host, { tab: 'note', lockTab: true }))],
+      ['空列表 · 待办', (h) => frozen(h, (host) =>
+        BitSay.pages.list.mount(host, { tab: 'todo', lockTab: true }))],
+      ['空搜索 · 还没输入', (h) => BitSay.pages.search.mount(h, { autoFocus: false, onBack() {} })],
+      ['空搜索 · 没有结果', (h) => {
+        const inst = BitSay.pages.search.mount(h, { autoFocus: false, onBack() {} });
+        const i = h.querySelector('.field__input');
+        i.value = 'zzz';
+        i.dispatchEvent(new Event('input'));
+        return inst;
+      }],
+      ['小组件 · 空列表', (h) => {
+        const real = S.state.items;
+        S.state.items = [];
+        const inst = BitSay.pages.widget.mount(h, { size: '2x2', kind: 'note' });
+        if (inst && inst.unmount) inst.unmount();
+        S.state.items = real;
+        S.emit();
+      }]
+    ];
+
+    specs.forEach(([label, mount]) => {
+      const cell = document.createElement('div');
+      cell.className = 'grid__cell';
+      if (label.indexOf('小组件') === 0) {
+        const wall = document.createElement('div');
+        wall.className = 'wall';
+        wall.innerHTML = `<div class="wall__cap">${esc(label)}</div>`;
+        cell.appendChild(wall);
+        box.appendChild(cell);
+        mount(wall);
+      } else {
+        const { wrap, host } = phoneShell(label, { small: true });
+        cell.appendChild(wrap);
+        box.appendChild(cell);
+        mount(host);
+      }
+    });
+  }
+
   /* ---------------- ③ 桌面小组件（真实桌面） ---------------- */
   const HS_ICONS = [
     ['日历', '1', 'linear-gradient(#fff,#f2f2f2)', '#E5484D', '#333'],
@@ -157,7 +218,7 @@ BitSay.app = (function () {
           <div class="statusbar"><span>17:15</span>
             <span class="statusbar__icons">4.40 KB/s &nbsp;5G &nbsp;▮▮▮&nbsp; 41</span></div>
           <div class="hs__slot"><div class="hs-mount"></div></div>
-          <div class="hs__name">比特记</div>
+          <div class="hs__name">碎碎念</div>
           <div class="hs__icons">${icons}</div>
           <div class="hs__dots"><i></i><i class="on"></i><i></i><i></i><i></i></div>
           <div class="hs__dock">${dock}</div>
@@ -184,6 +245,61 @@ BitSay.app = (function () {
         onOpenApp: () => el('#demo')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       });
     });
+  }
+
+  /* ---------------- ③.8 应用图标 ---------------- */
+  function mountAppIcons(root) {
+    const box = el('#appicons', root);
+    if (!box) return;
+    const { esc, md } = BitSay.ui;
+    const F = BitSay.appicon.FINAL;
+
+    const hero = el('#appicon-final', root);
+    if (hero) hero.innerHTML = `
+      <div class="icfinal">
+        <div class="icfinal__left">
+          <span class="icfinal__badge">已定稿 · 已落地</span>
+          <div class="icfinal__shot">${F.svg}</div>
+        </div>
+        <div class="icfinal__right">
+          <div class="icfinal__title">${esc(F.key)} · ${esc(F.name)}</div>
+          <div class="icfinal__note">${md(F.note)}</div>
+          <div class="icfinal__masks">
+            <span class="icshot"><span class="mask mask--circle" style="width:66px;height:66px">${F.svg}</span><span class="cap">圆形</span></span>
+            <span class="icshot"><span class="mask mask--squircle" style="width:66px;height:66px">${F.svg}</span><span class="cap">圆角方</span></span>
+            <span class="icshot"><span class="mask mask--round" style="width:66px;height:66px">${F.svg}</span><span class="cap">方形</span></span>
+            <span class="icshot"><span class="mask mask--circle" style="width:48px;height:48px">${F.svg}</span><span class="cap">桌面 48</span></span>
+            <span class="icshot"><span class="mask mask--circle" style="width:24px;height:24px">${F.svg}</span><span class="cap">极小 24</span></span>
+          </div>
+          <div class="icfinal__files">已落到 <code>ic_launcher_background.xml</code> ·
+            <code>ic_launcher_foreground.xml</code> · <code>ic_launcher_monochrome.xml</code> ·
+            widget 的 <code>ic_widget_open_app.xml</code></div>
+        </div>
+      </div>`;
+
+    box.innerHTML = BitSay.appicon.VARIANTS.filter((v) => !v.final).map((v) => `
+      <div class="iccard">
+        <div class="iccard__head">
+          <span class="iccard__key">${esc(v.key)}</span>
+          <span class="iccard__name">${esc(v.name)}</span>
+          <span class="iccard__tag">${esc(v.tag)}</span>
+        </div>
+        <div class="iccard__row">
+          <span class="icshot"><span style="width:76px;height:76px">${v.svg}</span>
+            <span class="cap">108 母版</span></span>
+          <span class="icshot"><span class="mask mask--circle" style="width:60px;height:60px">${v.svg}</span>
+            <span class="cap">圆形</span></span>
+          <span class="icshot"><span class="mask mask--squircle" style="width:60px;height:60px">${v.svg}</span>
+            <span class="cap">圆角方</span></span>
+          <span class="icshot"><span class="mask mask--round" style="width:60px;height:60px">${v.svg}</span>
+            <span class="cap">方形</span></span>
+        </div>
+        <div class="iccard__sizes">
+          <span class="lbl">桌面 48</span><span style="width:48px;height:48px" class="mask mask--circle">${v.svg}</span>
+          <span class="lbl">极小 24</span><span style="width:24px;height:24px" class="mask mask--circle">${v.svg}</span>
+        </div>
+        <div class="iccard__note">${md(v.note)}</div>
+      </div>`).join('');
   }
 
   /* ---------------- ④ 组件库 ---------------- */
@@ -272,6 +388,8 @@ BitSay.app = (function () {
     mountDemo(document);
     mountOverview(document);
     mountWidgets(document);
+    mountEmptyStates(document);
+    mountAppIcons(document);
     mountComponents(document);
     BitSay.store.subscribe(() => mountComponents(document));
     setDark(wantDark);

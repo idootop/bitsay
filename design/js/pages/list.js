@@ -17,6 +17,11 @@ BitSay.pages.list = (function () {
     let tab = opts.tab || 'note';
     let selecting = !!opts.selecting;
     let selection = new Set();
+    /* 上一帧出现过的 id。只给"这一帧新出现的"挂萌发动画 ——
+       否则每次勾选重绘，整列都会重新长一遍。 */
+    let prevIds = new Set();
+    /* 刚刚被勾选的那条，播一次"落定" */
+    let settleId = null;
     // 只是为了"总览"里能直接看到多选长什么样：先勾上两条
     if (selecting) S().list(tab).slice(0, 2).forEach((it) => selection.add(it.id));
 
@@ -67,14 +72,21 @@ BitSay.pages.list = (function () {
       const items = S().list(tab);
       if (!items.length) {
         const note = tab === 'note';
-        el('list').innerHTML = `<div class="empty">
-          <div class="empty__title">${note ? '还没有笔记' : '今天没事要做'}</div>
-          <div class="empty__hint">点右下角的 <b>+</b> ${note ? '写下第一条' : '加一条待办'}</div>
-        </div>`;
+        el('list').innerHTML = U().emptyState({
+          title: note ? '还没有笔记' : '今天没事要做',
+          hint: `点右下角的 <b>+</b> ${note ? '写下第一条' : '加一条待办'}`,
+        });
         return;
       }
       el('list').innerHTML = items.map((it, i) =>
-        U().card(it, i, { selecting, selected: selection.has(it.id) })).join('');
+        U().card(it, i, {
+          selecting,
+          selected: selection.has(it.id),
+          enter: !prevIds.has(it.id),
+          settle: it.id === settleId,
+        })).join('');
+      prevIds = new Set(items.map((it) => it.id));
+      settleId = null;
       el('list').querySelectorAll('.card').forEach((node) => {
         const id = Number(node.dataset.id);
         U().longPress(node, () => {
@@ -123,7 +135,10 @@ BitSay.pages.list = (function () {
       const tick = e.target.closest('[data-act="tick"]');
       if (tick) {
         e.stopPropagation();
-        S().toggleDone(Number(tick.closest('.card').dataset.id));
+        const id = Number(tick.closest('.card').dataset.id);
+        /* 只有"勾上"才播落定；取消勾选是把动作倒回去，不该有庆祝感 */
+        if (!S().find(id)?.done) settleId = id;
+        S().toggleDone(id);
         return;
       }
 

@@ -68,7 +68,7 @@ BitSay.pages.settings = (function () {
             <span class="srow__chev">›</span>
           </div>
           <div class="block__pad" style="padding-top:0">
-            <div class="note-text">长按桌面空白处 → 小组件 → 找到「比特记」</div>
+            <div class="note-text">长按桌面空白处 → 小组件 → 找到「碎碎念」</div>
           </div>
         </div>
 
@@ -91,7 +91,7 @@ BitSay.pages.settings = (function () {
         <div class="sect">关于</div>
         <div class="block inked">
           <div class="block__pad">
-            <div style="font-weight:700">比特记</div>
+            <div style="font-weight:700">碎碎念</div>
             <div class="note-text" style="margin-top:3px">版本 1.0.0</div>
             <div class="note-text" style="margin-top:8px">纯文字笔记与待办，不要任何权限，数据只留在你手里。</div>
           </div>

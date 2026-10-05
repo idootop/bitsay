@@ -38,18 +38,15 @@ BitSay.pages.search = (function () {
     function renderResults() {
       const q = input.value;
       if (!q.trim()) {
-        el('list').innerHTML = `<div class="empty">
-          <div class="empty__title">想找什么？</div>
-          <div class="empty__hint">输入关键词，笔记和待办一起搜</div>
-        </div>`;
+        el('list').innerHTML = U.emptyState({
+          title: '想找什么？',
+          hint: '输入关键词，笔记和待办一起搜',
+        });
         return;
       }
       const hits = S.search(tab, q);          // ← 同一个词，在当前分类下重查
       if (!hits.length) {
-        el('list').innerHTML = `<div class="empty">
-          <div class="empty__title">没找到</div>
-          <div class="empty__hint">换个词试试</div>
-        </div>`;
+        el('list').innerHTML = U.emptyState({ title: '没找到', hint: '换个词试试' });
         return;
       }
       el('list').innerHTML = hits.map((it, i) =>

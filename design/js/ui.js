@@ -12,6 +12,9 @@ BitSay.ui = (function () {
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+  /** 转义 + 只认 **加粗**：设计板上的说明文字用它，省得为了几个重点引 markdown 库 */
+  const md = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+
   /** 单行预览：换行/连续空白压成一个空格（对应 TextPreview.singleLine） */
   const singleLine = (s) => String(s).replace(/\s+/g, ' ').trim();
 
@@ -29,8 +32,10 @@ BitSay.ui = (function () {
   /**
    * 列表条目卡片 —— 全站唯一实现。
    * @param item  数据
-   * @param idx   在列表中的序号（保留参数，当前不用于配色）
-   * @param opts  { selecting, selected }  多选态
+   * @param idx   在列表中的序号（用作错开的动画延迟）
+   * @param opts  { selecting, selected, enter, settle }
+   *              enter  = 这一条是刚出现的 → 播"萌发"动画
+   *              settle = 刚刚被勾选 → 完成圈轻轻落定
    */
   function card(item, idx, opts = {}) {
     let lead = '';
@@ -39,17 +44,34 @@ BitSay.ui = (function () {
                 ${opts.selected ? I.check() : ''}</span>`;
     } else if (item.kind === 'todo') {
       // 多选态下不显示完成圈：两个圆圈并排会读成噪音
-      lead = `<button type="button" class="tick ${item.done ? 'tick--on' : ''}" data-act="tick"
+      lead = `<button type="button" class="tick ${item.done ? 'tick--on' : ''}
+                ${opts.settle ? 'tick--settle' : ''}" data-act="tick"
                 title="勾选完成">${item.done ? I.check() : ''}</button>`;
     }
 
-    return `<article class="card inked ${item.done ? 'card--done' : ''}" data-id="${item.id}" tabindex="0">
+    const cls = ['card', 'inked',
+      item.done ? 'card--done' : '',
+      opts.enter ? 'card--sprout' : ''].filter(Boolean).join(' ');
+    return `<article class="${cls}" data-id="${item.id}" style="--i:${idx}" tabindex="0">
       ${lead}
       <div class="card__body">
         <div class="card__text">${esc(singleLine(item.text))}</div>
         <div class="card__meta">${esc(BitSay.store.timeText(item.createdAt))}</div>
       </div>
     </article>`;
+  }
+
+  /**
+   * 空状态 —— 全站唯一实现（列表 / 搜索都用它）。
+   * 一株会自己长出来的嫩芽 + 衬线标题 + 一句人话。
+   * @param o { title, hint, size }
+   */
+  function emptyState(o) {
+    return `<div class="empty">
+      ${BitSay.sprout.svg({ size: o.size || 92 })}
+      <div class="empty__title">${esc(o.title)}</div>
+      <div class="empty__hint">${o.hint}</div>
+    </div>`;
   }
 
   /** 长按 / 右键 → 进多选（对应 combinedClickable 的 onLongClick） */
@@ -93,5 +115,5 @@ BitSay.ui = (function () {
     });
   }
 
-  return { esc, singleLine, ICON_BUTTON, seg, card, longPress, toast, choose };
+  return { esc, md, singleLine, ICON_BUTTON, seg, card, emptyState, longPress, toast, choose };
 })();

@@ -14,7 +14,6 @@ BitSay.icons = (function () {
     delete:   'M5 7h14M10 7V5.2h4V7M6.6 7l.9 11.4h9l.9-11.4',
     exportIc: 'M12 15.5V4.6M8.2 8.4L12 4.6l3.8 3.8M5 15v3.4h14V15',
     importIc: 'M12 4.5v10.9M8.2 11.6L12 15.4l3.8-3.8M5 15v3.4h14V15',
-    openApp:  'M6.6 9.5h10.8M9.4 15.2l2 1.9 3.2-3.6',
     widget:   '',
   };
   const wrap = (inner) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -31,6 +30,8 @@ BitSay.icons = (function () {
     delete:   () => wrap(`<path d="${P.delete}"/>`),
     check:    () => wrap(`<path d="${P.check}" stroke-width="2.6"/>`),
     todoOpen: () => wrap(`<circle cx="12" cy="12" r="8.6"/>`),
+    // 已完成：圆圈 + 对勾。小组件用它（而不是光一个对勾），空圈/带勾才是一对
+    todoDone: () => wrap(`<circle cx="12" cy="12" r="8.6"/><path d="M8 12.3l2.8 2.7L16.2 9.4"/>`),
     exportIc: () => wrap(`<path d="${P.exportIc}"/>`),
     importIc: () => wrap(`<path d="${P.importIc}"/>`),
     // 对比度：整圆 + 右半实心。原来那条路径没闭合，描出来是个逗号
@@ -40,8 +41,15 @@ BitSay.icons = (function () {
     lang:     () => wrap(`<circle cx="12" cy="12" r="8.6"/><path d="M3.4 12h17.2"/>
                           <ellipse cx="12" cy="12" rx="4.1" ry="8.6"/>`),
     // 顶栏"进 App"：便签 + 对勾
-    openApp:  () => wrap(`<rect x="3.4" y="4.6" width="17.2" height="14.8" rx="3"/>
-                          <path d="M3.4 9h17.2"/><path d="${P.openApp}"/>`),
+    // 品牌标记「破土」—— 和 Android 的 ic_widget_open_app.xml 是同一份几何（缩放 0.38 到 24）。
+    // 这里不能复用 wrap()：破土是**填充**图形，wrap() 用的是描边。
+    openApp:  () => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <path d="M4.4 21.5C4.4 18.46 7.44 16.94 12 16.94C16.56 16.94 19.6 18.46 19.6 21.5Z"/>
+                          <path d="M12 21.5C11.62 17.32 11.62 13.14 12 8.96"
+                                fill="none" stroke="currentColor" stroke-width="1.67" stroke-linecap="round"/>
+                          <path d="M12 8.96C8.2 9.34 5.54 6.3 5.54 2.5C9.34 2.5 12 5.16 12 8.96Z"/>
+                          <path d="M12 8.96C15.8 9.34 18.46 6.3 18.46 2.5C14.66 2.5 12 5.16 12 8.96Z"/>
+                        </svg>`,
     widget:   () => wrap(`<rect x="4" y="4" width="7" height="7" rx="2"/>
                           <rect x="13" y="4" width="7" height="7" rx="2"/>
                           <rect x="4" y="13" width="7" height="7" rx="2"/>

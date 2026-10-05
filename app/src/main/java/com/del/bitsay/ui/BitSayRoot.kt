@@ -152,16 +152,11 @@ fun BitSayRoot(
                 )
 
                 Screen.Settings -> SettingsScreen(
-                    noteCount = state.noteCount,
-                    todoCount = state.todoCount,
-                    openTodoCount = state.openTodoCount,
-                    canPinWidget = state.canPinWidget,
                     language = state.language,
                     onLanguage = viewModel::setLanguage,
                     themeMode = state.themeMode,
                     onThemeMode = viewModel::setThemeMode,
                     onBack = viewModel::openList,
-                    onAddWidget = viewModel::addWidgetToHome,
                     onExport = { viewModel.prepareExport { name -> exportLauncher.launch(name) } },
                     onImport = { importLauncher.launch(BackupFiles.IMPORT_MIME_TYPES) },
                 )

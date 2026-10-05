@@ -69,18 +69,31 @@ internal object WidgetRenderer {
         // i.e. effectively invisible. Tint them from the same palette as the rest of the widget.
         iconTint(views, R.id.widget_open_app, palette.ink)
         iconTint(views, R.id.widget_search, palette.ink)
-        iconTint(views, R.id.widget_add, palette.ink)
+        // The FAB glyph sits ON the accent, so it needs the accent's opposite — not `ink`. With
+        // `ink` it was a near-black plus on a black disc in light mode: invisible.
+        iconTint(views, R.id.widget_add, palette.accentInk)
+        // ...and the disc itself has to come from the palette as well. Its drawable names the
+        // static @color/accent (always black), so in dark mode a black disc would have carried a
+        // near-black plus. Only the background resource follows the app theme; the XML cannot.
+        views.setColorStateList(
+            R.id.widget_add,
+            "setBackgroundTintList",
+            ColorStateList.valueOf(palette.accent.toArgb()),
+        )
 
         // --- the two list tabs ---
-        tint(views, R.id.widget_tab_notes, if (kind == Kind.NOTE) palette.sun else palette.line)
-        tint(views, R.id.widget_tab_todos, if (kind == Kind.TODO) palette.mint else palette.line)
+        // The active tab is a plain canvas-coloured pill with ink text — not a colour. Both tabs
+        // keep the same shape and only swap which one is lit, so "which list am I looking at" is
+        // answered by contrast rather than by hue.
+        tint(views, R.id.widget_tab_notes, if (kind == Kind.NOTE) palette.background else Color.Transparent)
+        tint(views, R.id.widget_tab_todos, if (kind == Kind.TODO) palette.background else Color.Transparent)
         views.setTextColor(
             R.id.widget_tab_notes,
-            (if (kind == Kind.NOTE) palette.ink else palette.inkSoft).toArgb(),
+            (if (kind == Kind.NOTE) palette.ink else palette.inkFaint).toArgb(),
         )
         views.setTextColor(
             R.id.widget_tab_todos,
-            (if (kind == Kind.TODO) palette.ink else palette.inkSoft).toArgb(),
+            (if (kind == Kind.TODO) palette.ink else palette.inkFaint).toArgb(),
         )
         views.setOnClickPendingIntent(R.id.widget_tab_notes, setKindIntent(context, widgetId, Kind.NOTE))
         views.setOnClickPendingIntent(R.id.widget_tab_todos, setKindIntent(context, widgetId, Kind.TODO))

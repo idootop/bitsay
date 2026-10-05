@@ -512,6 +512,12 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             dirty = false,
             fromWidget = false,
             quickCapture = false,
+            // The editor can be opened from a search hit, and it always returns to the list — so
+            // the query has to go with it. Leaving it set made the home list silently render
+            // `searchResults` instead of the real list: count the header said "4 todos" while the
+            // body showed the empty state. Same reasoning as closeSearch().
+            query = "",
+            searchResults = emptyList(),
         )
     }
 

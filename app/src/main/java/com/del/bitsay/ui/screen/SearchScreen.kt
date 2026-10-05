@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -30,16 +31,16 @@ import androidx.compose.ui.unit.dp
 import com.del.bitsay.R
 import com.del.bitsay.core.model.Kind
 import com.del.bitsay.ui.AppUiState
-import com.del.bitsay.ui.components.CuteIconButton
-import com.del.bitsay.ui.components.EmptyHint
+import com.del.bitsay.ui.components.RoundIconButton
+import com.del.bitsay.ui.components.EmptyState
 import com.del.bitsay.ui.components.ItemList
 import com.del.bitsay.ui.components.SegmentedTabs
-import com.del.bitsay.ui.theme.CuteShape
+import com.del.bitsay.ui.theme.CardShape
 import com.del.bitsay.ui.theme.Ink
+import com.del.bitsay.ui.theme.InkFaint
 import com.del.bitsay.ui.theme.InkSoft
-import com.del.bitsay.ui.theme.Mint
+import com.del.bitsay.ui.theme.Line
 import com.del.bitsay.ui.theme.Paper
-import com.del.bitsay.ui.theme.Sun
 
 /**
  * Full-page search.
@@ -67,18 +68,16 @@ fun SearchScreen(
         keyboard?.show()
     }
 
-    val sunAccent = Sun
-    val mintAccent = Mint
     val results = state.searchResults
 
     Column(modifier.fillMaxSize()) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(start = 12.dp, end = 12.dp, top = 12.dp),
+                .padding(start = 14.dp, end = 14.dp, top = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            CuteIconButton(
+            RoundIconButton(
                 painter = painterResource(R.drawable.ic_back),
                 contentDescription = stringResource(R.string.action_back),
                 onClick = onBack,
@@ -94,28 +93,31 @@ fun SearchScreen(
             )
         }
 
-        Spacer(Modifier.padding(top = 12.dp))
-
         SegmentedTabs(
             options = listOf(Kind.NOTE, Kind.TODO),
             selected = state.tab,
             label = { stringResource(if (it == Kind.NOTE) R.string.tab_notes else R.string.tab_todos) },
-            accent = { if (it == Kind.NOTE) sunAccent else mintAccent },
             onSelect = onSelectTab,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 18.dp),
+                .padding(start = 20.dp, end = 20.dp, top = 14.dp),
         )
 
         when {
-            state.query.isBlank() -> EmptyHint(stringResource(R.string.search_prompt))
-            results.isEmpty() -> EmptyHint(stringResource(R.string.empty_search))
+            state.query.isBlank() -> EmptyState(
+                title = stringResource(R.string.empty_search_idle_title),
+                hint = stringResource(R.string.empty_search_idle_hint),
+            )
+            results.isEmpty() -> EmptyState(
+                title = stringResource(R.string.empty_search_title),
+                hint = stringResource(R.string.empty_search_hint),
+            )
             // Same rows as the home list, only without the room its FAB needs at the bottom.
             else -> ItemList(
                 items = results,
                 onClick = { onOpenItem(it.id) },
                 onToggleDone = { onToggleDone(it.id) },
-                bottomPadding = 32.dp,
+                bottomPadding = 24.dp,
             )
         }
     }
@@ -130,19 +132,14 @@ private fun SearchField(
 ) {
     Row(
         modifier
-            .clip(CuteShape)
+            .clip(CircleShape)
             .background(Paper)
-            .border(1.5.dp, Ink.copy(alpha = 0.13f), CuteShape)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .border(1.dp, Line, CircleShape)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        androidx.compose.material3.Icon(
-            painter = painterResource(R.drawable.ic_search),
-            contentDescription = null,
-            tint = InkSoft,
-            modifier = Modifier.size(18.dp),
-        )
-        Spacer(Modifier.width(10.dp))
+        // No magnifier inside the field. The screen is already titled by the field itself, and the
+        // icon only pushed the placeholder off the left edge — the one thing you actually read.
         Box(Modifier.weight(1f)) {
             if (value.isEmpty()) {
                 Text(

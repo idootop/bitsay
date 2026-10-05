@@ -38,15 +38,15 @@ internal object WidgetItems {
     const val MAX_ROWS = 50
 
     fun build(context: Context, items: List<Item>, palette: BitSayPalette): List<Row> =
-        items.take(MAX_ROWS).mapIndexed { index, item -> row(context, item, index, palette) }
+        items.take(MAX_ROWS).map { item -> row(context, item, palette) }
 
-    private fun row(context: Context, item: Item, index: Int, palette: BitSayPalette): Row {
+    private fun row(context: Context, item: Item, palette: BitSayPalette): Row {
         val views = RemoteViews(context.packageName, R.layout.widget_item)
 
         views.setTextViewText(R.id.widget_item_text, TextPreview.singleLine(item.text))
         views.setTextColor(
             R.id.widget_item_text,
-            if (item.done) palette.inkSoft.toArgb() else palette.ink.toArgb(),
+            if (item.done) palette.inkFaint.toArgb() else palette.ink.toArgb(),
         )
         views.setInt(
             R.id.widget_item_text,
@@ -60,6 +60,14 @@ internal object WidgetItems {
                 R.id.widget_item_icon,
                 if (item.done) R.drawable.ic_todo_done else R.drawable.ic_todo_open,
             )
+            // Both states ship as one-colour line art precisely so this tint can exist: the
+            // drawable's own colour would otherwise be frozen at whatever the XML says, and the
+            // widget cannot follow the app's theme through resources.
+            views.setColorStateList(
+                R.id.widget_item_icon,
+                "setImageTintList",
+                ColorStateList.valueOf(palette.inkFaint.toArgb()),
+            )
             // Independent action: tick the todo without leaving the home screen.
             views.setOnClickFillInIntent(
                 R.id.widget_item_icon,
@@ -70,11 +78,23 @@ internal object WidgetItems {
             views.setViewVisibility(R.id.widget_item_icon, View.GONE)
         }
 
-        val background = when {
-            item.done -> palette.done
-            item.isTodo -> palette.todoCards[index % palette.todoCards.size]
-            else -> palette.cards[index % palette.cards.size]
-        }
+        // The tick is a 22dp glyph centred inside a wider tap target, so it carries the left inset
+        // itself (paddingStart on the ImageView). A note row has no tick, so the row supplies it.
+        //
+        // Both branches set it explicitly, and neither is cached: the launcher recycles these item
+        // views, so a view that was a note row can be reused for a todo row. Leaving the todo
+        // branch to inherit the XML default would then keep the note row's 14dp inset and push the
+        // circle right again.
+        val density = context.resources.displayMetrics.density
+        val edge = (14 * density).toInt()
+        views.setViewPadding(
+            R.id.widget_item_root,
+            if (item.isTodo) 0 else edge, 0, edge, 0,
+        )
+
+        // One row colour for everything. The rotating pastels were dropped along with the app's:
+        // on a home screen a rainbow list competes with the wallpaper it is sitting on.
+        val background = if (item.done) palette.cardDone else palette.background
         views.setColorStateList(
             R.id.widget_item_root,
             "setBackgroundTintList",

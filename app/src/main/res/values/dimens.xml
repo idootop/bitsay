@@ -10,10 +10,20 @@
     <dimen name="widget_header_height">52dp</dimen>
 
     <!-- The two list tabs: 48dp tall for the touch target, 36dp of visible pill inside it. -->
-    <dimen name="widget_tab_height">40dp</dimen>
+    <!-- 34dp and a 17dp radius: a real pill. At 40/18 it was a rounded rectangle, and the
+         chip sat visibly taller than the text inside it. -->
+    <dimen name="widget_tab_height">34dp</dimen>
 
     <!-- The circle glyph stays small visually; the *touch* target around it is 44x48dp. -->
-    <dimen name="widget_tick_size">44dp</dimen>
+    <!-- 11 + 22 + 9 = 42. The start padding is 11, not 14, because the vector's circle only fills
+         72% of its own viewBox (r=8.6/24): a 22dp glyph draws a 15.8dp ring, so 11 + 3.1 puts the
+         ring's visible left edge at 14dp — exactly where a note row's text starts. Padding the box
+         to 14 would align the *boxes* and leave the ring looking indented. -->
+    <dimen name="widget_tick_size">42dp</dimen>
+    <dimen name="widget_tick_pad_start">11dp</dimen>
+    <dimen name="widget_tick_pad_end">9dp</dimen>
+    <!-- Vertical only: (48 - 22) / 2. The tick glyph needs a 22dp-tall content box because the
+         vector's circle only fills 72% of its own viewBox (r=8.6/24). -->
     <dimen name="widget_tick_glyph_padding">13dp</dimen>
 
     <!-- Header icon buttons: 48x48dp tap area with a ~22dp glyph centred inside. -->

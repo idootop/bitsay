@@ -16,7 +16,7 @@
   padding-top:var(--safe-top);
   /* 天光 → 纸面 → 土壤。顶部那一层白光让整屏像"被晨光照着" */
   background:
-    radial-gradient(124% 66% at 50% -14%, rgba(255,255,255,.92), rgba(255,255,255,0) 64%),
+    radial-gradient(124% 66% at 50% -14%, var(--c-glow), rgba(255,255,255,0) 64%),
     linear-gradient(180deg, var(--c-sky) 0%, var(--c-canvas) 46%, var(--c-moss) 100%);
   color:var(--c-ink);
   font-size:var(--fs-body); line-height:var(--lh-body);
@@ -25,7 +25,10 @@
 }
 .page{ flex:1 1 auto; display:flex; flex-direction:column; min-height:0; }
 
-/* ---------- 顶部栏：编辑级标题 ---------- */
+/* ---------- 顶部栏 ----------
+   两档尺寸，别混：
+     * 首页（列表）  —— 38px 大标题，顶端对齐，图标贴着标题的上沿；
+     * 次级页（编辑器 / 设置）—— 21px 标题，垂直居中，和 40px 返回键同一量级。 */
 .topbar{
   display:flex; align-items:flex-start; flex:0 0 auto;
   padding:16px 12px 12px var(--pad-page);
@@ -43,15 +46,14 @@
 }
 .topbar__actions{ display:flex; align-items:center; gap:2px; padding-top:2px; }
 
-/* 编辑器 / 设置页：次级页面。
-   标题要比图标字形（21px）略大一档才有主次，但不能用列表页那个 38px；
-   图标按钮 40px 高，所以整行改垂直居中，标题才不会吊在顶上。 */
+/* 编辑器 / 设置页：次级页面。标题 21px —— 比返回键字形（20px）大一点点就够，
+   用首页那个 38px 会把返回键衬成一个小点。整行垂直居中，标题才不吊在顶上。 */
 .topbar--page{
   align-items:center;
   padding:14px 12px 10px var(--pad-page);
 }
 .topbar--page .topbar__title{
-  font-size:24px; line-height:30px; font-weight:700; letter-spacing:-.015em;
+  font-size:21px; line-height:27px; letter-spacing:-.015em;
 }
 /* 返回图标到标题留 8px，贴着读起来像连在一起 */
 .topbar--page .topbar__titles{ padding-left:8px; }

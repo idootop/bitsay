@@ -9,92 +9,116 @@ import androidx.compose.ui.graphics.Color
 
 // ----------------------------------------------------------------------------
 // Raw values. Screens never use these directly — they read the theme-aware
-// accessors at the bottom of this file, which follow the light/dark scheme.
-// Kept in sync with res/values/colors.xml + res/values-night/colors.xml (the widget).
+// accessors below, which follow the light/dark scheme.
+//
+// Transcribed one-for-one from design/css/tokens.css, which is the single source of truth:
+// if a value changes there it must change here in the same commit.
+//
+// The palette has exactly one "loud" element — accent — and it is not a hue. Black in light mode
+// and white in dark mode, keeping the maximum-contrast role in both. The only other colour in the
+// whole app is [BitSayPalette.leaf], and it is reserved for the plant in the empty states.
 // ----------------------------------------------------------------------------
 
-private val PaperLight = Color(0xFFFFFDF7)
-private val BgLight = Color(0xFFFCF3E8)
-private val InkLight = Color(0xFF3D3A38)
-private val InkSoftLight = Color(0xFF8A8279)
-private val LineLight = Color(0xFFE6DDCB)
+private val CanvasLight = Color(0xFFEDF0F8) // page floor: cool grey, one step under the white cards
+private val SkyLight = Color(0xFFEFF4FC) // gradient top
+private val MossLight = Color(0xFFE8EEE6) // gradient bottom
+private val SurfaceLight = Color(0xFFFFFFFF)
+private val CardDoneLight = Color(0xFFE7EAF2) // done: one step darker, never a colour
+private val InkLight = Color(0xFF191B26)
+private val Ink2Light = Color(0xFF666B80)
+private val Ink3Light = Color(0xFF9CA1B5)
+private val LineLight = Color(0xFFE8EAF3)
+private val LeafLight = Color(0xFF8CA487)
+private val AccentLight = Color(0xFF000000)
+private val AccentInkLight = Color(0xFFFFFFFF)
+private val AccentSoftLight = Color(0xFFEFF1F6)
 
-private val PaperDarkValue = Color(0xFF2C2A27)
-private val BgDarkValue = Color(0xFF211F1D)
-private val InkDarkValue = Color(0xFFF2EDE4)
-private val InkSoftDarkValue = Color(0xFFA79F94)
-private val LineDarkValue = Color(0xFF443F39)
-
-private val SunLight = Color(0xFFFFD34E)
-private val MintLight = Color(0xFFB7E4C7)
-private val SkyLight = Color(0xFFAEDCEB)
-private val BlushLight = Color(0xFFFFC2C9)
-private val LilacLight = Color(0xFFD9CCF0)
-private val PeachLight = Color(0xFFFFD3B6)
-private val DoneLight = Color(0xFFEDE9E1)
-
-/**
- * Dark counterparts of the pastels: same hues, dropped to a luminance that does not glare on a
- * dark page. Reusing the light pastels would have looked like six holes punched in the screen.
- */
-private val SunDarkValue = Color(0xFF6B5320)
-private val MintDarkValue = Color(0xFF2F4F3C)
-private val SkyDarkValue = Color(0xFF29454F)
-private val BlushDarkValue = Color(0xFF52333A)
-private val LilacDarkValue = Color(0xFF3E3654)
-private val PeachDarkValue = Color(0xFF523D2C)
-private val DoneDarkValue = Color(0xFF2A2825)
+private val SkyDarkValue = Color(0xFF131722)
+private val CanvasDarkValue = Color(0xFF101119)
+private val MossDarkValue = Color(0xFF101611)
+private val SurfaceDarkValue = Color(0xFF1B1D29)
+private val CardDoneDarkValue = Color(0xFF171923)
+private val InkDarkValue = Color(0xFFF2F3F8)
+private val Ink2DarkValue = Color(0xFFA2A7BC)
+private val Ink3DarkValue = Color(0xFF6E7387)
+private val LineDarkValue = Color(0xFF282B3A)
+private val LeafDarkValue = Color(0xFF5D7358)
+private val AccentDarkValue = Color(0xFFFFFFFF)
+private val AccentInkDarkValue = Color(0xFF111318)
+private val AccentSoftDarkValue = Color(0xFF2A2D3A)
 
 /**
- * Everything the screens need that Material 3 does not name: the pastel rotation and the two
- * accent colours. Provided by [BitSayTheme] so a colour never has to be chosen at a call site.
+ * Everything the screens need that Material 3 does not name.
+ *
+ * Provided by [BitSayTheme] so a colour never has to be chosen at a call site — and, more
+ * importantly, so no call site can invent a second accent.
  */
 @Immutable
 data class BitSayPalette(
-    val cards: List<Color>,
-    val todoCards: List<Color>,
-    val done: Color,
-    val sun: Color,
-    val mint: Color,
-    val sky: Color,
-    val lilac: Color,
+    /** The only loud element: FAB, tick, selected pill. Black in light, white in dark. */
+    val accent: Color,
+    /** Text/icons drawn on [accent]. */
+    val accentInk: Color,
+    /** Neutral wash behind selected rows. */
+    val accentSoft: Color,
+    /** Every list row. Uniform by design — a rotating pastel was tried and read as confetti. */
+    val card: Color,
+    val cardDone: Color,
+    /** Sheet / dialog / widget surface. */
     val paper: Color,
     val background: Color,
+    /** Top and bottom stops of the page gradient, with [background] in the middle. */
+    val sky: Color,
+    val moss: Color,
+    /** Dawn light at the very top of the page. Fully transparent in dark mode: a 92% white wash
+     *  over a near-black floor greys the whole screen out. */
+    val glow: Color,
     val ink: Color,
+    /** Timestamps, hints. */
     val inkSoft: Color,
+    /** Placeholders, unselected tabs, the faint tick ring. */
+    val inkFaint: Color,
     val line: Color,
+    /** The plant drawing in the empty states. Nothing else may use this. */
+    val leaf: Color,
 )
 
 internal val LightPalette = BitSayPalette(
-    cards = listOf(SunLight, MintLight, SkyLight, BlushLight, LilacLight, PeachLight),
-    todoCards = listOf(SkyLight, MintLight, BlushLight),
-    done = DoneLight,
-    sun = SunLight,
-    mint = MintLight,
+    accent = AccentLight,
+    accentInk = AccentInkLight,
+    accentSoft = AccentSoftLight,
+    card = SurfaceLight,
+    cardDone = CardDoneLight,
+    paper = SurfaceLight,
+    background = CanvasLight,
     sky = SkyLight,
-    lilac = LilacLight,
-    paper = PaperLight,
-    background = BgLight,
+    moss = MossLight,
+    glow = Color(0xEBFFFFFF),
     ink = InkLight,
-    inkSoft = InkSoftLight,
+    inkSoft = Ink2Light,
+    inkFaint = Ink3Light,
     line = LineLight,
+    leaf = LeafLight,
 )
 
 internal val DarkPalette = BitSayPalette(
-    cards = listOf(SunDarkValue, MintDarkValue, SkyDarkValue, BlushDarkValue, LilacDarkValue, PeachDarkValue),
-    todoCards = listOf(SkyDarkValue, MintDarkValue, BlushDarkValue),
-    done = DoneDarkValue,
-    // Accents are darkened too, not kept bright: in dark mode every card carries light text, and
-    // a saturated yellow behind near-white text is unreadable.
-    sun = SunDarkValue,
-    mint = MintDarkValue,
+    // The accent flips to white rather than staying black: on a dark page the loudest thing has to
+    // be the lightest, or the FAB stops being the thing your eye lands on first.
+    accent = AccentDarkValue,
+    accentInk = AccentInkDarkValue,
+    accentSoft = AccentSoftDarkValue,
+    card = SurfaceDarkValue,
+    cardDone = CardDoneDarkValue,
+    paper = SurfaceDarkValue,
+    background = CanvasDarkValue,
     sky = SkyDarkValue,
-    lilac = LilacDarkValue,
-    paper = PaperDarkValue,
-    background = BgDarkValue,
+    moss = MossDarkValue,
+    glow = Color.Transparent,
     ink = InkDarkValue,
-    inkSoft = InkSoftDarkValue,
+    inkSoft = Ink2DarkValue,
+    inkFaint = Ink3DarkValue,
     line = LineDarkValue,
+    leaf = LeafDarkValue,
 )
 
 internal val LocalPalette = staticCompositionLocalOf { LightPalette }
@@ -106,27 +130,24 @@ internal val LocalPalette = staticCompositionLocalOf { LightPalette }
 fun paletteFor(dark: Boolean): BitSayPalette = if (dark) DarkPalette else LightPalette
 
 // ----------------------------------------------------------------------------
-// Theme-aware accessors. These keep every call site unchanged while making the
-// whole UI follow the light/dark scheme.
+// Theme-aware accessors.
 // ----------------------------------------------------------------------------
 
+val Accent: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.accent
+val AccentInk: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.accentInk
+val AccentSoft: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.accentSoft
+val Card: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.card
+val CardDone: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.cardDone
+val Paper: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.paper
+val Background: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.background
+val Sky: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.sky
+val Moss: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.moss
+val Glow: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.glow
 val Ink: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.ink
 val InkSoft: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.inkSoft
-val Paper: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.paper
-val Bg: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.background
+val InkFaint: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.inkFaint
 val Line: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.line
-
-val Sun: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.sun
-val Mint: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.mint
-val Sky: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.sky
-val Lilac: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.lilac
-val Done: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.done
-
-/** Pastel card colours, cycled by list position. */
-val CardColors: List<Color> @Composable @ReadOnlyComposable get() = LocalPalette.current.cards
-
-/** Todo cards, kept to the cooler half of the palette so the list reads as "tasks". */
-val TodoCardColors: List<Color> @Composable @ReadOnlyComposable get() = LocalPalette.current.todoCards
+val Leaf: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.leaf
 
 /** Material's own scheme, re-exported so screens have one import for all colours. */
 val Scheme @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme

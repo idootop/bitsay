@@ -28,15 +28,19 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.del.bitsay.R
 import com.del.bitsay.core.model.Kind
 import com.del.bitsay.core.util.TimeText
 import com.del.bitsay.core.util.TimeWording
 import com.del.bitsay.i18n.rememberTimeWording
 import com.del.bitsay.ui.AppUiState
-import com.del.bitsay.ui.components.CuteIconButton
-import com.del.bitsay.ui.theme.CuteShape
+import com.del.bitsay.ui.components.RoundIconButton
+import com.del.bitsay.ui.theme.CardShape
 import com.del.bitsay.ui.theme.Ink
+import com.del.bitsay.ui.theme.PageTitleStyle
+import com.del.bitsay.ui.theme.Line
+import com.del.bitsay.ui.theme.InkFaint
 import com.del.bitsay.ui.theme.InkSoft
 import com.del.bitsay.ui.theme.Paper
 
@@ -68,7 +72,7 @@ fun EditorScreen(
             .padding(horizontal = 18.dp, vertical = 12.dp),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            CuteIconButton(
+            RoundIconButton(
                 painter = painterResource(R.drawable.ic_back),
                 contentDescription = stringResource(R.string.action_back),
                 onClick = onBack,
@@ -79,12 +83,12 @@ fun EditorScreen(
                 text = stringResource(
                     if (state.editingKind == Kind.NOTE) R.string.tab_notes else R.string.tab_todos,
                 ),
-                style = MaterialTheme.typography.titleLarge,
+                style = PageTitleStyle,
                 color = Ink,
             )
             Spacer(Modifier.weight(1f))
             if (state.editingId > 0L) {
-                CuteIconButton(
+                RoundIconButton(
                     painter = painterResource(R.drawable.ic_delete),
                     contentDescription = stringResource(R.string.action_delete),
                     onClick = onDelete,
@@ -99,24 +103,29 @@ fun EditorScreen(
             Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .clip(CuteShape)
+                .clip(CardShape)
                 .background(Paper)
-                .border(1.5.dp, Ink.copy(alpha = 0.13f), CuteShape)
-                .padding(18.dp),
+                // The sheet is separated by a hairline, not a shadow: it is only one step brighter
+                // than the floor, and a shadow would overstate how far it floats.
+                .border(1.dp, Line, CardShape)
+                .padding(22.dp),
         ) {
             if (state.draft.isEmpty()) {
                 Text(
                     text = stringResource(
                         if (state.editingKind == Kind.NOTE) R.string.hint_note else R.string.hint_todo,
                     ),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = InkSoft.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 26.sp),
+                    color = InkFaint,
                 )
             }
             BasicTextField(
                 value = state.draft,
                 onValueChange = onDraftChange,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = Ink),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    color = Ink,
+                    lineHeight = 26.sp, // writing gets more air than reading a list
+                ),
                 cursorBrush = SolidColor(Ink),
                 modifier = Modifier
                     .fillMaxSize()

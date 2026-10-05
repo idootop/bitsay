@@ -10,19 +10,31 @@
     android:background="@drawable/widget_item_bg"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingStart="6dp"
-    android:paddingEnd="8dp">
+    android:paddingStart="0dp"
+    android:paddingEnd="14dp"
+    android:foreground="@null"
+    android:stateListAnimator="@null">
 
     <!--
-      The tap target for ticking a todo is the whole 44x48dp box; only the glyph inside is small.
-      Most of the mis-taps reported on the home screen came from this view being 18dp wide.
+      The tick carries the row's left inset itself, so the row starts at 0.
+
+      Why: the glyph is a 22dp box centred inside a wider tap target, so any padding on the ROW
+      would be added on top of that centring gap and push the circle further right than the note
+      rows' text. With paddingStart=14dp / paddingEnd=6dp the content box is exactly 22x22dp and the
+      circle's left edge lands at 14dp — the same inset the text uses on a note row.
+
+      Tap target is 42x48dp; only the glyph inside is small. Most of the mis-taps reported on the
+      home screen came from this view being 18dp wide.
     -->
     <ImageView
         android:id="@+id/widget_item_icon"
         android:layout_width="@dimen/widget_tick_size"
         android:layout_height="@dimen/widget_row_height"
         android:contentDescription="@null"
-        android:padding="@dimen/widget_tick_glyph_padding"
+        android:paddingStart="@dimen/widget_tick_pad_start"
+        android:paddingEnd="@dimen/widget_tick_pad_end"
+        android:paddingTop="@dimen/widget_tick_glyph_padding"
+        android:paddingBottom="@dimen/widget_tick_glyph_padding"
         android:scaleType="fitCenter"
         android:src="@drawable/ic_todo_open" />
 

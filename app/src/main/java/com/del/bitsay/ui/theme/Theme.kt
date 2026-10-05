@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
 /** Which colour scheme the app uses. Stored per install; [SYSTEM] is the default. */
@@ -20,78 +21,149 @@ enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
 private val Error = Color(0xFFD9736B)
 
+// Sourced from design/css/tokens.css. `primary` is the accent, so anything that defaults to it
+// (FAB container, checked controls) lands on the one loud element without being told to.
 private val LightScheme = lightColorScheme(
-    primary = Color(0xFF3D3A38),
-    onPrimary = Color(0xFFFFFDF7),
-    primaryContainer = Color(0xFFFFD34E),
-    onPrimaryContainer = Color(0xFF3D3A38),
-    secondary = Color(0xFF8A8279),
-    onSecondary = Color(0xFFFFFDF7),
-    secondaryContainer = Color(0xFFB7E4C7),
-    onSecondaryContainer = Color(0xFF3D3A38),
-    tertiaryContainer = Color(0xFFAEDCEB),
-    onTertiaryContainer = Color(0xFF3D3A38),
-    background = Color(0xFFFCF3E8),
-    onBackground = Color(0xFF3D3A38),
-    surface = Color(0xFFFFFDF7),
-    onSurface = Color(0xFF3D3A38),
-    surfaceVariant = Color(0xFFEDE9E1),
-    onSurfaceVariant = Color(0xFF8A8279),
-    outline = Color(0xFFE6DDCB),
+    primary = LightPalette.accent,
+    onPrimary = LightPalette.accentInk,
+    primaryContainer = LightPalette.accentSoft,
+    onPrimaryContainer = LightPalette.accent,
+    secondary = LightPalette.inkSoft,
+    onSecondary = LightPalette.paper,
+    secondaryContainer = LightPalette.accentSoft,
+    onSecondaryContainer = LightPalette.ink,
+    background = LightPalette.background,
+    onBackground = LightPalette.ink,
+    surface = LightPalette.paper,
+    onSurface = LightPalette.ink,
+    surfaceVariant = LightPalette.accentSoft,
+    onSurfaceVariant = LightPalette.inkSoft,
+    outline = LightPalette.line,
     error = Error,
 )
 
 private val DarkScheme = darkColorScheme(
-    primary = Color(0xFFF2EDE4),
-    onPrimary = Color(0xFF211F1D),
-    primaryContainer = Color(0xFF6B5320),
-    onPrimaryContainer = Color(0xFFF2EDE4),
-    secondary = Color(0xFFA79F94),
-    onSecondary = Color(0xFF211F1D),
-    secondaryContainer = Color(0xFF2F4F3C),
-    onSecondaryContainer = Color(0xFFF2EDE4),
-    tertiaryContainer = Color(0xFF29454F),
-    onTertiaryContainer = Color(0xFFF2EDE4),
-    background = Color(0xFF211F1D),
-    onBackground = Color(0xFFF2EDE4),
-    surface = Color(0xFF2C2A27),
-    onSurface = Color(0xFFF2EDE4),
-    surfaceVariant = Color(0xFF3A3733),
-    onSurfaceVariant = Color(0xFFA79F94),
-    outline = Color(0xFF443F39),
+    primary = DarkPalette.accent,
+    onPrimary = DarkPalette.accentInk,
+    primaryContainer = DarkPalette.accentSoft,
+    onPrimaryContainer = DarkPalette.accent,
+    secondary = DarkPalette.inkSoft,
+    onSecondary = DarkPalette.background,
+    secondaryContainer = DarkPalette.accentSoft,
+    onSecondaryContainer = DarkPalette.ink,
+    background = DarkPalette.background,
+    onBackground = DarkPalette.ink,
+    surface = DarkPalette.paper,
+    onSurface = DarkPalette.ink,
+    surfaceVariant = DarkPalette.accentSoft,
+    onSurfaceVariant = DarkPalette.inkSoft,
+    outline = DarkPalette.line,
     error = Error,
 )
 
-/** Slightly irregular corners: the cheapest way to read as "hand drawn" rather than "corporate". */
-val CuteShape = RoundedCornerShape(
-    topStart = 22.dp,
-    topEnd = 18.dp,
-    bottomEnd = 24.dp,
-    bottomStart = 18.dp,
+// ----------------------------------------------------------------------------
+// Shape. Taken straight from tokens.css.
+//
+// The corners are asymmetric **in a regular way**: one diagonal pair is fuller than the other.
+// Four identical corners read as industrial; random per-corner values read as misaligned. This is
+// the middle: it has a direction, and it repeats, so it looks intended.
+// ----------------------------------------------------------------------------
+
+/** `--r-card` — list rows, the editor sheet, the widget. */
+val CardShape = RoundedCornerShape(
+    topStart = 26.dp,
+    topEnd = 16.dp,
+    bottomEnd = 26.dp,
+    bottomStart = 16.dp,
 )
 
-val CuteShapeSmall = RoundedCornerShape(
-    topStart = 16.dp,
-    topEnd = 13.dp,
+/** `--r-sm` — widget rows, nested blocks. */
+val SmallShape = RoundedCornerShape(
+    topStart = 17.dp,
+    topEnd = 11.dp,
     bottomEnd = 17.dp,
-    bottomStart = 13.dp,
+    bottomStart = 11.dp,
+)
+
+/** `--r-block` — settings groups, dialogs, the segmented-tab trough. */
+val BlockShape = RoundedCornerShape(
+    topStart = 22.dp,
+    topEnd = 14.dp,
+    bottomEnd = 22.dp,
+    bottomStart = 14.dp,
 )
 
 private val AppShapes = Shapes(
-    extraSmall = CuteShapeSmall,
-    small = CuteShapeSmall,
-    medium = CuteShape,
-    large = CuteShape,
-    extraLarge = CuteShape,
+    extraSmall = SmallShape,
+    small = SmallShape,
+    medium = BlockShape,
+    large = CardShape,
+    extraLarge = CardShape,
+)
+
+// ----------------------------------------------------------------------------
+// Type. Hierarchy comes from size and weight, nothing else.
+//
+// There was a serif display level here (FontFamily.Serif, which resolves to Noto Serif CJK on
+// Chinese devices). It was dropped: on Android the serif CJK face is a *different family* from the
+// system sans, so page titles and body text stopped looking like the same app — and it disagreed
+// with the launcher, the settings app, and everything else on the phone. Default family now.
+// ----------------------------------------------------------------------------
+
+/**
+ * The home screen title. **The only 38sp type in the app.**
+ *
+ * Two ranks, not one: the list screen is the app's cover and gets the display size, while every
+ * other screen (editor, settings) uses [PageTitleStyle]. Making both large made them compete;
+ * making both small left the home screen with no presence at all.
+ */
+val DisplayStyle = TextStyle(
+    fontSize = 38.sp,
+    lineHeight = 42.sp,
+    fontWeight = FontWeight.Bold,
+    letterSpacing = (-0.035).em,
+)
+
+/**
+ * The title on every screen except the home list.
+ *
+ * 21sp: one clear step above the 20dp back glyph it sits next to, without dwarfing it. The serif
+ * face already gives the title its own voice, so it does not need to shout in size as well.
+ */
+val PageTitleStyle = TextStyle(
+    fontSize = 21.sp,
+    lineHeight = 27.sp,
+    // ExtraBold, not Bold: the system CJK face at 21sp with Bold still reads a touch light next to
+    // the 20dp icon glyphs. 800 gives the title the weight it needs without growing the size.
+    fontWeight = FontWeight.ExtraBold,
+    letterSpacing = (-0.015).em,
+)
+
+/** The 21sp serif line in an empty state. */
+val EmptyTitleStyle = TextStyle(
+    fontSize = 21.sp,
+    lineHeight = 30.sp,
+    fontWeight = FontWeight.Bold,
+    letterSpacing = (-0.01).em,
 )
 
 private val AppTypography = Typography().let { base ->
     base.copy(
-        headlineMedium = base.headlineMedium.copy(fontWeight = FontWeight.Bold),
-        titleLarge = base.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 22.sp),
-        titleMedium = base.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-        bodyLarge = TextStyle(fontSize = 16.sp, lineHeight = 24.sp),
-        labelLarge = base.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+        // bodyLarge is the item text: --fs-body 16 / --lh-body 23, tracking slightly tight.
+        bodyLarge = TextStyle(fontSize = 16.5.sp, lineHeight = 22.sp, letterSpacing = (-0.01).em),
+        bodyMedium = TextStyle(fontSize = 16.sp, lineHeight = 23.sp),
+        // bodySmall is the timestamp row: --fs-meta 12 / --lh-meta 16.
+        bodySmall = TextStyle(fontSize = 12.sp, lineHeight = 16.sp),
+        titleLarge = PageTitleStyle,
+        titleMedium = TextStyle(fontSize = 17.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold),
+        // labelLarge is the segmented tab / section label: --fs-ui 14 / --lh-ui 20.
+        labelLarge = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold),
+        labelSmall = TextStyle(
+            fontSize = 11.sp,
+            lineHeight = 14.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.14.em,
+        ),
     )
 }
 

@@ -40,15 +40,17 @@ import androidx.compose.ui.unit.dp
 import com.del.bitsay.R
 import com.del.bitsay.core.model.Kind
 import com.del.bitsay.i18n.withAppLanguage
-import com.del.bitsay.ui.components.CuteCard
+import com.del.bitsay.ui.components.AppCard
 import com.del.bitsay.ui.components.PaperBackground
 import com.del.bitsay.ui.theme.BitSayTheme
-import com.del.bitsay.ui.theme.CuteShape
+import com.del.bitsay.ui.theme.CardShape
+import com.del.bitsay.ui.theme.AccentInk
+import com.del.bitsay.ui.theme.Card
 import com.del.bitsay.ui.theme.Ink
+import com.del.bitsay.ui.theme.Line
+import com.del.bitsay.ui.theme.AccentSoft
+import com.del.bitsay.ui.theme.Accent
 import com.del.bitsay.ui.theme.InkSoft
-import com.del.bitsay.ui.theme.Mint
-import com.del.bitsay.ui.theme.Sky
-import com.del.bitsay.ui.theme.Sun
 
 /**
  * Shown by the launcher when the widget is dropped on the home screen (and again later,
@@ -126,7 +128,6 @@ private fun ConfigScreen(
             OptionCard(
                 title = stringResource(R.string.widget_config_notes),
                 subtitle = stringResource(R.string.widget_config_notes_desc),
-                color = Sky,
                 selected = kind == Kind.NOTE,
                 onClick = { onPick(Kind.NOTE) },
             )
@@ -134,7 +135,6 @@ private fun ConfigScreen(
             OptionCard(
                 title = stringResource(R.string.widget_config_todos),
                 subtitle = stringResource(R.string.widget_config_todos_desc),
-                color = Mint,
                 selected = kind == Kind.TODO,
                 onClick = { onPick(Kind.TODO) },
             )
@@ -145,8 +145,8 @@ private fun ConfigScreen(
                 Box(
                     Modifier
                         .weight(1f)
-                        .clip(CuteShape)
-                        .border(1.5.dp, Ink.copy(alpha = 0.2f), CuteShape)
+                        .clip(CardShape)
+                        .border(1.dp, Line, CardShape)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -160,9 +160,8 @@ private fun ConfigScreen(
                 Box(
                     Modifier
                         .weight(1.4f)
-                        .clip(CuteShape)
-                        .background(Sun)
-                        .border(1.5.dp, Ink.copy(alpha = 0.13f), CuteShape)
+                        .clip(CardShape)
+                        .background(Accent)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -174,7 +173,7 @@ private fun ConfigScreen(
                     Text(
                         text = stringResource(R.string.widget_config_confirm),
                         style = MaterialTheme.typography.labelLarge,
-                        color = Ink,
+                        color = AccentInk,
                     )
                 }
             }
@@ -186,23 +185,29 @@ private fun ConfigScreen(
 private fun OptionCard(
     title: String,
     subtitle: String,
-    color: androidx.compose.ui.graphics.Color,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    CuteCard(
+    // Selection is shown the same way as the segmented tabs: a solid accent fill with inverted
+    // text. Reusing the one accent here keeps "chosen" meaning a single thing app-wide.
+    val onAccent = selected
+    AppCard(
         modifier = Modifier.fillMaxWidth(),
-        color = color,
+        color = if (selected) Accent else Card,
         onClick = onClick,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(18.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = Ink)
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (onAccent) AccentInk else Ink,
+                )
                 Text(
                     subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Ink.copy(alpha = 0.7f),
+                    color = if (onAccent) AccentInk.copy(alpha = 0.72f) else InkSoft,
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
@@ -210,7 +215,7 @@ private fun OptionCard(
                 androidx.compose.material3.Icon(
                     painter = painterResource(R.drawable.ic_check),
                     contentDescription = null,
-                    tint = Ink,
+                    tint = AccentInk,
                     modifier = Modifier.size(22.dp),
                 )
             }

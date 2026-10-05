@@ -2,7 +2,7 @@
 <!-- One mid grey that stays legible on both the light and the dark widget surface. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="#808A8279" />
+    <solid android:color="@color/widget_scrollbar" />
     <corners android:radius="3dp" />
     <size android:width="3dp" />
 </shape>

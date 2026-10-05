@@ -1,6 +1,5 @@
 package com.del.bitsay.ui.screen
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,18 +18,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.del.bitsay.R
 import com.del.bitsay.core.model.Kind
 import com.del.bitsay.ui.AppUiState
-import com.del.bitsay.ui.components.CuteIconButton
-import com.del.bitsay.ui.components.EmptyHint
+import com.del.bitsay.ui.components.EmptyState
 import com.del.bitsay.ui.components.ItemList
+import com.del.bitsay.ui.components.RoundIconButton
 import com.del.bitsay.ui.components.SegmentedTabs
+import com.del.bitsay.ui.theme.Accent
+import com.del.bitsay.ui.theme.AccentInk
+import com.del.bitsay.ui.theme.DisplayStyle
 import com.del.bitsay.ui.theme.Ink
 import com.del.bitsay.ui.theme.InkSoft
-import com.del.bitsay.ui.theme.Mint
-import com.del.bitsay.ui.theme.Sun
 
 @Composable
 fun ListScreen(
@@ -46,11 +49,6 @@ fun ListScreen(
     onDeleteSelected: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Read once here: the tab's accent lambda is a plain lambda, where a @Composable colour
-    // accessor cannot be called.
-    val sunAccent = Sun
-    val mintAccent = Mint
-
     Box(modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             // Selection mode replaces the whole header rather than stacking on top of it: while
@@ -71,21 +69,22 @@ fun ListScreen(
                     options = listOf(Kind.NOTE, Kind.TODO),
                     selected = state.tab,
                     label = { stringResource(if (it == Kind.NOTE) R.string.tab_notes else R.string.tab_todos) },
-                    accent = { if (it == Kind.NOTE) sunAccent else mintAccent },
                     onSelect = onSelectTab,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 18.dp),
+                        .padding(start = 20.dp, end = 20.dp, top = 2.dp),
                 )
             }
             val items = state.visible
             if (items.isEmpty()) {
-                EmptyHint(
-                    text = when {
-                        state.query.isNotBlank() -> stringResource(R.string.empty_search)
-                        state.tab == Kind.NOTE -> stringResource(R.string.empty_notes)
-                        else -> stringResource(R.string.empty_todos)
-                    },
+                val note = state.tab == Kind.NOTE
+                EmptyState(
+                    title = stringResource(
+                        if (note) R.string.empty_notes_title else R.string.empty_todos_title,
+                    ),
+                    hint = stringResource(
+                        if (note) R.string.empty_notes_hint else R.string.empty_todos_hint,
+                    ),
                 )
             } else {
                 ItemList(
@@ -111,11 +110,14 @@ fun ListScreen(
                 onClick = onNew,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 22.dp, bottom = 26.dp)
-                    .size(58.dp)
-                    .border(1.5.dp, Ink.copy(alpha = 0.16f), CircleShape),
-                containerColor = Sun,
-                contentColor = Ink,
+                    .padding(end = 20.dp, bottom = 26.dp)
+                    .size(62.dp),
+                shape = CircleShape,
+                containerColor = Accent,
+                contentColor = AccentInk,
+                // Flat on purpose: a drop shadow under a solid black disc is noise, and it would
+                // compete with the cards' own (absent) elevation.
+                elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
             ) {
                 androidx.compose.material3.Icon(
                     painter = painterResource(R.drawable.ic_plus),
@@ -140,10 +142,10 @@ private fun SelectionHeader(
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 14.dp),
+            .padding(horizontal = 12.dp).padding(top = 14.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CuteIconButton(
+        RoundIconButton(
             painter = painterResource(R.drawable.ic_close),
             contentDescription = stringResource(R.string.action_cancel_selection),
             onClick = onClearSelection,
@@ -153,10 +155,10 @@ private fun SelectionHeader(
             text = stringResource(R.string.selected_count, state.selection.size),
             style = MaterialTheme.typography.titleMedium,
             color = Ink,
-            modifier = Modifier.padding(start = 6.dp),
+            modifier = Modifier.padding(start = 8.dp),
         )
         Spacer(Modifier.weight(1f))
-        CuteIconButton(
+        RoundIconButton(
             painter = painterResource(R.drawable.ic_delete),
             contentDescription = stringResource(R.string.action_delete),
             onClick = onDeleteSelected,
@@ -174,16 +176,18 @@ private fun Header(
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(start = 22.dp, end = 12.dp, top = 12.dp, bottom = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(start = 20.dp, end = 12.dp, top = 14.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.Top,
     ) {
         Column(Modifier.weight(1f)) {
             Text(
                 text = stringResource(
                     if (state.tab == Kind.NOTE) R.string.tab_notes else R.string.tab_todos,
                 ),
-                style = MaterialTheme.typography.headlineMedium,
+                style = DisplayStyle,
                 color = Ink,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = if (state.tab == Kind.NOTE) {
@@ -191,22 +195,25 @@ private fun Header(
                 } else {
                     stringResource(R.string.count_todos, state.todoCount, state.openTodoCount)
                 },
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp, lineHeight = 18.sp),
                 color = InkSoft,
-                modifier = Modifier.padding(top = 2.dp),
+                modifier = Modifier.padding(top = 4.dp),
             )
         }
-        CuteIconButton(
-            painter = painterResource(R.drawable.ic_search),
-            contentDescription = stringResource(R.string.action_search),
-            onClick = onOpenSearch,
-            tint = InkSoft,
-        )
-        CuteIconButton(
-            painter = painterResource(R.drawable.ic_settings),
-            contentDescription = stringResource(R.string.action_settings),
-            onClick = onOpenSettings,
-            tint = InkSoft,
-        )
+        // Sits at the title's cap height rather than centred on the two-line block: at 38sp the
+        // icon buttons are much shorter than the text block, and centring drops them to the
+        // baseline of the count line.
+        Row(Modifier.padding(top = 2.dp)) {
+            RoundIconButton(
+                painter = painterResource(R.drawable.ic_search),
+                contentDescription = stringResource(R.string.action_search),
+                onClick = onOpenSearch,
+            )
+            RoundIconButton(
+                painter = painterResource(R.drawable.ic_settings),
+                contentDescription = stringResource(R.string.action_settings),
+                onClick = onOpenSettings,
+            )
+        }
     }
 }

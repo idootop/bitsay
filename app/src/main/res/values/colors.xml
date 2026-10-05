@@ -1,24 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Static colours for XML-inflated surfaces (the widget, the launch window).
+  Kept in sync with ui/theme/Color.kt, which is the runtime source of truth: the widget assigns
+  most of its colours from BitSayPalette in code, and these are only the values the layout needs
+  before that happens. See design/css/tokens.css.
+-->
 <resources>
-    <!-- Cute / hand-drawn palette (kept in sync with ui/theme/Color.kt) -->
-    <color name="bg">#FFFCF3E8</color>
-    <color name="paper">#FFFFFDF7</color>
-    <color name="ink">#FF3D3A38</color>
-    <color name="ink_soft">#FF8A8279</color>
-    <color name="sun">#FFFFD34E</color>
-    <color name="mint">#FFB7E4C7</color>
-    <color name="sky">#FFAEDCEB</color>
-    <color name="blush">#FFFFC2C9</color>
-    <color name="lilac">#FFD9CCF0</color>
-    <color name="peach">#FFFFD3B6</color>
+    <color name="bg">#FFEDF0F8</color>
+    <color name="paper">#FFFFFFFF</color>
+    <color name="ink">#FF191B26</color>
+    <color name="ink_soft">#FF666B80</color>
+    <color name="ink_faint">#FF9CA1B5</color>
+    <color name="line">#FFE8EAF3</color>
+    <!-- Fallback stroke for the vector icons; every call site tints them anyway. -->
+    <color name="icon_ink">#FF191B26</color>
+    <color name="accent">#FF000000</color>
+    <color name="accent_ink">#FFFFFFFF</color>
 
-    <color name="widget_bg">#FFFFFDF7</color>
-    <color name="widget_stroke">#FFE6DDCB</color>
-    <color name="widget_header">#FFFFD34E</color>
-    <color name="widget_item_1">#FFFFF3C4</color>
-    <color name="widget_item_2">#FFD9EFF7</color>
-    <color name="widget_item_3">#FFDDF3E1</color>
-    <color name="widget_item_4">#FFFBE0E4</color>
-    <color name="widget_done">#FFEDE9E1</color>
-    <color name="widget_scrollbar">#593D3A38</color>
+    <!-- The widget. Its own copy because a RemoteViews layout is inflated by the launcher. -->
+    <color name="widget_bg">#FFFFFFFF</color>
+    <color name="widget_row">#FFEDF0F8</color>
+    <color name="widget_scrollbar">#FFE8EAF3</color>
 </resources>

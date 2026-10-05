@@ -29,31 +29,27 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.pm.PackageInfoCompat
 import com.del.bitsay.R
 import com.del.bitsay.i18n.AppLanguage
 import com.del.bitsay.ui.theme.ThemeMode
-import com.del.bitsay.ui.components.CuteCard
-import com.del.bitsay.ui.components.CuteIconButton
-import com.del.bitsay.ui.components.SectionTitle
+import com.del.bitsay.ui.components.AppCard
+import com.del.bitsay.ui.components.RoundIconButton
+import com.del.bitsay.ui.components.SectionLabel
 import com.del.bitsay.ui.components.SettingRow
 import com.del.bitsay.ui.theme.Ink
-import com.del.bitsay.ui.theme.Lilac
-import com.del.bitsay.ui.theme.Sky
-import com.del.bitsay.ui.theme.Sun
+import com.del.bitsay.ui.theme.InkFaint
+import com.del.bitsay.ui.theme.PageTitleStyle
+import com.del.bitsay.ui.theme.InkSoft
 
 @Composable
 fun SettingsScreen(
-    noteCount: Int,
-    todoCount: Int,
-    openTodoCount: Int,
-    canPinWidget: Boolean,
     language: AppLanguage,
     onLanguage: (AppLanguage) -> Unit,
     themeMode: ThemeMode,
     onThemeMode: (ThemeMode) -> Unit,
     onBack: () -> Unit,
-    onAddWidget: () -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit,
     modifier: Modifier = Modifier,
@@ -94,77 +90,56 @@ fun SettingsScreen(
         modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 18.dp, vertical = 12.dp),
+            .padding(start = 20.dp, end = 20.dp, bottom = 32.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            CuteIconButton(
+        Row(
+            Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RoundIconButton(
                 painter = painterResource(R.drawable.ic_back),
                 contentDescription = stringResource(R.string.action_back),
                 onClick = onBack,
                 tint = Ink,
             )
-            Spacer(Modifier.width(6.dp))
             Text(
                 text = stringResource(R.string.settings_title),
-                style = MaterialTheme.typography.titleLarge,
+                style = PageTitleStyle,
                 color = Ink,
+                modifier = Modifier.padding(start = 8.dp),
             )
         }
 
-        SectionTitle(stringResource(R.string.settings_section_overview))
-        CuteCard(color = Sun) {
+        // Order is deliberate: what this app IS, then how it looks, then the one thing you came
+        // here to do with your data. The old page opened with statistics and a widget promo, which
+        // made the top of the screen about the app rather than about the user.
+        SectionLabel(stringResource(R.string.settings_about))
+        AppCard(contentPadding = PaddingValues(17.dp)) {
             Text(
-                text = stringResource(R.string.settings_stats, noteCount, todoCount),
-                style = MaterialTheme.typography.titleMedium,
+                text = stringResource(R.string.app_name),
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontSize = 20.sp,
+                    lineHeight = 26.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                ),
                 color = Ink,
             )
             Text(
-                text = stringResource(R.string.count_open_todos, openTodoCount),
-                style = MaterialTheme.typography.bodySmall,
-                color = Ink.copy(alpha = 0.7f),
+                text = stringResource(R.string.settings_version, version),
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, lineHeight = 17.sp),
+                color = InkFaint,
                 modifier = Modifier.padding(top = 6.dp),
             )
-        }
-
-        SectionTitle(stringResource(R.string.settings_backup))
-        CuteCard(contentPadding = PaddingValues(0.dp)) {
-            SettingRow(
-                painter = painterResource(R.drawable.ic_export),
-                title = stringResource(R.string.settings_export),
-                subtitle = stringResource(R.string.settings_export_desc),
-                onClick = onExport,
-            )
-            Spacer(Modifier.height(1.dp))
-            SettingRow(
-                painter = painterResource(R.drawable.ic_import),
-                title = stringResource(R.string.settings_import),
-                subtitle = stringResource(R.string.settings_import_desc),
-                onClick = onImport,
-            )
-        }
-
-        SectionTitle(stringResource(R.string.settings_section_widget))
-        CuteCard(color = Sky, contentPadding = PaddingValues(0.dp)) {
-            if (canPinWidget) {
-                // One tap inside the app beats making the user hunt through the launcher's
-                // widget drawer. The launcher still shows its own confirm sheet.
-                SettingRow(
-                    painter = painterResource(R.drawable.ic_plus),
-                    title = stringResource(R.string.settings_widget_add),
-                    subtitle = stringResource(R.string.settings_widget_add_desc),
-                    onClick = onAddWidget,
-                )
-            }
             Text(
-                text = stringResource(R.string.settings_widget_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = Ink.copy(alpha = 0.75f),
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                text = stringResource(R.string.settings_about_tagline),
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, lineHeight = 18.sp),
+                color = InkSoft,
+                modifier = Modifier.padding(top = 12.dp),
             )
         }
 
-        SectionTitle(stringResource(R.string.settings_appearance))
-        CuteCard(contentPadding = PaddingValues(0.dp)) {
+        SectionLabel(stringResource(R.string.settings_appearance))
+        AppCard(contentPadding = PaddingValues(0.dp)) {
             SettingRow(
                 painter = painterResource(R.drawable.ic_theme),
                 title = stringResource(R.string.settings_theme),
@@ -179,20 +154,19 @@ fun SettingsScreen(
             )
         }
 
-        SectionTitle(stringResource(R.string.settings_about))
-        CuteCard(color = Lilac) {
-            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium, color = Ink)
-            Text(
-                text = stringResource(R.string.settings_version, version),
-                style = MaterialTheme.typography.bodySmall,
-                color = Ink.copy(alpha = 0.7f),
-                modifier = Modifier.padding(top = 4.dp),
+        SectionLabel(stringResource(R.string.settings_backup))
+        AppCard(contentPadding = PaddingValues(0.dp)) {
+            SettingRow(
+                painter = painterResource(R.drawable.ic_export),
+                title = stringResource(R.string.settings_export),
+                subtitle = stringResource(R.string.settings_export_desc),
+                onClick = onExport,
             )
-            Text(
-                text = stringResource(R.string.settings_about_tagline),
-                style = MaterialTheme.typography.bodySmall,
-                color = Ink.copy(alpha = 0.7f),
-                modifier = Modifier.padding(top = 10.dp),
+            SettingRow(
+                painter = painterResource(R.drawable.ic_import),
+                title = stringResource(R.string.settings_import),
+                subtitle = stringResource(R.string.settings_import_desc),
+                onClick = onImport,
             )
         }
 

@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  The done circle, open state: a single-colour ring, so the widget can recolour it with a tint.
+  Geometry matches design/js/icons.js `todoOpen` (r=8.6 in a 24 box) — the ring deliberately fills
+  only ~72% of its viewBox, which is why the widget gives it a 28dp glyph box rather than 22dp.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="20dp"
-    android:height="20dp"
-    android:viewportWidth="20"
-    android:viewportHeight="20">
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
     <path
         android:fillColor="#00000000"
-        android:pathData="M10,3 a7,7 0 1,1 0,14 a7,7 0 1,1 0,-14 z"
-        android:strokeColor="#8A8279"
-        android:strokeWidth="1.8" />
+        android:pathData="M12,12 m-8.6,0 a8.6,8.6 0 1,0 17.2,0 a8.6,8.6 0 1,0 -17.2,0"
+        android:strokeColor="@color/ink_faint"
+        android:strokeWidth="1.45" />
 </vector>

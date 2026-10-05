@@ -25,9 +25,14 @@
     <string name="search_prompt">输入关键词搜索笔记和待办</string>
     <string name="hint_search">搜索</string>
 
-    <string name="empty_notes">还没有笔记\n点右下角的 + 写第一条</string>
-    <string name="empty_todos">还没有待办\n点右下角的 + 加一条</string>
-    <string name="empty_search">没有找到相关内容</string>
+    <string name="empty_notes_title">还没有笔记</string>
+    <string name="empty_notes_hint">点右下角的 **+** 写下第一条</string>
+    <string name="empty_todos_title">今天没事要做</string>
+    <string name="empty_todos_hint">点右下角的 **+** 加一条待办</string>
+    <string name="empty_search_title">没找到</string>
+    <string name="empty_search_hint">换个词试试</string>
+    <string name="empty_search_idle_title">想找什么？</string>
+    <string name="empty_search_idle_hint">输入关键词，笔记和待办一起搜</string>
 
     <string name="deleted">已删除</string>
     <string name="saved">已保存</string>
@@ -40,15 +45,11 @@
 
     <string name="settings_title">设置</string>
     <string name="settings_backup">备份与恢复</string>
-    <string name="settings_export">导出备份</string>
-    <string name="settings_export_desc">把全部笔记和待办导出成一个 .bitsay.gz 压缩备份文件</string>
-    <string name="settings_import">导入备份</string>
-    <string name="settings_import_desc">选择 .bitsay.gz 备份文件恢复，可覆盖或合并</string>
+    <string name="settings_export">备份</string>
+    <string name="settings_export_desc">把全部笔记和待办打包成一个备份文件，换手机时拷过去即可</string>
+    <string name="settings_import">还原</string>
+    <string name="settings_import_desc">从备份文件恢复，可覆盖或并入现有内容</string>
     <string name="settings_about">关于</string>
-    <string name="settings_stats">共 %1$d 条笔记 · %2$d 条待办</string>
-    <string name="settings_widget_hint">长按桌面空白处 → 小组件 → 找到「碎碎念」，即可把列表放到桌面上。</string>
-    <string name="settings_widget_add">添加到桌面</string>
-    <string name="settings_widget_add_desc">把笔记或待办列表放到桌面，点一下就能记</string>
     <string name="widget_pin_requested">已请求添加到桌面；若桌面没有反应，请长按桌面空白处手动添加</string>
     <string name="widget_pin_unsupported">当前桌面不支持从应用内添加，请长按桌面空白处手动添加</string>
 
@@ -86,11 +87,8 @@
     <string name="count_notes">%1$d 条笔记</string>
     <string name="count_todos">%1$d 条待办 · %2$d 条未完成</string>
     <string name="count_todos_short">%1$d 条待办</string>
-    <string name="count_open_todos">其中 %1$d 条待办还没完成</string>
 
     <!-- 设置分区与关于 -->
-    <string name="settings_section_overview">概览</string>
-    <string name="settings_section_widget">桌面小组件</string>
     <string name="settings_about_tagline">纯文字笔记 + 待办，零权限，数据只在你自己手里。</string>
     <string name="settings_version">版本 %1$s</string>
 

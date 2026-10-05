@@ -75,7 +75,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private companion object {
-        const val DARK_WINDOW = 0xFF211F1D.toInt()
-        const val LIGHT_WINDOW = 0xFFFCF3E8.toInt()
+        const val DARK_WINDOW = 0xFF101119.toInt()
+        const val LIGHT_WINDOW = 0xFFEDF0F8.toInt()
     }
 }

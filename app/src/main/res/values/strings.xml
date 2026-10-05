@@ -30,9 +30,14 @@
     <string name="search_prompt">Type to search notes and todos</string>
     <string name="hint_search">Search</string>
 
-    <string name="empty_notes">No notes yet\nTap + to write your first one</string>
-    <string name="empty_todos">No todos yet\nTap + to add one</string>
-    <string name="empty_search">Nothing matched</string>
+    <string name="empty_notes_title">No notes yet</string>
+    <string name="empty_notes_hint">Tap **+** to write your first one</string>
+    <string name="empty_todos_title">Nothing to do today</string>
+    <string name="empty_todos_hint">Tap **+** to add one</string>
+    <string name="empty_search_title">Nothing found</string>
+    <string name="empty_search_hint">Try another word</string>
+    <string name="empty_search_idle_title">Looking for something?</string>
+    <string name="empty_search_idle_hint">Search notes and todos together</string>
 
     <string name="deleted">Deleted</string>
     <string name="saved">Saved</string>
@@ -45,15 +50,11 @@
 
     <string name="settings_title">Settings</string>
     <string name="settings_backup">Backup &amp; restore</string>
-    <string name="settings_export">Export backup</string>
-    <string name="settings_export_desc">Write every note and todo into one compressed .bitsay.gz file</string>
-    <string name="settings_import">Import backup</string>
-    <string name="settings_import_desc">Restore from a .bitsay.gz file — merge or replace</string>
+    <string name="settings_export">Back up</string>
+    <string name="settings_export_desc">Pack every note and todo into one file you can carry to a new phone</string>
+    <string name="settings_import">Restore</string>
+    <string name="settings_import_desc">Restore from a backup file — merge or replace</string>
     <string name="settings_about">About</string>
-    <string name="settings_stats">%1$d notes · %2$d todos</string>
-    <string name="settings_widget_hint">Long-press an empty spot on the home screen → Widgets → find “Bitsay” to put a list on your desktop.</string>
-    <string name="settings_widget_add">Add to home screen</string>
-    <string name="settings_widget_add_desc">Put a notes or todos list on the desktop and jot things down with one tap</string>
     <string name="widget_pin_requested">Requested. If nothing happens, long-press an empty spot on the home screen and add it manually</string>
     <string name="widget_pin_unsupported">This launcher cannot add widgets from inside an app — long-press an empty spot on the home screen instead</string>
 
@@ -91,11 +92,8 @@
     <string name="count_notes">%1$d notes</string>
     <string name="count_todos">%1$d todos · %2$d open</string>
     <string name="count_todos_short">%1$d todos</string>
-    <string name="count_open_todos">%1$d of them still open</string>
 
     <!-- Settings sections and about -->
-    <string name="settings_section_overview">Overview</string>
-    <string name="settings_section_widget">Home-screen widget</string>
     <string name="settings_about_tagline">Plain-text notes and todos, no permissions, your data stays with you.</string>
     <string name="settings_version">Version %1$s</string>
 

@@ -868,225 +868,84 @@ git add -A -n                      # 提交前预演，确认没有产物/密钥
 
 列表行里的勾选圈（`#8A8279`）和已完成态（绿色）在暗底上是 3.85:1，合格，**没动**。
 
-⚠️ **未做视觉确认**：设备上当前没有放置小组件（`dumpsys appwidget` 查不到实例），
-所以暗色效果只在代码层和渲染对照图上验证过，**没有真机截图**。需要用户放一个小组件到桌面再切暗色确认，
-我不擅自改动用户的桌面布局。
-| 某页结构与交互 | `design/js/pages/<页面>.js` |
+**视觉确认已完成**：用户桌面上本就放着一个小组件，暗色截图确认三个顶栏图标 + 行勾选圈都正常。
 
-### 13.3 对应到 Android
+### 13.6 设计语言迁移到 Android（2026-10）
 
-| 设计台 | Android |
+依据 `design/css/tokens.css`（唯一真源）把整站观感搬到 Compose。**颜色不再有第二处定义**：
+`values/colors.xml` 只剩 XML inflate 需要的兜底（widget / 启动窗口），运行期一律走 `BitSayPalette`。
+
+| 改动 | 说明 |
 |---|---|
-| `tokens.css` 的 `--c-*` / `--tint-*` | `ui/theme/Color.kt`（`BitSayPalette`）+ `res/values/colors.xml`（小组件） |
-| `--r-card` / `--r-sm`（统一圆角 20/14） | `ui/theme/Theme.kt` 的 `CuteShape`（需从"四角不等"改成统一圆角） |
-| `--e1` / `--e-accent`（阴影分层） | `CuteCard` 现在用 `border(1.5.dp, …)` 分层，要改成 `shadow(...)` |
-| `--c-accent` 陶土橘 | 新增：目前 `Color.kt` 里没有这个角色 |
-| `.app-root::before` 点阵 | `PaperBackground` 的 `Canvas`（`--dots` 已降到 .34） |
-| `.seg` / `.seg__item` | `ui/components/SegmentedTabs.kt` |
-| `js/ui.js` 的 `card()` | **`ui/components/ItemList.kt`**（首页与搜索页共用，只有这一处实现） |
-| `js/pages/list.js` | `ui/screen/ListScreen.kt`（含多选顶栏） |
-| `js/pages/editor.js` | `ui/screen/EditorScreen.kt`（400ms 节流自动保存） |
-| `js/pages/search.js` | `ui/screen/SearchScreen.kt`（切分类保留关键词） |
-| `js/pages/settings.js` | `ui/screen/SettingsScreen.kt` |
-| `js/pages/widget.js` | `res/layout/widget_bitsay.xml` + `widget_item.xml` + `WidgetRenderer.kt` |
-| `css/pages/homescreen.css` | 无（只是演示台用的真实桌面外壳） |
-| `js/store.js` | `core/repo/ItemRepository.kt` + `AppViewModel` 的状态部分 |
+| `Color.kt` 全量替换 | 冷灰底 `#EDF0F8` / 统一白卡 / 纯黑强调 `#000000`（暗色翻 `#FFFFFF`）/ 叶绿 `#8CA487` |
+| 删掉粉彩轮转 | `cards`/`todoCards`/`sun`/`mint`/`sky`/`lilac`/`done` 全部移除，条目只有 `card` 与 `cardDone` |
+| `Theme.kt` 圆角 | `CardShape` 26/16/26/16、`SmallShape` 17/11/17/11、`BlockShape` 22/14/22/14（`CuteShape*` 更名） |
+| `Theme.kt` 字体 | 大标题走 `FontFamily.Serif`（中文落到 Noto Serif CJK，**不打包字体**） |
+| `PaperBackground` | 去掉点阵，改天光渐变；**暗色下天光归零**（`glow` 令牌，近黑底上盖 92% 白会洗成灰） |
+| `AppCard` | 去掉 1.5dp 手绘描边 —— 黑白灰体系里那条边成了全屏最响的东西 |
+| 空状态 | 新增 `Sprout` 组合项（`PathMeasure` 逐段画线 + 缓出），文案拆成 `_title`/`_hint` 两键 |
 
-> **同步规则**：颜色只改 `Color.kt` 和 `colors.xml`，设计台跟着改 `tokens.css`；
-> 三者必须一致，否则设计稿就失去对照意义。
+**动画时长改过两次**（用户反馈太慢）：1150ms → 640ms → **320ms + ease-out**。
+关键不只是时长：线性 dash 推进起步几乎不动，那才是慢的来源；改缓出后同样时长利落得多。
 
----
+### 13.7 这一轮修掉的既有 bug：列表被残留搜索词过滤
 
-## 14. 多语言（i18n）
+`AppViewModel.closeEditor()` 把屏幕切回列表，但**没清 `query`**。从搜索结果进编辑器再返回，
+列表就一直在渲染 `searchResults` —— 表头写 4 条待办、正文却是空状态。修法是离开编辑器时一并清空。
+旧代码只是把这个矛盾换成了「没有找到相关内容」的文案，同样是错的。
 
-支持**简体中文 / English**，默认**跟随系统**。
+### 13.8 图标与小组件的收尾修正
 
-### 14.1 资源布局
+用户逐项验收后的一轮：
 
-| 目录 | 角色 |
+| 项 | 处理 |
 |---|---|
-| `res/values/strings.xml` | **默认集 = 英文**。任何 locale 都匹配不到时落到这里 |
-| `res/values-zh/strings.xml` | 中文 |
+| app 图标 | `ic_settings` 从 12 尖星形换成 **6 齿**齿轮（8 齿在 21dp 下糊成一片）；`ic_theme` 补闭合；`ic_language` 从两条横线换成真地球仪；back/search/close/delete/check/plus/export/import 全部按 `design/js/icons.js` 重画 |
+| widget FAB | 底色改为按 `palette.accent` 染色 —— 它的 drawable 写死 `@color/accent`（永远黑），暗色下会变成黑底 + 近黑加号 |
+| widget tab | 40dp/18dp 圆角 → **34dp/17dp 真药丸** |
+| widget 勾选圈 | 字形盒 28dp → 22dp（画出来约 16dp），不再高过 14sp 文字；行左右留白 6/8 → 14/14 |
+| 页面标题 | **全站统一 21sp**（见下） |
+| 设置页 | 去掉「概览」「桌面小组件」；顺序改为 **关于 → 外观 → 备份与恢复**；图标盒 30→32dp、标题 17→15sp、说明 12sp，两行文本块与图标配平 |
+| 搜索框 | 去掉框内放大镜（只把占位文字往右推，没有收益） |
 
-**默认集必须是英文**，因为"找不到就 fallback 到英文"是靠「默认资源集」实现的，
-不是靠额外的 fallback 机制。新字符串一律**先加英文那份**。
+⚠️ **一条未能确认**：用户反馈小组件 item 点击有水波纹。查 AOSP 源码后确认
+`AppWidgetHostView` 与 `RemoteViewsAdapter` **都不添加水波纹**，所以它来自启动器；
+已在 `widget_item.xml` 上加 `android:foreground="@null"` + `android:stateListAnimator="@null"`
+两个标准关闭开关，**但没能实机确认这就是来源**，需用户复核。
 
-`build.gradle.kts` 里把 `MissingTranslation` / `ExtraTranslation` 提升为 lint **error**，
-防止两份资源悄悄漂移（另有 92 条键集的交叉校验）。
+### 13.9 页面标题：**两档**，不是一档
 
-### 14.2 踩过的坑：文案藏在 Kotlin 里
+一度想把全站标题统一成 21sp（因为编辑器和设置当时一个 38sp、一个 21sp，来回切很跳）。
+**改错了对象** —— 用户说的「笔记和待办页面」指的是**编辑器**（它的标题就是"笔记"/"待办"），
+不是首页。首页那个 38sp 大标题本身是对的。
 
-i18n 的难点不是翻译，是**把埋在代码里的中文挖出来**。这次挖出四类：
+| 页面 | 字号 | 对齐 |
+|---|---|---|
+| 首页（列表） | **38sp** `DisplayStyle` —— 全 App 唯一的大字 | 顶端对齐，图标贴标题上沿 |
+| 编辑器 / 设置 | **21sp** `PageTitleStyle` | 垂直居中，和 40dp 返回键同一量级 |
 
-1. **`core/util/TimeText`** —— "刚刚 / N 分钟前 / 今天 / 昨天" 和 `M月d日` 全是硬编码，
-   而它是纯 Kotlin 且被单测覆盖（JVM 测试读不到 Android 资源）。
-   解法：抽出 `TimeWording` 数据类由调用方注入；**日期 pattern 也进资源**
-   （`time_pattern_month_day` = `MMM d` / `M月d日`），配合传入的 `Locale` 渲染。
-   这样时间规则保持纯净可测，中英两套文案各有一组单测。
-2. **核心层的异常消息** —— `BackupException` 原来直接带中文句子。
-   改成携带 `BackupError` 枚举（`NOT_A_BACKUP / EMPTY / CORRUPT / NEWER_SCHEMA / IO`），
-   由 UI 层查资源成句（`i18n/Strings.kt`）。
-3. **列表计数、设置分区、关于页、小组件配置页** —— 直接用 `stringResource` 补全。
-4. `Notice.Failed` 从"带一句现成的话"改成"带一个可命名的原因"。
+**实机实测**：首页标题 191px、编辑器 105px、设置 105px（3.5px/dp）。191/105 = 1.82 = 38/21 ✓
 
-### 14.3 语言设置怎么生效
+`EditorScreen` 原来用的是 `MaterialTheme.typography.titleLarge`（隐式继承），已改为显式 `PageTitleStyle`，
+免得以后改 Typography 又把它带跑。
 
-- 选择存在 `bitsay_settings.xml`（`LanguagePrefs`），`SYSTEM` = 不写键。
-- 通过 **`attachBaseContext` + `createConfigurationContext`** 应用，
-  **没有引入 AppCompat**（`AppCompatDelegate.setApplicationLocales` 需要 AppCompat Activity
-  和一整个 support library，为一个设置不值当）。
-- 同时 `Locale.setDefault`：日期格式化走的是 `java.time`，读的是进程默认 locale 而不是
-  Context 配置，两者必须一起改，否则界面会中英混排。
-- 改语言后由 ViewModel 发 `relaunch` 事件 → Activity `recreate()`。
-  屏幕上每个字符串和每个 formatter 都是按旧配置构建的，重建才是唯一诚实的做法。
-- **小组件要特殊处理**：宿主（桌面）用的是**它自己的** configuration 来 inflate 布局，
-  所以 XML 里写的 `android:text="@string/…"` 永远跟随系统语言。
-  `WidgetRenderer` 因此用 `context.withAppLanguage()` 显式 `setTextViewText` 两个 tab 和空状态。
-  实测：系统中文 + App 设为 English → 小组件显示 `Notes` / `Todos`。
+### 13.10 widget 勾选圈的光学对齐
 
-四个 Activity（MainActivity / WidgetEntryActivity / WidgetConfigActivity）都覆写了
-`attachBaseContext`，**新增 Activity 时别忘了**。
+用户反馈勾选圈前面空白太多。根因是**两段留白叠加**：
 
-### 14.4 切语言必须主动刷新小组件
-
-Activity 靠 `recreate()` 换语言，但**小组件不会自己变**：它的字符串已经被写进
-RemoteViews 交给宿主了，除非重新渲染一次，否则它会一直停在旧语言。
-`AppViewModel.setLanguage()` 因此在发 `relaunch` 事件的同时
-`WidgetUpdater.refreshAll()`。
-
-这条容易被漏掉，因为它和"数据变了就刷新"是两条独立的触发路径 ——
-语言切换**不**会产生 `repository.change`，订阅数据的那个观察者不会醒。
-
----
-
-## 15. 亮暗色模式
-
-三档：**跟随系统（默认）/ 浅色 / 深色**，存在 `bitsay_theme.xml`，`SYSTEM` = 不写键。
-
-### 15.1 让 100 多个调用点不用改
-
-原来 `Ink` / `InkSoft` / `Paper` / `Bg` / `Line` / `Sun` / `Mint` … 都是**顶层颜色常量**，
-散落在各页面里（光 `Ink` 就 54 处）。逐个改成 `MaterialTheme.colorScheme.xxx` 既啰嗦又容易漏。
-
-改成**主题感知取值器**：
-
-```kotlin
-val Ink: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.ink
-val CardColors: List<Color> @Composable @ReadOnlyComposable get() = LocalPalette.current.cards
+```
+行 paddingStart 14dp  +  字形盒 34dp 里 22dp 字形的居中缝 6dp  =  圆实际落在 20dp
 ```
 
-`BitSayTheme` 用 `CompositionLocalProvider(LocalPalette provides …)` 注入亮/暗两套
-`BitSayPalette`。**调用点一行没动**，整套 UI 就跟着主题走了。
+而笔记行的文字在 14dp —— 差了 6dp。
 
-只有一处例外：`SegmentedTabs` 的 `accent` 是普通 lambda（非 @Composable），
-在里面调不了取值器 —— 在 `ListScreen` 顶部先取到局部变量再传进去。
+改法：**左内边距交给勾选圈自己出**。行 `paddingStart=0`，勾选圈 `paddingStart=11dp / paddingEnd=9dp`，
+宽 42dp → 内容盒正好 22dp。
 
-### 15.2 深色不是"把颜色反一下"
+但 11 而不是 14：矢量里的圆只有 viewBox 的 72%（`r=8.6/24`），22dp 的字形盒画出来只有 **15.8dp** 的圆，
+所以 `11 + 3.1 = 14.1dp` 才让**圆看得见的左边缘**和笔记文字对齐。按 14 去 pad 对齐的是"盒子"，
+圆看起来仍然是缩进的。
 
-（**注**：下面这段描述的是 §15 当时的旧配色 —— 六个高饱和粉彩。
-UI 重做后色卡已换成 `--tint-1..6` 的低饱和纸色，但"深色要同色相压暗、
-不能直接拿浅色往暗底上放"这条结论仍然成立。）
-
-浅色粉彩（#FFD34E 等）直接放到深色背景上会像"屏幕上挖了六个洞"，
-而且它们配的是**深色文字**，深色模式下文字是浅色的，两者一撞就不可读。
-
-所以 `DarkPalette` 里的粉彩是**同色相压暗**的版本（`#FFD34E → #6B5320` 等），
-文字统一用浅色。**重点色（sun）也一起压暗** —— 我第一版留了亮黄，结果设置页那张
-概览卡变成"亮黄底 + 近白字"，截图一看就废了。
-
-### 15.3 小组件跟随的是 App 设置，不是系统
-
-宿主用**它自己的** configuration inflate 布局，所以任何走资源（含 `values-night`）的颜色
-都会跟随**系统**夜间模式，而不是 App 里的选择。
-
-解法：**颜色全部在渲染时显式赋值**。关键发现是 `View.setBackgroundTintList` 是
-`@RemotableViewMethod` —— 于是：
-
-- 所有圆角形状 drawable 改成**纯白**，运行时用 `setColorStateList(..., "setBackgroundTintList", …)` 染色；
-- 颜色直接取 `paletteFor(dark)`，也就是**和 App 同一套 `BitSayPalette`**，
-  亮暗同步是构造上保证的，不会漂移；
-- 顺带**删掉 8 个 drawable**（`widget_item_bg_1..5`、`widget_tab_notes_on/todos_on/off`
-  合并成一个 `widget_item_bg.xml` / `widget_tab_bg.xml`）。
-
-只有根卡片保留了亮/暗两个文件（它有描边，染色会把描边一起吃掉）。
-FAB 保持不变的亮黄 —— 它是重点色点缀，两种模式下都成立。
-
-### 15.4 切主题要刷新小组件
-
-和语言一样，主题切换**不产生 `repository.change`**，数据观察者不会醒。
-`setThemeMode()` 里主动 `WidgetUpdater.refreshAll()`。
-
-和语言不同的是：**不需要 `recreate()`** —— Compose 会直接按新调色板重组。
-
-窗口背景另外处理：Activity 在 `setContent` 之前按解析出的模式 `setBackgroundDrawable`，
-否则深色启动会先闪一下主题资源里的浅色 `windowBackground`。
-`values-night/colors.xml` 只负责系统夜间模式下的启动底色。
-
-### 15.5 一个工具坑
-
-用脚本批量清理"未使用 import"时要小心：`kotlinx.coroutines.flow.getValue` /
-`androidx.compose.runtime.getValue` / `setValue` 是 **`by` 委托用的操作符扩展**，
-文本里根本不出现这两个名字，正则判定为"未使用"，删掉后整个文件编译不过。
-
----
-
-## 16. 搜索页
-
-### 16.1 为什么独立成页
-
-最早搜索是列表头里一个展开的输入框，结果和正常列表抢同一块空间，而且**没法明确地"放弃这次搜索"**。
-现在 `Screen.Search` 是一页：整屏给结果、自己的结果集、一个明确的返回键。
-
-入口有两个，**左右对称**：App 列表头右上角的搜索图标，和小组件顶栏右侧的搜索按钮
-（`WidgetContract.ACTION_SEARCH` → `MainActivity` → `viewModel.openSearch()`）。
-小组件顶栏顺序：`进 App | 笔记 | 待办 | 搜索`。
-
-### 16.2 结果行复用首页的行（不要再设计第二套）
-
-**`ui/components/ItemList.kt` 是唯一的列表实现。**
-
-```kotlin
-ItemList(
-    items        = …,
-    onClick      = { … },
-    onToggleDone = { … },
-    selecting    = …,          // 首页多选态
-    selection    = …,
-    onLongClick  = …,          // null = 不支持长按（搜索页）
-    bottomPadding = 104.dp,    // 首页要给 FAB 留位；搜索页传 32.dp
-)
-```
-
-- `ListScreen` 和 `SearchScreen` 都调它，行样式（色系轮转、圆角、描边、单行省略、
-  创建时间、待办完成圈）**只有一处实现**；
-- **点击语义留在调用方**，因为两个页面的语义本来就不同：首页在多选态下"点 = 选中"，
-  搜索页"点 = 打开编辑器"；
-- 曾经的 `SearchScreen.ResultCard`（更小的圆角、两行、无时间戳的"轻量行"）**已删除** ——
-  它的存在只会让两套样式慢慢漂移。
-
-### 16.3 切分类不清空关键词
-
-```kotlin
-fun selectSearchTab(kind: Kind) {
-    if (_state.value.tab == kind) return
-    _state.update { it.copy(tab = kind) }
-    if (_state.value.query.isBlank()) { …clear…; return }
-    searchJob?.cancel(); searchJob = viewModelScope.launch { runSearch() }
-}
-```
-
-- **不能复用 `selectTab()`**：那个是首页的"切换显示哪个列表"，语义里包含了
-  `query = ""`（历史遗留：搜索还在列表头里的时候，换 tab 必须丢掉搜索）。
-  搜索页的 tab 是"在哪个分类里搜"，关键词必须留着。
-- 切 tab 走**立即查询**，不走输入防抖（`SEARCH_DEBOUNCE_MS`）：点 tab 是一次确定动作，
-  不是连打键盘；防抖会让切过去之后空一下。
-- 旧分类的结果保留到新结果返回，避免闪一下"没有找到相关内容"。
-
-### 16.4 一个 IME 相关的观感问题（不是 bug）
-
-微信输入法的**候选词条是浮在光标附近的**。搜索框在页面顶部，所以候选条会浮在顶栏下面，
-**正好盖住「笔记 / 待办」分类 tab**。真机截图见 §11 的验证过程。
-
-这是输入法自己的悬浮窗（`type=2011` 的 IME window），App 侧盖不住也挪不动；
-换输入法或关掉"候选栏跟随光标"即可。**不要为此改布局。**
-
+⚠️ **笔记行必须在代码里补内边距**（`setViewPadding`，像素重载 —— dp 重载带 `@FlaggedApi` 不能依赖），
+而且**两种行都要显式设**、不能做缓存：启动器会回收 item view，笔记行用过的视图可能被待办行复用，
+沿用 14dp 又会把圆推回去。

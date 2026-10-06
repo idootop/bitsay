@@ -2,11 +2,14 @@ package com.del.bitsay
 
 import android.app.Application
 import android.content.Context
+import android.content.res.Configuration
 import com.del.bitsay.core.backup.BackupManager
 import com.del.bitsay.core.db.SqliteItemStore
 import com.del.bitsay.core.repo.ItemRepository
 import com.del.bitsay.core.repo.ItemStore
+import com.del.bitsay.i18n.AppLanguage
 import com.del.bitsay.i18n.LanguagePrefs
+import com.del.bitsay.ui.theme.ThemeMode
 import com.del.bitsay.ui.theme.ThemePrefs
 import com.del.bitsay.widget.WidgetPrefs
 import com.del.bitsay.widget.WidgetUpdater
@@ -52,6 +55,11 @@ class BitSayApp : Application() {
         // observes the domain; the domain never learns that widgets exist.
         appScope.launch {
             runCatching { container.repository.reload() }
+            // The reload above is deliberately dropped by the `change` flow's `.drop(1)`, so nothing
+            // else would push the widget on a cold start. It matters because "follow the system"
+            // resolves at RENDER time: if the phone switched theme or language while this process
+            // was dead, the widget is still showing the old one.
+            WidgetUpdater.refreshAll(this@BitSayApp)
             var revealedUpTo = 0L
             container.repository.change
                 .drop(1)
@@ -66,6 +74,30 @@ class BitSayApp : Application() {
                     WidgetUpdater.refreshAll(this@BitSayApp, scrollToTop)
                 }
         }
+    }
+
+    /**
+     * The system switched light/dark, language, or anything else that [Configuration] carries.
+     *
+     * `ThemePrefs.isDark` and `withAppLanguage` both resolve "follow the system" at render time, so
+     * the widget only needs to be told to render again — no state to update. Nothing else does that:
+     * the widget holds finished RemoteViews, and the launcher re-inflating its own layout does not
+     * re-run our code.
+     *
+     * A fixed choice (light/dark, 中文/English) does not move with the system, so in that case this
+     * is skipped rather than burning a render.
+     *
+     * LIMIT, stated plainly: this only fires while the app's process is alive. Android does not let
+     * a manifest receiver listen for ACTION_CONFIGURATION_CHANGED ("you can not receive this through
+     * components declared in manifests"), so a widget cannot be woken purely by a theme switch —
+     * [onCreate] covers the next time the app is started instead.
+     */
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        val follows =
+            container.themePrefs.current() == ThemeMode.SYSTEM ||
+                container.languagePrefs.current() == AppLanguage.SYSTEM
+        if (follows) WidgetUpdater.refreshAll(this)
     }
 
     companion object {

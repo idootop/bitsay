@@ -1568,6 +1568,50 @@ views.setTextColor(R.id.widget_empty_hint, palette.inkSoft.toArgb())
 
 ⚠️ 这条是**运行期设色**，所以**不需要换 layout id**（对比 13.39 加子 View 时必须换）。
 
+### 13.41 系统切换亮暗 / 语言时刷新小组件
+
+需求：app 主题设为「跟随系统」时，系统切亮暗或语言，桌面小组件要跟着变。
+
+**先查清可行途径**（这一步决定了方案，不能靠试）：
+
+| 途径 | 结论 |
+|---|---|
+| manifest 注册 `ACTION_CONFIGURATION_CHANGED` | **不行**。系统给它加了 `FLAG_RECEIVER_REGISTERED_ONLY`，只能动态注册 |
+| `AppWidgetHostView.onConfigurationChanged` | **不存在**（AOSP 源码里没有）。宿主在配置变化时**不会**重新应用 RemoteViews，所以**资源驱动的颜色也救不了** |
+| `Application.onConfigurationChanged` | **可行** —— 进程收到配置变化时回调 |
+| `AppWidgetProvider.onUpdate` | 只在首次添加 / `updatePeriodMillis`（最短 30 分钟）/ 包替换时来 |
+
+**实现**（`BitSayApp`）：
+
+```kotlin
+override fun onConfigurationChanged(newConfig: Configuration) {
+    super.onConfigurationChanged(newConfig)
+    val follows = themePrefs.current() == ThemeMode.SYSTEM ||
+                  languagePrefs.current() == AppLanguage.SYSTEM
+    if (follows) WidgetUpdater.refreshAll(this)
+}
+```
+
+外加 `onCreate` 里补一次 `refreshAll` —— 原来那次 `repository.reload()` 被 `change` 流的 `.drop(1)` 吃掉了，
+冷启动时没有任何东西会推组件；而"跟随系统"是在**渲染时**解析的，进程死着的时候系统换过主题，
+组件就还停在旧的那一版。
+
+固定选择（亮/暗、中文/英文）不随系统动，所以那种情况下直接跳过，不做无谓渲染。
+
+⚠️ **已知边界**：`onConfigurationChanged` 只在**进程活着**时来。进程被缓存且系统切主题时，
+组件要等到下一次 app 启动才会更新 —— 上面那条 `onCreate` 刷新就是为这个场景兜底的。
+没有常驻组件（Service）就无法被纯主题切换唤醒，这是 Android 的限制，不是实现偷懒。
+
+#### 方法论：这台设备**抑制了 app 日志**
+
+排查时我在 `onCreate` 和 `onConfigurationChanged` 各加了一条 `Log.d`，
+结果**连 `onCreate` 那条都不出现** —— 一度误判成"回调没触发"。
+`logcat` 里只有系统的 `ActivityThread` 行，我们 app 自己的日志一条都没有。
+
+**结论：在这台 vivo 上，logcat 不能用来判断"我的代码有没有跑"。**
+要验证就**直接量可见结果**（这次是量组件底板的颜色），别依赖日志。
+临时日志已全部移除。
+
 ### 13.15 空内容不保存 · 删除二次确认 · 作者区块
 
 **空内容**：仓库层 `ItemRepository.saveDraft` 对空文本 `return`，所以**输入过程中永远不会新建行**。

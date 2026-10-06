@@ -19,6 +19,7 @@
 #    actions/checkout              v7.0.1
 #    actions/setup-java            v6.0.1
 #    gradle/actions/setup-gradle   v6.4.0
+#    actions/cache                 v6.1.0
 #    actions/upload-artifact       v7.0.1
 #    softprops/action-gh-release   v3.0.3
 # =============================================================================
@@ -80,13 +81,39 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      # ⚠️ 必须显式 cache-read-only: false。
+      #    这个 action 对**非默认分支和 tag** 默认只读 —— 而发版恰好永远由 tag 触发，
+      #    于是它每次都只读不写，仓库里一个缓存都攒不下来（第一次查过：0 个）。
+      #    实测那一跑「构建 release APK」183s，占整条流水线 87%，全是冷启动的代价。
+      #    它缓存的是 Gradle User Home（依赖 + wrapper）**以及 build-cache-1**（任务产物），
+      #    所以依赖下载和 Kotlin/Compose/dex/R8 的产物在下次发版都能直接复用。
+      #    升级发版周期时如果发现缓存互相顶掉，再按版本号分 key。
       - name: 装 Gradle
         uses: gradle/actions/setup-gradle@v6.4.0
+        with:
+          cache-read-only: false
+
+      # Android SDK 包缓存。路径写死是因为 runs-on 已经钉了 ubuntu-24.04，
+      # runner 的 SDK 就固定在 /usr/local/lib/android/sdk；万一将来镜像改了路径，
+      # 后果只是缓存不命中、下面的安装步骤照常下载，不会挂。
+      - name: 缓存 Android SDK 包
+        uses: actions/cache@v6.1.0
+        with:
+          path: |
+            /usr/local/lib/android/sdk/platforms/android-37.0
+            /usr/local/lib/android/sdk/build-tools/37.0.0
+          key: android-sdk-${{ runner.os }}-platform-37.0-buildtools-37.0.0
 
       # runner 自带的 SDK 不一定有 API 37（Android 17），缺了就装上
       - name: 确保 Android SDK 37 存在
         run: |
           set -uo pipefail
+          # 上一步的缓存命中就直接跳过 —— sdkmanager 哪怕只是查一遍仓库也要 10s 上下
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          if [ -d "$SDK/platforms/android-37.0" ] && [ -d "$SDK/build-tools/37.0.0" ]; then
+            echo "API 37 的 platform 与 build-tools 已在（来自缓存），跳过下载"
+            exit 0
+          fi
           SDKMANAGER=$(ls "${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | tail -1)
           if [ -z "$SDKMANAGER" ]; then
             echo "::error::找不到 sdkmanager，runner 的 Android SDK 布局变了"
@@ -174,7 +201,9 @@ jobs:
 
       - name: 构建 release APK
         run: |
-          ./gradlew :app:assembleRelease --no-daemon \
+          # 不加 --no-daemon：setup-gradle 起的 daemon 在这个 job 里复用，
+          # 配置缓存也才真正生效
+          ./gradlew :app:assembleRelease \
             -PversionName=${{ steps.version.outputs.version }} \
             -PversionCode=${{ steps.version.outputs.code }}
 

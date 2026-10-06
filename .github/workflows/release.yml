@@ -237,10 +237,13 @@ jobs:
       #    所以正文里的变量一律写成 ${VAR} 带花括号：bash 会把紧跟在 $VAR 后面的
       #    多字节字符（比如全角括号）也算进变量名，`$VERSION（` 会被当成变量
       #    `VERSION（` 而报 unbound variable。真跑一遍才发现，CI 上会直接挂。
+      # release notes 是**给下载的人看的**，不是设计文档。
+      # 第一版把 API 31 的来龙去脉、包里有什么、versionCode 推导规则全塞了进去，
+      # 一屏都放不下 —— 那些是 PROGERSS 该写的东西。用户只关心三件事：
+      # 我这台手机能不能装、怎么装、要不要给权限。校验信息留着，但收进折叠块。
       - name: 生成 release notes
         env:
           VERSION: ${{ steps.version.outputs.version }}
-          CODE: ${{ steps.version.outputs.code }}
           CERT: ${{ steps.verify.outputs.cert }}
           SHA: ${{ steps.verify.outputs.sha }}
           SIZE: ${{ steps.verify.outputs.size }}
@@ -248,39 +251,29 @@ jobs:
           set -euo pipefail
           NOTES="$RUNNER_TEMP/release-notes.md"
           cat > "$NOTES" <<EOF
-          **支持的安卓版本：Android 12（API 31）及以上**（目标版本 Android 17 / API 37）。
+          **支持 Android 12 及以上。** 已经装过旧版的直接覆盖安装，数据不会丢。
 
-          低于 Android 12 装不上。这不是随手定的下限：桌面小组件用的
-          \`RemoteViews.RemoteCollectionItems\`、\`targetCellWidth\`、\`previewLayout\` 都是 API 31 才有的接口，
-          而它们正是 Android 17 上仍然推荐的那套集合式组件 API。
+          安装时按提示允许「安装未知来源应用」即可。这个 App 不申请任何权限 ——
+          没有网络、没有存储、没有通知，数据只留在你自己手机上。
 
-          ### 这个包里有什么
-          - 纯文字笔记 + 待办，增删改查、创建/修改时间
-          - 桌面小组件：切笔记/待办、勾选完成、点开查看、**+** 快捷记录、搜索、缩放尺寸
-          - 备份与还原：导出成一个 \`.bitsay.gz\` 文件，换手机时导入即可
+          <details>
+          <summary>校验信息（可选）</summary>
 
-          **不需要任何权限**（没有网络、没有存储、没有通知），数据只在你自己手机上。
-
-          ### 安装
-          1. 下载下面的 \`Bitsay-$VERSION.apk\`
-          2. 手机上点开，按提示允许「安装未知来源应用」
-          3. 已在旧版本上安装过的，直接覆盖安装即可，数据不会丢（签名相同）
-
-          ### 校验
-          想确认包没被改过、以及和以后的版本是同一个签名：
+          \`Bitsay-${VERSION}.apk\`，${SIZE}
 
           \`\`\`
-          文件大小        $SIZE
-          APK SHA-256     $SHA
-          签名证书 SHA-256 $CERT
+          SHA-256           ${SHA}
+          签名证书 SHA-256   ${CERT}
           \`\`\`
+
+          想核对的话：
 
           \`\`\`bash
-          sha256sum Bitsay-$VERSION.apk
-          apksigner verify --print-certs Bitsay-$VERSION.apk
+          sha256sum Bitsay-${VERSION}.apk
+          apksigner verify --print-certs Bitsay-${VERSION}.apk
           \`\`\`
 
-          > 版本号 ${VERSION}（versionCode ${CODE}）。versionCode 由版本号推导：major×10000 + minor×100 + patch。
+          </details>
           EOF
 
       - name: 上传构建产物

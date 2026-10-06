@@ -71,7 +71,7 @@ BitSay.pages.widget = (function () {
             data-kind="note">笔记</button>
           <button class="widget__tab ${kind === 'todo' ? 'widget__tab--on' : ''}" type="button"
             data-kind="todo">待办</button>
-          <button class="widget__icon" type="button" data-act="search" title="搜索">${I.search()}</button>
+          <button class="widget__icon" type="button" data-act="search" title="搜索">${I.widgetSearch()}</button>
         </div>
         ${items.length ? `<div class="widget__list">${items.slice(0, Math.max(visible, 1)).map((it, i) => {
           return `<div class="widget__row ${it.done ? 'widget__row--done' : ''} ${it.kind === 'todo' ? '' : 'widget__row--plain'}" data-id="${it.id}">
@@ -82,10 +82,12 @@ BitSay.pages.widget = (function () {
           </div>`;
         }).join('')}</div>`
         : `<div class="widget__empty">
-             ${BitSay.sprout.svg({ size: dims.h >= 400 ? 74 : dims.h >= 250 ? 60 : 38 })}
-             <span>这里还什么都没有\n去 App 里加一条吧</span>
+             ${I.widgetSprout(40)}
+             <span class="widget__empty-title">${kind === 'note' ? '还没有笔记' : '今天没事要做'}</span>
+             <span class="widget__empty-hint">${kind === 'note'
+               ? '点右下角的 + 写下第一条' : '点右下角的 + 加一条待办'}</span>
            </div>`}
-        <button class="widget__fab" type="button" data-act="new" title="新建">${I.plus()}</button>`;
+        <button class="widget__fab" type="button" data-act="new" title="新建">${I.widgetPlus()}</button>`;
 
       if (!interactive) box.style.pointerEvents = 'none';
     }

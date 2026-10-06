@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>设计台 · 冒烟测试</title>
+<style>
+  html,body{ margin:0; font:13px/1.6 ui-monospace,Menlo,monospace; background:#F7F5F1; color:#191B26; }
+  iframe{ width:1400px; height:16000px; border:0; position:absolute; left:-9999px; }
+  pre{ margin:0; padding:16px; white-space:pre-wrap; }
+  .bad{ color:#D23B2E; font-weight:700; }
+</style>
+</head>
+<body>
+<iframe id="f"></iframe>
+<pre id="out">running…</pre>
+<script>
+/* ==========================================================================
+   smoke.html —— 设计台冒烟测试
+   --------------------------------------------------------------------------
+   为什么要单独做「点击」这一层：`boardCheck` 式的装载检查只能抓到**载入期**的异常。
+   页面载入之后再点击才触发的错误（例如某个分支里调错了函数）会被事件派发吞掉 ——
+   window.onerror 收得到，但页面看上去完全正常。踩过一次：`U is not a function`
+   藏在编辑器的删除分支里，点了没反应，装载检查全绿。
+
+   这里把主要交互走一遍，**每一步都收集 window 错误**，并断言关键元素真的出现了。
+
+   用法：
+     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new \
+       --disable-gpu --allow-file-access-from-files --virtual-time-budget=12000 \
+       --dump-dom "file:///<abs>/design/tools/smoke.html"
+   输出是一段 <pre>：每行 `ok` / `✗`，最后一行是总账。
+   ========================================================================== */
+const f = document.getElementById('f');
+const rows = [];
+let failed = 0;
+f.src = '../index.html';
+
+function check(label, cond, extra) {
+  if (!cond) failed++;
+  rows.push((cond ? '  ok  ' : '  ✗   ') + label + (extra ? '   ' + extra : ''));
+}
+
+f.addEventListener('load', () => {
+  const d = f.contentDocument, w = f.contentWindow;
+  const errors = [];
+  w.addEventListener('error', (e) =>
+    errors.push(e.message + ' @' + String(e.filename || '').split('/').pop() + ':' + e.lineno));
+
+  const q = (s, root) => (root || d).querySelector(s);
+  const qa = (s, root) => [...(root || d).querySelectorAll(s)];
+  const click = (el) => el && el.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true }));
+
+  /* ---------- ① 装载 ---------- */
+  check('8 个板块', qa('.sect-title').length === 8, 'got ' + qa('.sect-title').length);
+  check('可交互样机 1 台', qa('#demo .phone').length === 1);
+  check('页面总览 8 台', qa('#overview .phone').length === 8, 'got ' + qa('#overview .phone').length);
+  check('宽屏样机 3 台', qa('#wide .wide__screen').length === 3);
+  check('小组件 3 个', qa('#widgets .widget').length === 3);
+  check('应用图标已定稿', !!q('#appicon-final .icfinal'));
+  check('调色板 11 格', qa('#palette .chip').length === 11, 'got ' + qa('#palette .chip').length);
+
+  /* ---------- ② 小组件空状态（曾经和 App 不一致：少一行、颜色错、嫩芽按高度缩放）---------- */
+  const wEmpty = qa('#empties .widget').find((el) => q('.widget__empty', el));
+  if (wEmpty) {
+    const t = q('.widget__empty-title', wEmpty), h = q('.widget__empty-hint', wEmpty);
+    const svg = q('.widget__empty svg', wEmpty);
+    check('小组件空状态有标题', !!t, t ? t.textContent : '');
+    check('小组件空状态有提示行', !!h, h ? h.textContent : '');
+    check('嫩芽用叶绿', svg && w.getComputedStyle(svg).color === 'rgb(140, 164, 135)',
+      svg ? w.getComputedStyle(svg).color : '-');
+    check('嫩芽固定 40px', svg && svg.getAttribute('width') === '40');
+  } else {
+    check('小组件空状态存在', false);
+  }
+
+  /* ---------- ③ 编辑器 → 删除 → 二次确认 ---------- */
+  const demo = q('#demo');
+  click(q('.list .card', demo));
+  const ed = q('.editor-page', demo);
+  check('点条目进编辑器', !!ed);
+  click(q('[data-act="delete"]', ed || demo));
+  const dlg = q('.dialog--confirm', demo);
+  check('删除弹二次确认', !!dlg);
+  if (dlg) {
+    check('确认按钮是危险色',
+      w.getComputedStyle(q('.dialog__danger', dlg)).color === 'rgb(210, 59, 46)');
+    check('弹窗圆角 = BlockShape',
+      w.getComputedStyle(dlg).borderRadius.replace(/\s+/g, ' ') === '22px 14px');
+    click(q('[data-cancel]', dlg));   // 取消，别真删
+  }
+
+  /* ---------- ④ 多选批量删除也走确认 ---------- */
+  const multi = q('#overview .grid__cell:nth-child(3) .list-page');
+  click(q('[data-act="delete"]', multi));
+  check('批量删除也二次确认', !!q('.dialog--confirm', multi));
+
+  /* ---------- ⑤ 勾选圈：完成态是「同一个圈 + 对勾」，不是填充圆盘 ---------- */
+  const done = qa('.tick--on').find((el) => !!q('svg', el));
+  if (done) {
+    const cs = w.getComputedStyle(done);
+    check('完成态没有填充底色', cs.backgroundColor === 'rgba(0, 0, 0, 0)', cs.backgroundColor);
+    check('完成态描边是 ink-3', cs.borderTopColor === 'rgb(138, 144, 166)', cs.borderTopColor);
+  } else {
+    check('找到完成态勾选圈', false);
+  }
+
+  /* ---------- ⑥ 首页标题字号 ----------
+     查总览里那台常驻的「列表 · 笔记」。#demo 那台此时已经被第三步切到编辑器了。 */
+  const homeTitle = q('#overview .grid__cell:nth-child(1) .list-page .topbar__title');
+  check('首页标题 38px', homeTitle && w.getComputedStyle(homeTitle).fontSize === '38px',
+    homeTitle ? w.getComputedStyle(homeTitle).fontSize : '-');
+
+  /* ---------- ⑦ 深浅色切换不报错 ---------- */
+  click(q('#modes .btn[data-d="1"]'));
+  check('切深色后 body 标记', d.body.dataset.dark === '1');
+  click(q('#modes .btn[data-d="0"]'));
+  check('切回浅色', d.body.dataset.dark === '0');
+
+  /* ---------- 总账 ---------- */
+  check('全程没有 JS 异常', errors.length === 0, errors.join(' | '));
+  document.getElementById('out').innerHTML =
+    rows.join('\n') + '\n\n' + (failed ? '<span class="bad">✗ ' + failed + ' 项失败</span>' : '全部通过（' + rows.length + ' 项）');
+});
+</script>
+</body>
+</html>

@@ -14,6 +14,7 @@ BitSay.pages.editor = (function () {
    */
   function mount(host, opts = {}) {
     const I = BitSay.icons;
+    const U = () => BitSay.ui;   // 和 list.js 同一个约定：U() 取模块
     const store = BitSay.store;
     let id = opts.id ?? null;
     let kind = opts.kind || 'note';
@@ -104,10 +105,15 @@ BitSay.pages.editor = (function () {
       if (!act) return;
       if (act.dataset.act === 'back') { commit(); opts.onBack && opts.onBack(); }
       if (act.dataset.act === 'delete') {
-        if (id) { store.remove(id); id = null; }
-        if (timer) clearTimeout(timer);
-        dirty = false;
-        opts.onDelete ? opts.onDelete() : opts.onBack && opts.onBack();
+        if (!id) return;
+        const kindLabel = kind === 'note' ? '笔记' : '待办';
+        // 不可撤销 → 先确认。和 App 的单条删除一致（同一个 ConfirmDialog）。
+        U().confirm(root, `删除这条${kindLabel}？`, '删除后无法恢复。', '删除', () => {
+          store.remove(id); id = null;
+          if (timer) clearTimeout(timer);
+          dirty = false;
+          opts.onDelete ? opts.onDelete() : opts.onBack && opts.onBack();
+        });
       }
     });
 

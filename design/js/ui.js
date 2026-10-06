@@ -21,9 +21,12 @@ BitSay.ui = (function () {
   const ICON_BUTTON = (name, cls = '') =>
     `<button class="icon-btn ${cls}" data-icon="${name}" type="button">${I[name]()}</button>`;
 
-  /** 分段 tab（对应 SegmentedTabs）：选中态是浮起的白色药丸，不需要传颜色 */
-  function seg(items, activeKey) {
-    return `<div class="seg">` + items.map((it) =>
+  /**
+   * 分段 tab（对应 SegmentedTabs）：选中态是浮起的白色药丸，不需要传颜色。
+   * @param compact 矮窗口（手机横屏）用的小一号，和顶栏图标挤在同一行
+   */
+  function seg(items, activeKey, compact) {
+    return `<div class="seg${compact ? ' seg--sm' : ''}">` + items.map((it) =>
       `<button type="button" class="seg__item ${it.key === activeKey ? 'seg__item--on' : ''}"
         data-seg="${it.key}">${esc(it.label)}</button>`
     ).join('') + `</div>`;
@@ -46,7 +49,7 @@ BitSay.ui = (function () {
       // 多选态下不显示完成圈：两个圆圈并排会读成噪音
       lead = `<button type="button" class="tick ${item.done ? 'tick--on' : ''}
                 ${opts.settle ? 'tick--settle' : ''}" data-act="tick"
-                title="勾选完成">${item.done ? I.check() : ''}</button>`;
+                title="勾选完成">${item.done ? I.tickCheck() : ''}</button>`;
     }
 
     const cls = ['card', 'inked',
@@ -64,13 +67,15 @@ BitSay.ui = (function () {
   /**
    * 空状态 —— 全站唯一实现（列表 / 搜索都用它）。
    * 一株会自己长出来的嫩芽 + 衬线标题 + 一句人话。
-   * @param o { title, hint, size }
+   * @param o { title, hint?, size }  hint 可省
    */
   function emptyState(o) {
+    // hint 可选。一句提示只有在"说了用户看不见的东西"时才值得存在；
+    // 解释这一页怎么工作的（"只搜笔记"、"宽屏下列表留在原地"）是写给评审的，不是写给用户的。
     return `<div class="empty">
       ${BitSay.sprout.svg({ size: o.size || 92 })}
       <div class="empty__title">${esc(o.title)}</div>
-      <div class="empty__hint">${o.hint}</div>
+      ${o.hint ? `<div class="empty__hint">${o.hint}</div>` : ''}
     </div>`;
   }
 
@@ -115,5 +120,31 @@ BitSay.ui = (function () {
     });
   }
 
-  return { esc, md, singleLine, ICON_BUTTON, seg, card, emptyState, longPress, toast, choose };
+  /**
+   * 二次确认（对应 ui/components/Common.kt 的 ConfirmDialog）。
+   *
+   * 删除是**不可撤销**的，所以它是全站唯一允许出现第二个颜色的地方：确认按钮用 --c-danger。
+   * 之前设计台是点一下直接删 —— 既和 App 不一致，也让 --c-danger / --r-block 两个 token 没人用。
+   */
+  function confirm(host, title, hint, confirmLabel, onConfirm) {
+    const scrim = document.createElement('div');
+    scrim.className = 'scrim';
+    scrim.innerHTML = `<div class="dialog dialog--confirm">
+      <div class="dialog__heading">${esc(title)}</div>
+      <div class="dialog__hint">${esc(hint)}</div>
+      <div class="dialog__actions">
+        <button type="button" data-cancel>取消</button>
+        <button type="button" class="dialog__danger" data-ok>${esc(confirmLabel)}</button>
+      </div>
+    </div>`;
+    host.appendChild(scrim);
+    requestAnimationFrame(() => scrim.classList.add('scrim--on'));
+    const close = () => { scrim.classList.remove('scrim--on'); setTimeout(() => scrim.remove(), 200); };
+    scrim.addEventListener('click', (e) => {
+      if (e.target === scrim || e.target.closest('[data-cancel]')) return close();
+      if (e.target.closest('[data-ok]')) { close(); onConfirm(); }
+    });
+  }
+
+  return { esc, md, singleLine, ICON_BUTTON, seg, card, emptyState, longPress, toast, choose, confirm };
 })();

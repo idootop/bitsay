@@ -70,6 +70,4 @@
 }
 .wide__blank svg{ color:var(--c-ink-3); opacity:.5; }
 .wide__blank__text{ font-size:var(--fs-ui); line-height:var(--lh-ui); color:var(--c-ink-3); }
-.wide__blank__key{
-  font-size:var(--fs-meta); line-height:var(--lh-meta); color:var(--c-ink-3); opacity:.72;
-}
+

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>设计台 · 截图（关动画）</title>
+<style>
+  html,body{ margin:0; overflow:hidden; background:#F7F5F1; }
+  iframe{ width:1400px; height:16000px; border:0; position:absolute; top:0; }
+</style>
+</head>
+<body>
+<iframe id="f"></iframe>
+<script>
+/* ==========================================================================
+   noanim.html —— 确定性截图 / 量色
+   --------------------------------------------------------------------------
+   为什么需要它：`--virtual-time-budget` 会推进 setTimeout，但**不推进 CSS transition**。
+   带 `transition: background` 的元素，headless 下 getComputedStyle 会停在过渡起点的旧值上 ——
+   小组件的底板就这样被量成浅色（实际是纯黑），一度以为是 token 没生效。
+   所以这里在 iframe 载入后先注入「关掉一切过渡和动画」，再定位截图。
+
+   用法：
+     tools/noanim.html?el=widgets&off=4              定位到 #widgets，向上留 4px
+     tools/noanim.html?dark=1&sel=%23overview .grid__cell:nth-child(3)
+     tools/noanim.html?dark=1&el=demo
+
+   配合 Chrome：
+     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new \
+       --disable-gpu --hide-scrollbars --allow-file-access-from-files \
+       --window-size=1290,700 --virtual-time-budget=8000 \
+       --screenshot=out.png "file:///<abs>/design/tools/noanim.html?dark=1&el=widgets"
+   ========================================================================== */
+const P = new URLSearchParams(location.search);
+const f = document.getElementById('f');
+f.src = '../index.html' + (P.get('dark') === '1' ? '?dark=1' : '');
+f.addEventListener('load', () => {
+  const d = f.contentDocument;
+  const st = d.createElement('style');
+  st.textContent = '*,*::before,*::after{transition:none!important;animation:none!important}';
+  d.head.appendChild(st);
+  const sel = P.get('sel');
+  const n = sel ? d.querySelector(sel) : d.getElementById(P.get('el') || 'demo');
+  if (!n) { document.title = 'NOT FOUND'; return; }
+  const off = Number(P.get('off') || 6);
+  f.style.top = (-(n.getBoundingClientRect().top + d.documentElement.scrollTop - off)) + 'px';
+  document.title = 'ready';
+});
+</script>
+</body>
+</html>

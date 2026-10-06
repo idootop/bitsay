@@ -80,12 +80,12 @@ BitSay.pages.settings = (function () {
         <div class="sect">作者</div>
         <div class="block inked">
           <div class="srow" data-act="site">
-            <span class="srow__icon">${I.lang()}</span>
+            <span class="srow__icon">${I.link()}</span>
             <div class="srow__text"><div class="srow__title">Del Wang</div>
               <div class="srow__desc">https://del.wang</div></div>
           </div>
           <div class="srow" data-act="repo">
-            <span class="srow__icon">${I.link()}</span>
+            <span class="srow__icon">${I.github()}</span>
             <div class="srow__text"><div class="srow__title">源代码</div>
               <div class="srow__desc">https://github.com/idootop/bitsay</div></div>
           </div>

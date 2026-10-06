@@ -55,6 +55,9 @@ BitSay.app = (function () {
       onOpenApp: () => show('list')
     });
 
+    /** 首页列表当前是笔记还是待办 —— 搜索页照它决定搜哪一种 */
+    const listTab = () => host.querySelector('.seg__item--on')?.dataset.seg || 'note';
+
     let current = null;
     function show(name, arg) {
       if (current && current.unmount) current.unmount();
@@ -71,10 +74,10 @@ BitSay.app = (function () {
           break;
         case 'search':
           current = BitSay.pages.search.mount(host, {
+            kind: listTab(),
             onBack: () => show('list'),
             onOpen: (id) => show('editor', { id: BitSay.store.find(id)?.kind })
           });
-          // 搜索页打开后要真的跳到对应条目：这里直接用 id 打开
           break;
         case 'settings':
           current = BitSay.pages.settings.mount(host, {
@@ -128,6 +131,9 @@ BitSay.app = (function () {
       [1120, 700, '平板 · 横屏 1120×700dp（右栏正文被 --measure 收住）']
     ];
 
+    // 和 Compose 的 CompactHeaderHeight 同一个门限
+    const COMPACT_HEAD_H = 480;
+
     specs.forEach(([w, h, label]) => {
       const { wrap, list, detail } = wideShell(w, h, label);
       box.appendChild(wrap);
@@ -137,10 +143,11 @@ BitSay.app = (function () {
 
       const blank = () => {
         clear();
+        // 只有一句。原来还有一句"宽屏下列表留在原地…"——那是写给评审的，
+        // 用户脑子里没有"宽屏"这个概念，他只看到列表还在那儿。
         detail.innerHTML = `<div class="wide__blank">
           ${BitSay.brand.svg(46)}
           <div class="wide__blank__text">从左侧选一条，或按 + 新建</div>
-          <div class="wide__blank__key">宽屏下列表留在原地，边看边改不用来回跳</div>
         </div>`;
       };
 
@@ -163,6 +170,8 @@ BitSay.app = (function () {
             break;
           case 'search':
             inst = BitSay.pages.search.mount(host, {
+              // 搜索只搜一种：跟着左栏当时那个 tab
+              kind: listTab(),
               onBack: () => show('list'),
               onOpen: (id) => show('editor', { id: BitSay.store.find(id)?.kind })
             });
@@ -176,8 +185,14 @@ BitSay.app = (function () {
         }
       };
 
+      /* 左栏当前是笔记还是待办 —— 搜索页照它决定搜哪一种。
+         不去问 store：列表自己的 tab 是它自己的状态。 */
+      const listTab = () => list.querySelector('.seg__item--on')?.dataset.seg || 'note';
+
       // 左栏只挂一次，全程不重建 —— 这正是宽屏布局的意义
       BitSay.pages.list.mount(list, {
+        // 800×360 那台会走紧凑顶栏，另外两台不会
+        compactTop: h < COMPACT_HEAD_H,
         onOpen: (id) => show('editor', { id, kind: BitSay.store.find(id)?.kind }),
         onNew: (kind) => show('editor', { kind, quick: true }),
         onSearch: () => show('search'),
@@ -198,7 +213,10 @@ BitSay.app = (function () {
         id: BitSay.store.notes()[0]?.id, kind: 'note', autoFocus: false, onBack() {} })],
       ['编辑器 · 新建（快捷记录）', (h) => BitSay.pages.editor.mount(h, {
         kind: 'note', quickCapture: true, autoFocus: false, onBack() {} })],
-      ['搜索页', (h) => BitSay.pages.search.mount(h, { autoFocus: false, onBack() {} })],
+      ['搜索页 · 搜笔记', (h) => BitSay.pages.search.mount(h, {
+        kind: 'note', autoFocus: false, onBack() {} })],
+      ['搜索页 · 搜待办', (h) => BitSay.pages.search.mount(h, {
+        kind: 'todo', autoFocus: false, onBack() {} })],
       ['设置页', (h) => BitSay.pages.settings.mount(h, { onBack() {}, onTheme: applyThemeSetting })]
     ];
     defs.forEach(([label, mount]) => {
@@ -243,9 +261,10 @@ BitSay.app = (function () {
         BitSay.pages.list.mount(host, { tab: 'note', lockTab: true }))],
       ['空列表 · 待办', (h) => frozen(h, (host) =>
         BitSay.pages.list.mount(host, { tab: 'todo', lockTab: true }))],
-      ['空搜索 · 还没输入', (h) => BitSay.pages.search.mount(h, { autoFocus: false, onBack() {} })],
+      ['空搜索 · 还没输入', (h) => BitSay.pages.search.mount(h, {
+        kind: 'note', autoFocus: false, onBack() {} })],
       ['空搜索 · 没有结果', (h) => {
-        const inst = BitSay.pages.search.mount(h, { autoFocus: false, onBack() {} });
+        const inst = BitSay.pages.search.mount(h, { kind: 'note', autoFocus: false, onBack() {} });
         const i = h.querySelector('.field__input');
         i.value = 'zzz';
         i.dispatchEvent(new Event('input'));
@@ -429,7 +448,7 @@ BitSay.app = (function () {
           ${U.ICON_BUTTON('search')}${U.ICON_BUTTON('settings')}${U.ICON_BUTTON('back', 'icon-btn--ink')}
           ${U.ICON_BUTTON('delete', 'icon-btn--ink')}
           <span class="tick">${''}</span>
-          <span class="tick tick--on">${I.check()}</span>
+          <span class="tick tick--on">${I.tickCheck()}</span>
           <span class="fab" style="position:static;width:46px;height:46px">${I.plus()}</span>
         </div>
       </div>

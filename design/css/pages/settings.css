@@ -8,10 +8,12 @@
   --sect-pad-left: 22px;    /* 分组标签比色块缩进 2dp，读起来像栏目标题 */
   --sect-gap-top: 22px;
   --sect-gap-bottom: 9px;
-  --row-pad-y: 15px;
+  /* 逐项对齐 Compose 的 SettingRow：padding(horizontal 17, vertical 16)、
+     图标盒 32、文字缩进 12。原来 15/30/9 三个数都比 App 小一档。 */
+  --row-pad-y: 16px;
   --row-pad-x: 17px;
-  --row-icon: 30px;
-  --row-icon-gap: 9px;
+  --row-icon: 32px;
+  --row-icon-gap: 12px;
 }
 
 .settings-page .topbar{ padding:14px 12px 10px var(--pad-page); }
@@ -55,8 +57,11 @@
 }
 .srow__icon svg{ width:19px; height:19px; }
 .srow__text{ flex:1 1 auto; min-width:0; }
-.srow__title{ font-size:16px; line-height:22px; font-weight:600; letter-spacing:-.005em; }
-.srow__desc{ font-size:var(--fs-meta); line-height:var(--lh-meta); color:var(--c-ink-3); margin-top:2px; }
+/* 字号/行高/字重逐项对齐 Compose 的 SettingRow：
+   title = titleMedium.copy(15sp/21sp, Medium)，desc = bodySmall.copy(12sp/17sp)。
+   原来 title 是 16/22 SemiBold、desc 是 12/16 —— 三个值全都差一档。 */
+.srow__title{ font-size:15px; line-height:21px; font-weight:500; letter-spacing:-.005em; }
+.srow__desc{ font-size:12px; line-height:17px; color:var(--c-ink-3); margin-top:2px; }
 .srow__value{ font-size:var(--fs-meta); line-height:var(--lh-meta); color:var(--c-ink-3); }
 .srow__chev{ color:var(--c-ink-3); font-size:16px; margin-left:6px; }
 

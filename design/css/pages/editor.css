@@ -29,13 +29,13 @@
 .sheet__input{
   width:100%; height:100%; min-height:100%; resize:none;
   border:none; outline:none; background:transparent; color:var(--c-ink);
-  font:inherit; font-size:16px; line-height:26px;   /* 写字比读列表更松 */
+  font:inherit; font-size:16.5px; line-height:26px;   /* 写字比读列表更松；16.5 是 App 的 bodyLarge */
   letter-spacing:-.005em;
 }
 .sheet__ph{
   position:absolute; top:var(--sheet-pad); left:var(--sheet-pad); right:var(--sheet-pad);
   color:var(--c-ink-3); pointer-events:none;
-  font-size:16px; line-height:26px;
+  font-size:16.5px; line-height:26px;
 }
 
 /* 底部状态：正在输入… / ✓ 已自动保存 · 刚刚 / 创建于 … */

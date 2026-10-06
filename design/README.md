@@ -137,6 +137,7 @@ S.state.items = real;          // 还原数据，其它视图照常有内容
 |---|---|
 | **颜色、圆角、描边、间距节奏、字号、点阵强度** | `css/tokens.css` ← 优先改这里 |
 | **某一个页面**的样式 | `css/pages/<页面>.css` 顶部的「本页可调参数」 |
+| 验证工具 | `tools/*.html`（截图关动画 / 冒烟测试），无构建步骤，直接开 |
 | 卡片 / tab / FAB 等跨页面组件 | `css/components.css`（谨慎，全站都会变） |
 | 深色模式 | `css/dark.css`（只做 token 替换，页面样式不用动） |
 | 图标 | `js/icons.js` |
@@ -191,7 +192,8 @@ vivo V2309A：wm size 1260x2800，wm density 560  →  1260/3.5 = 360dp，2800/3
 | 元素 | 实测 dp | 写在 |
 |---|---|---|
 | 状态栏（safeDrawing 顶） | 高 36 | `base.css --safe-top` |
-| 列表页标题 | x22 起，行高 36（28sp/36sp） | `components.css .topbar__title` |
+| 首页大标题 | 38px/42px，Bold，字距 −.035em | `list.css .list-page .topbar__title`（token `--fs-title-home`）|
+| 次级页标题 | 21px/27px，ExtraBold，字距 −.015em | `components.css .topbar__title`（token `--fs-title-page`）|
 | 列表页副标题 | 行高 16（12sp/16sp） | `.topbar__sub` |
 | 图标按钮 | 视觉 40×40，字形 22 | `.icon-btn` |
 | 分段 tab 轨道 | x 18..342，高 56（内边距 4） | `.seg` |
@@ -205,6 +207,8 @@ vivo V2309A：wm size 1260x2800，wm density 560  →  1260/3.5 = 360dp，2800/3
 | 设置分组标题 | x 24 | `pages/settings.css .sect` |
 | 设置行 | 高 70（单行说明）/ 86（两行） | `.srow` |
 | **小组件** | **206 × 535**，位于桌面 (36, 75) | `pages/widget.css` |
+| 小组件底板 / 行 | 底板 = **画布色** `#E6E9F2`（暗色 **纯黑**），行 = **白** `#FFFFFF`（暗色 `#1B1D29`）| `--w-tile` / `--w-row` |
+| 小组件点亮的 tab | 和一行 item **同一个面**（不是灰底、不是画布色） | `.widget__tab--on` |
 | 小组件顶栏 / 图标按钮 | 47 / 43.7 | `--w-head-h` / `--w-btn` |
 | 小组件行 | 卡片 43，节距 47 | `--w-row-h` / `--w-row-gap` |
 | 小组件勾选圈 | 占位 40（= 真机声明 44dp × 0.91），字形盒 26 → **实际画出的圆 18.8dp** | `--w-tick-w` / `--w-tick-glyph` |
@@ -214,9 +218,37 @@ vivo V2309A：wm size 1260x2800，wm density 560  →  1260/3.5 = 360dp，2800/3
 | **宽屏** 左栏 | min(344, 窗口宽 × 45%)，≥ 600dp 才分栏 | `pages/wide.css` + `tokens.css` 的「宽屏」段 |
 | 宽屏接缝 | 1dp，`--c-divider`（ink-3 的 34%，暗色 42%） | `.wide__split` |
 | 宽屏右栏正文 | 最大 720dp，居中 | `.wide__measure` |
+| **矮窗口顶栏** | 窗口高 < 480dp 时压成一行；高 56（原 161） | `pages/list.css` `.list-page--compact` |
+| 矮窗口 tab | 轨内边距 3、按钮高 30、字号 13（原 4 / 40 / 14） | `components.css` `.seg--sm` |
 
 > 宿主（OriginOS 桌面）会把小组件按约 **0.91 倍**渲染，所以实测比声明的 48dp 略小。
 > 改小组件尺寸时，声明的 dp 和实测的 dp 都要想一下。
+
+### ⚠️ 量测陷阱：headless 截图里 `transition` 不推进
+
+`*{transition:...}` 的属性在 headless 的 `--virtual-time-budget` 下**不会推进到终值**，
+`getComputedStyle` 会返回过渡起点的旧值。小组件的底板就因此被量成浅色（实际是纯黑），
+一度以为是 token 没生效 —— 用内联 `style="background:var(--w-tile)"` 探针才排除。
+
+**截图 / 量色一律走 `tools/noanim.html`**：它在 iframe 载入后注入
+`*{transition:none!important;animation:none!important}` 再定位截图。
+`?dark=1&el=<id>` 或 `?dark=1&sel=<选择器>`。
+
+### 改完设计台跑一遍 `tools/smoke.html`
+
+装载检查只能抓到**载入期**的异常。载入之后点击才触发的错误会被事件派发吞掉 ——
+`window.onerror` 收得到，页面看上去却完全正常。踩过一次：`U is not a function`
+藏在编辑器的删除分支里，点删除毫无反应，而装载检查全绿。
+
+`tools/smoke.html` 把主要交互走一遍（进编辑器 / 删除二次确认 / 批量删除 / 勾选圈样式 /
+标题字号 / 深浅色切换），每一步都收集 `window.onerror`，并断言关键元素真的出现。
+在浏览器里直接打开就能看结果，命令行：
+
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new \
+  --disable-gpu --allow-file-access-from-files --virtual-time-budget=14000 \
+  --dump-dom "file://$PWD/design/tools/smoke.html"
+```
 
 ### 自己复测
 

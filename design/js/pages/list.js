@@ -10,12 +10,15 @@ BitSay.pages.list = (function () {
 
   /**
    * @param host  挂载点
-   * @param opts  { tab:'note'|'todo', lockTab:bool, selecting:bool, onOpen(item), onNew(kind) }
+   * @param opts  { tab, lockTab, selecting, compactTop, onOpen, onNew, ... }
+   *              compactTop = 窗口矮到放不下「大标题 + 计数 + 一整行 tab」时
+   *              （手机横屏、分屏下半屏），把 tab 提到标题那一行、去掉计数行。
    */
   function mount(host, opts = {}) {
     const I = BitSay.icons;
     let tab = opts.tab || 'note';
     let selecting = !!opts.selecting;
+    const compactTop = !!opts.compactTop;
     let selection = new Set();
     /* 上一帧出现过的 id。只给"这一帧新出现的"挂萌发动画 ——
        否则每次勾选重绘，整列都会重新长一遍。 */
@@ -26,7 +29,9 @@ BitSay.pages.list = (function () {
     if (selecting) S().list(tab).slice(0, 2).forEach((it) => selection.add(it.id));
 
     const root = document.createElement('div');
-    root.className = 'app-root page list-page' + (selecting ? ' list-page--selecting' : '');
+    root.className = 'app-root page list-page'
+      + (selecting ? ' list-page--selecting' : '')
+      + (compactTop ? ' list-page--compact' : '');
     root.innerHTML = `
       <header class="topbar" data-el="head"></header>
       <div class="seg-host" data-el="tabs"></div>
@@ -47,25 +52,38 @@ BitSay.pages.list = (function () {
           <button class="icon-btn icon-btn--ink" type="button" data-act="delete" title="删除">${I.delete()}</button>`;
         return;
       }
-      el('head').className = 'topbar';
-      el('head').innerHTML = `
-        <div class="topbar__titles">
-          <h3 class="topbar__title">${tab === 'note' ? '笔记' : '待办'}</h3>
-          <div class="topbar__sub">${tab === 'note'
-            ? `${c.notes} 条笔记`
-            : `${c.todos} 个待办 · ${c.openTodos} 个未完成`}</div>
-        </div>
+      const actions = `
         <div class="topbar__actions">
           <button class="icon-btn" type="button" data-act="search" title="搜索">${I.search()}</button>
           <button class="icon-btn" type="button" data-act="settings" title="设置">${I.settings()}</button>
         </div>`;
+      // 紧凑顶栏里两个图标**分开站**：设置放最左、搜索放最右，tab 夹在中间。
+      // 两个 40dp 的按钮一样宽，所以 tab 正好落在中线上 —— 原来把两个都堆在右边，
+      // 整行会头重脚轻，tab 又被挤到左边、和右边的图标连成一片。
+      const settingsBtn = `<button class="icon-btn" type="button" data-act="settings" title="设置">${I.settings()}</button>`;
+      const searchBtn = `<button class="icon-btn" type="button" data-act="search" title="搜索">${I.search()}</button>`;
+      // 矮窗口：tab 顶到标题位置，和搜索/设置同一行；计数行整条去掉。
+      // 标题不再单独出现 —— tab 上的「笔记/待办」本来就是标题，
+      // 两行说同一件事的时候，先砍掉的是比较小的那一行。
+      el('head').className = compactTop ? 'topbar topbar--compact' : 'topbar';
+      el('head').innerHTML = compactTop
+        ? `${settingsBtn}<div class="seg-slot" data-el="tabs-inline"></div>${searchBtn}`
+        : `<div class="topbar__titles">
+             <h3 class="topbar__title">${tab === 'note' ? '笔记' : '待办'}</h3>
+             <div class="topbar__sub">${tab === 'note'
+               ? `${c.notes} 条笔记`
+               : `${c.todos} 个待办 · ${c.openTodos} 个未完成`}</div>
+           </div>${actions}`;
     }
 
     function renderTabs() {
-      el('tabs').innerHTML = selecting ? '' : U().seg([
+      // 紧凑顶栏把 tab 塞进了 header，这里每次都重新找挂载点
+      const host = root.querySelector('[data-el="tabs-inline"]') || el('tabs');
+      if (!host) return;
+      host.innerHTML = selecting ? '' : U().seg([
         { key: 'note', label: '笔记' },
         { key: 'todo', label: '待办' }
-      ], tab);
+      ], tab, compactTop);
     }
 
     function renderList() {
@@ -124,9 +142,14 @@ BitSay.pages.list = (function () {
           case 'clear':    selecting = false; selection.clear(); update(); return;
           case 'delete':
             if (selection.size) {
-              S().removeMany([...selection]);
-              U().toast(root, `已删除 ${selection.size} 项`);
-              selecting = false; selection.clear(); update();
+              const n = selection.size;
+              // 不可撤销 → 先确认，确认按钮是危险色。和 App 的批量删除一致。
+              U().confirm(root, `删除这 ${n} 项？`, '删除后无法恢复。', '删除',
+                () => {
+                  S().removeMany([...selection]);
+                  U().toast(root, `已删除 ${n} 项`);
+                  selecting = false; selection.clear(); update();
+                });
             }
             return;
         }

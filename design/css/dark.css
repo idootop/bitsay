@@ -19,6 +19,8 @@
   --c-card:      var(--c-card-d);
   --c-card-done: var(--c-card-done-d);
   --c-divider:   var(--c-divider-d);
+  --w-tile:      var(--w-tile-d);
+  --w-row:       var(--w-row-d);
 
   --c-accent:        var(--c-accent-d);
   --c-accent-ink:    var(--c-accent-ink-d);

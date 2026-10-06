@@ -29,7 +29,8 @@
 
 .widget{
   position:relative; display:flex; flex-direction:column;
-  background:var(--c-surface);
+  /* 底板 = 画布色；行才是白色。见 tokens.css 的「桌面小组件」段 */
+  background:var(--w-tile);
   border-radius:var(--r-card);
   padding:var(--w-pad); overflow:hidden;
   box-shadow:var(--e-widget);
@@ -53,7 +54,9 @@
   transition:background var(--dur) var(--ease), color var(--dur) var(--ease);
 }
 .widget__tab--on{
-  background:var(--c-canvas); color:var(--c-ink); font-weight:700;
+  /* 点亮的 tab 和一行 item 是同一个面，不是灰底也不是画布色 ——
+     底板已经是画布色了，再拿画布色去点亮等于没点。 */
+  background:var(--w-row); color:var(--c-ink); font-weight:700;
 }
 
 /* 列表：单行、固定行高、无日期 */
@@ -67,7 +70,7 @@
 .widget__row{
   position:relative; height:var(--w-row-h); flex:0 0 auto;
   display:flex; align-items:center; overflow:hidden;
-  border-radius:var(--r-sm); background:var(--row-fill,var(--c-canvas));
+  border-radius:var(--r-sm); background:var(--row-fill,var(--w-row));
   padding-right:var(--w-row-pad-r); cursor:pointer;
 }
 /* 笔记行没有勾选圈：icon 在真机上是 GONE，文字自己留左边距，左右才对称 */
@@ -92,15 +95,30 @@
 .widget__row--done{ --row-fill:var(--c-card-done); --row-ink:var(--c-ink-3); }
 .widget__row--done .widget__text{ text-decoration:line-through; }
 
-/* 空状态：和列表 / 搜索用同一株嫩芽。2×2 里给最小的尺寸，
-   但**不隐藏** —— 藏起来就变成"这个组件坏了"，小一点反而像刚发芽。 */
+/* 空状态：**标题 + 提示两行**，和 App 的 widget_empty_title / widget_empty_hint 一一对应
+   （文案就是 empty_notes_title / empty_notes_hint 那两个字符串，`**` 去掉）。
+   曾经这里是自己编的一句"这里还什么都没有\n去 App 里加一条吧"，字号和颜色也都对不上。
+
+   嫩芽**固定 40px**（App 的 widget_empty_sprout 是固定 44dp，宿主按 0.91 倍渲染 ≈ 40dp），
+   没有按高度分档 —— App 的注释写得很清楚："fixed at what fits the 3x3 minimum,
+   so there is no size-dependent branch here"。 */
 .widget__empty{
   flex:1 1 auto; display:flex; flex-direction:column;
-  align-items:center; justify-content:center; gap:9px;
-  text-align:center; color:var(--c-ink-3);
-  font-size:12.5px; white-space:pre-line; line-height:1.9;
+  align-items:center; justify-content:center;
+  text-align:center; padding:0 8px;
 }
-.widget__empty .sprout{ opacity:.85; flex:0 0 auto; }
+/* 全站唯一的那点绿，只给这株芽 */
+.widget__empty svg{ color:var(--c-leaf); opacity:.85; flex:0 0 auto; }
+.widget__empty-title{
+  margin-top:9px; font-size:14px; line-height:19px;
+  font-weight:700; color:var(--c-ink);
+  max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.widget__empty-hint{
+  margin-top:4px; font-size:11.5px; line-height:17.5px;
+  color:var(--c-ink-2);
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
 
 /* + 悬浮在列表之上：列表不预留底部空白 */
 .widget__fab{

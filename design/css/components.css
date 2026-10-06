@@ -85,6 +85,10 @@
   background:var(--c-accent); color:var(--c-accent-ink);
   font-weight:700;
 }
+/* 小一号：只在矮窗口的紧凑顶栏里用，和 40dp 的图标按钮并排 */
+.seg--sm{ padding:3px; }
+.seg--sm .seg__item{ height:30px; font-size:13px; line-height:18px; }
+
 @keyframes swell{ from{ transform:scale(.9); } to{ transform:none; } }
 .seg__item--on{ animation:swell .3s var(--ease); }
 
@@ -119,9 +123,10 @@
   color:var(--c-ink-2); opacity:.85; margin-top:5px;
   font-variant-numeric:tabular-nums;
 }
-.card--done{ background:var(--c-card-done); --card-ink:var(--c-ink-3); }
+.card--done{ background:var(--c-card-done); --card-ink:var(--c-ink-2); }
 .card--done .card__text{ text-decoration:line-through; text-decoration-thickness:1px; }
-.card--done .card__meta{ opacity:.55; }
+/* 时间戳**不随完成变淡**：App 里两种状态都是 ink-2 @85%（Compose 用的是 InkSoft.copy(.85f)），
+   "已完成"由删除线 + 文字色表达。原来这里额外压到 55%，比 App 淡了一档。 */
 
 /* 可选发丝描边：只有显式给了 --inked-border 的元素才画 */
 .inked{ position:relative; }
@@ -138,18 +143,23 @@
      原来这里是 rgba(34,29,24,.22)≈#D5D3CF，在白卡上几乎看不见，
      而小组件用的是 --c-ink-2，两边深浅对不上。 */
   border:1.5px solid var(--c-ink-3); background:transparent;
-  color:var(--c-accent-ink);
+  /* 对勾和圈**同一个颜色**：状态由"勾在不在"表达，不由圆变色或填充表达。
+     曾经这里是填充的强调色圆盘 —— 暗色下变成一片白圆盘，
+     六条已完成的待办比唯一没做的那条还响。App 里已经改掉了，设计台跟上。 */
+  color:var(--c-ink-3);
   transition:background var(--dur) var(--ease), border-color var(--dur) var(--ease),
              transform .12s var(--ease);
 }
 .tick:hover{ border-color:var(--c-ink-2); }
 .tick:active{ transform:scale(.9); }
-.tick--on{ background:var(--c-accent); border-color:var(--c-accent); }
+.tick--on{ background:transparent; border-color:var(--c-ink-3); }
 @keyframes settle{
   0%{ transform:scale(1); } 38%{ transform:scale(.82); } 100%{ transform:scale(1); }
 }
 .tick--settle{ animation:settle .42s cubic-bezier(.2,1.4,.4,1); }
-.tick svg{ width:13px; height:13px; stroke-width:3; }
+/* 对勾铺满整个 23px 盒（和 Compose 的 Tick 一样，路径本身留了内缩），
+   不是缩在中间的小勾。 */
+.tick svg{ width:23px; height:23px; stroke-width:1.5; }
 
 /* ---------- 多选圈 ---------- */
 .pick{
@@ -255,6 +265,16 @@
   color:var(--c-ink-2);
 }
 .dialog__actions button:hover{ background:rgba(34,29,24,.05); }
+
+/* 二次确认（ConfirmDialog）：形状用 --r-block，标题 17px、说明 12.5px，
+   右下"取消 + 危险色确认"。数值逐项对齐 Compose：BlockShape / titleMedium.copy(17sp) /
+   bodySmall.copy(12.5sp, 18sp) / labelLarge。 */
+.dialog--confirm{ border-radius:var(--r-block); padding:20px 10px 10px; }
+.dialog__heading{ font-size:17px; line-height:24px; font-weight:500; color:var(--c-ink); padding:0 10px; }
+.dialog__hint{ margin-top:8px; font-size:12.5px; line-height:18px; color:var(--c-ink-2); padding:0 10px; }
+.dialog--confirm .dialog__actions{ padding:10px; gap:4px; }
+.dialog__actions .dialog__danger{ color:var(--c-danger); font-weight:700; }
+.dialog__actions .dialog__danger:hover{ background:color-mix(in srgb, var(--c-danger) 10%, transparent); }
 
 /* 首页标题的品牌标记 */
 .brand{ display:block; }

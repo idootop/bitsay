@@ -14,7 +14,37 @@
 
 /* ---------- 顶部栏：大标题 + 弱化的计数 ---------- */
 .list-page .topbar{ padding:14px 12px 12px var(--pad-page); }
+/* 首页标题是 38/42 Bold，和次级页的 21/27 ExtraBold 是两档（见 tokens.css）。
+   字重也跟着分开：38px 用 700 已经足够重，800 在这么大字号上会糊成一团。 */
+.list-page .topbar__title{
+  font-size:var(--fs-title-home); line-height:var(--lh-title-home);
+  font-weight:700; letter-spacing:-.035em;
+}
+/* 大标题和次级页标题要落在**同一条视觉基线**上（宽屏左右两栏会同框）。
+   次级页标题在 48px 的行里垂直居中；首页大标题是 align-items:flex-start，
+   而 38px 的中文字形在 42px 行盒里**墨迹偏下约 2px**，所以这里减 2px。
+   实测：14px → 35.0 vs 33.0；12px → 33.0 vs 33.0。
+   和 Compose 的 HomeHeaderPadding（PageHeaderPadding − 2dp）是同一条推导 ——
+   同一个字体度量，两边不该有两套说法。 */
+.list-page .topbar{ padding-top:12px; }
 .list-page .seg{ margin:2px var(--pad-page) 0; }
+
+/* ---------- 紧凑顶栏（矮窗口：手机横屏 / 分屏） ----------
+   窗口矮的时候，标题 + 计数 + 一整行 tab 三层要吃掉约 190dp，
+   而横屏一共才 360dp —— 列表只剩 171dp，一屏不到三条。
+   这里把 tab 缩一号提到标题位置，和搜索/设置同一行，计数行整条去掉，
+   顶栏从三层压成一行（约 48dp）。
+   计数不是信息，是氛围；「笔记」这两个字 tab 上已经有了。 */
+.list-page--compact .topbar--compact{
+  align-items:center; gap:8px;
+  /* 左右都 12：图标按钮自己还有约 9px 内边距，字形的视觉边距正好 ≈ 页面 20px 的留白。
+     两边取同一个数，tab 才会**正好**落在中线上（20/12 会让它偏 4px）。 */
+  padding:8px 12px;
+}
+.list-page--compact .seg-slot{ flex:1 1 auto; min-width:0; }
+.list-page--compact .seg{ margin:0; }
+/* 收起后顶栏下面就是列表，间距交给列表自己的 padding-top */
+.list-page--compact .seg-host{ display:none; }
 
 /* 多选态：整条顶栏被替换（标题、搜索、设置、tab 全部让位） */
 .list-page .selbar{

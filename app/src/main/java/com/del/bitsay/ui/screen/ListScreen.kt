@@ -45,6 +45,43 @@ import com.del.bitsay.ui.theme.DisplayStyle
 import com.del.bitsay.ui.theme.SPROUT_MAX_ROWS
 import com.del.bitsay.ui.theme.Ink
 import com.del.bitsay.ui.theme.InkSoft
+import com.del.bitsay.ui.theme.PageHeaderPadding
+
+/**
+ * The tab trough at full size: a 40dp item inside [SegmentedTabs]' 4dp of padding on each side.
+ * Kept in step by hand — it is the number this header's padding is derived from.
+ */
+private val TabTroughHeight = 48.dp
+
+/** A page header's height: one [RoundIconButton]. */
+private val PageHeaderHeight = 40.dp
+
+/**
+ * Vertical padding of the one-line header on a short window.
+ *
+ * Deliberately **not** [PageHeaderPadding]. The tabs keep their full size here (a 48dp trough),
+ * while every other page header is 40dp — a single icon button — and on a wide window the two rows
+ * sit side by side with their contents on one line. A row that is 8dp taller needs 4dp less padding
+ * on each side to land on the same centre: with the page's own 14dp the left header sat 4dp low,
+ * with the 8dp it had before it sat 6dp high. Both were measured.
+ *
+ * The alternative — shrinking the tabs to make the row 40dp — was tried and rejected: it lines the
+ * boxes up but the control itself is then a different size in landscape than in portrait.
+ */
+private val CompactHeaderPadding = PageHeaderPadding - (TabTroughHeight - PageHeaderHeight) / 2
+
+/**
+ * Top padding of the **full** header — the one with the 38sp title, the count line and the tabs.
+ *
+ * 2dp less than [PageHeaderPadding], and that 2dp is a font metric, not taste: the title is 38sp
+ * inside a 42sp line box, and a CJK glyph that size does not sit optically centred in its box — its
+ * ink lands about 2dp low. Every other page title is centred in its 48dp header row instead, so
+ * with the same padding the home title sat 2dp below the title of whatever page was open beside it.
+ *
+ * Nobody could see this until the two panes were side by side. Measured with both on screen
+ * (1600×720dp window): right-hand title 70.6dp, home title 72.6dp → 70.6dp after the nudge.
+ */
+private val HomeHeaderPadding = PageHeaderPadding - 2.dp
 
 @Composable
 fun ListScreen(
@@ -62,6 +99,8 @@ fun ListScreen(
     onClearSelection: () -> Unit,
     onDeleteSelected: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Fold the header onto one line. See [com.del.bitsay.ui.theme.CompactHeaderHeight]. */
+    compactTop: Boolean = false,
 ) {
     var confirmDelete by remember { mutableStateOf(false) }
 
@@ -114,6 +153,38 @@ fun ListScreen(
                     onClearSelection = onClearSelection,
                     onDeleteSelected = { confirmDelete = true },
                 )
+            } else if (compactTop) {
+                // One row: tabs where the title was, search and settings on the right. The title
+                // and the count line are both gone — see CompactHeaderHeight for why.
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        // 12 on both sides, not 20/12: the icon button carries ~9dp of its own
+                        // padding, so 12 puts the *glyph* at the page's 20dp margin either way —
+                        // and equal sides are what put the tabs exactly on the centre line.
+                        //
+                        .padding(horizontal = 12.dp, vertical = CompactHeaderPadding),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    // The two buttons split to opposite ends with the tabs between them. Kept
+                    // together on the right the row reads lopsided, and the tabs get shoved into
+                    // the corner against them.
+                    SettingsButton(onClick = onOpenSettings)
+                    SegmentedTabs(
+                        options = tabs,
+                        selected = state.tab,
+                        label = { stringResource(if (it == Kind.NOTE) R.string.tab_notes else R.string.tab_todos) },
+                        onSelect = onSelectTab,
+                        position = pagerState.currentPage + pagerState.currentPageOffsetFraction,
+                        // **Full size**, not shrunk. The 40dp item is exactly the height of the
+                        // 48dp icon button beside it, so the row's height is the same as every
+                        // other header in the app — shrink the tabs and the left pane's header
+                        // stops lining up with the right pane's.
+                        modifier = Modifier.weight(1f),
+                    )
+                    SearchButton(onClick = onOpenSearch)
+                }
             } else {
                 Header(
                     state = state,
@@ -266,7 +337,7 @@ private fun Header(
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 12.dp, top = 14.dp, bottom = 12.dp),
+            .padding(start = 20.dp, end = 12.dp, top = HomeHeaderPadding, bottom = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
         Column(Modifier.weight(1f)) {
@@ -292,22 +363,42 @@ private fun Header(
         }
         // Sits at the title's cap height rather than centred on the two-line block: at 38sp the
         // icon buttons are much shorter than the text block, and centring drops them to the
-        // baseline of the count line.
-        // 8dp apart, not 0: two 40dp targets sharing an edge is a mis-tap waiting to happen.
-        Row(
-            Modifier.padding(top = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            RoundIconButton(
-                painter = painterResource(R.drawable.ic_search),
-                contentDescription = stringResource(R.string.action_search),
-                onClick = onOpenSearch,
-            )
-            RoundIconButton(
-                painter = painterResource(R.drawable.ic_settings),
-                contentDescription = stringResource(R.string.action_settings),
-                onClick = onOpenSettings,
-            )
+        // baseline of the count line. (In the one-line header this offset is simply dropped.)
+        Row(Modifier.padding(top = 2.dp)) {
+            TopBarActions(onOpenSearch = onOpenSearch, onOpenSettings = onOpenSettings)
         }
     }
+}
+
+/**
+ * Search and settings, as a pair.
+ *
+ * Both header heights need the same two buttons at the same distance apart — 8dp, not 0: two 40dp
+ * targets sharing an edge is a mis-tap waiting to happen. The one-line header takes them
+ * individually instead, on opposite sides of the tabs.
+ */
+@Composable
+private fun TopBarActions(onOpenSearch: () -> Unit, onOpenSettings: () -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        SearchButton(onClick = onOpenSearch)
+        SettingsButton(onClick = onOpenSettings)
+    }
+}
+
+@Composable
+private fun SearchButton(onClick: () -> Unit) {
+    RoundIconButton(
+        painter = painterResource(R.drawable.ic_search),
+        contentDescription = stringResource(R.string.action_search),
+        onClick = onClick,
+    )
+}
+
+@Composable
+private fun SettingsButton(onClick: () -> Unit) {
+    RoundIconButton(
+        painter = painterResource(R.drawable.ic_settings),
+        contentDescription = stringResource(R.string.action_settings),
+        onClick = onClick,
+    )
 }

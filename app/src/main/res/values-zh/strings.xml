@@ -8,9 +8,6 @@
     <string name="tab_todos">待办</string>
 
     <string name="action_new">新建</string>
-    <string name="action_save">保存</string>
-    <string name="action_done">完成</string>
-    <string name="action_toggle_done">切换完成状态</string>
     <string name="action_delete">删除</string>
     <string name="confirm_delete_title">删除这条%s？</string>
     <string name="confirm_delete_batch">删除选中的 %1$d 条？</string>
@@ -19,32 +16,29 @@
     <string name="action_back">返回</string>
     <string name="action_settings">设置</string>
     <string name="action_search">搜索</string>
-    <string name="action_close">关闭</string>
-    <string name="action_undo">撤销</string>
     <string name="action_cancel_selection">退出多选</string>
     <string name="selected_count">已选 %1$d 项</string>
 
     <string name="hint_note">写点什么…</string>
     <string name="hint_todo">要做点什么？</string>
-    <string name="search_prompt">输入关键词搜索笔记和待办</string>
-    <string name="hint_search">搜索</string>
+    <!-- 搜索只查**一种**类型，由进来时的来源决定。输入框就是这一页唯一的标题，
+         所以「搜的是哪一种」只能由占位文字来说。 -->
+    <string name="search_prompt_notes">搜索笔记</string>
+    <string name="search_prompt_todos">搜索待办</string>
 
     <string name="empty_notes_title">还没有笔记</string>
     <string name="empty_notes_hint">点右下角的 **+** 写下第一条</string>
 
     <!-- 宽屏（左右两栏）右栏为空时的提示。它是路牌不是按钮：不能长得能点，
-         因为后面什么都没有。 -->
+         因为后面什么都没有。只留一句 —— "宽屏下列表留在原地"是说给评审听的，
+         用户脑子里没有"宽屏"这个概念，他只看到列表还在那儿。 -->
     <string name="wide_blank">从左侧选一条，或按 **+** 新建</string>
-    <string name="wide_blank_hint">宽屏下列表留在原地，不用来回跳</string>
     <string name="empty_todos_title">今天没事要做</string>
     <string name="empty_todos_hint">点右下角的 **+** 加一条待办</string>
     <string name="empty_search_title">没找到</string>
     <string name="empty_search_hint">换个词试试</string>
     <string name="empty_search_idle_title">想找什么？</string>
-    <string name="empty_search_idle_hint">输入关键词，笔记和待办一起搜</string>
 
-    <string name="deleted">已删除</string>
-    <string name="saved">已保存</string>
     <string name="nothing_to_save">内容为空，已删除</string>
 
     <string name="editor_saving">正在输入…</string>
@@ -67,19 +61,14 @@
     <string name="widget_pin_unsupported">当前桌面不支持从应用内添加，请长按桌面空白处手动添加</string>
 
     <string name="export_ok">已导出 %1$d 条记录</string>
-    <string name="export_fail">导出失败：%1$s</string>
     <string name="op_fail">操作失败：%1$s</string>
     <string name="import_ok">已导入 %1$d 条记录（新增 %2$d，更新 %3$d）</string>
-    <string name="import_fail">导入失败：%1$s</string>
     <string name="import_confirm_title">导入备份</string>
     <string name="import_confirm_msg">备份里有 %1$d 条记录。要怎么做？</string>
     <string name="import_mode_merge">合并（保留现有内容）</string>
     <string name="import_mode_replace">覆盖（清空现有内容）</string>
     <string name="cancel">取消</string>
 
-    <string name="widget_new_note">新建笔记</string>
-    <string name="widget_new_todo">新建待办</string>
-    <string name="widget_switch">切换列表</string>
     <string name="widget_search">搜索</string>
     <string name="widget_open_app">打开应用</string>
 
@@ -98,7 +87,6 @@
     <!-- 列表计数 -->
     <string name="count_notes">%1$d 条笔记</string>
     <string name="count_todos">%1$d 条待办 · %2$d 条未完成</string>
-    <string name="count_todos_short">%1$d 条待办</string>
 
     <!-- 设置分区与关于 -->
     <string name="settings_about_tagline">纯文字笔记 + 待办，零权限，数据只在你自己手里。</string>
@@ -123,7 +111,6 @@
     <string name="backup_error_corrupt">备份文件已损坏</string>
     <string name="backup_error_newer">备份来自更新的版本（schema=%1$d），请先升级 App</string>
     <string name="backup_error_io">无法读写所选文件</string>
-    <string name="backup_error_unknown">未知错误</string>
     <string name="backup_error_stale">导出内容已失效，请重试</string>
 
     <!-- 小组件配置 -->

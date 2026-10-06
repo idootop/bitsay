@@ -111,15 +111,19 @@ data class AppUiState(
      */
     val selection: Set<Long> = emptySet(),
     /**
-     * Rows matching [query], **one list per kind**, fetched from SQL. The in-memory lists only hold
-     * previews of the text, so searching them would silently miss matches deep inside a long note.
+     * Which kind the search page is looking through.
      *
-     * Both kinds are kept rather than just the visible one so the search screen can be a pager:
-     * a page has to render its own results, and re-querying on every tab change would leave the
-     * neighbouring page blank until the new rows landed.
+     * Search is **single-kind**, and this is decided once, on the way in, by wherever you came
+     * from: the list you were on, or the tab the widget was showing. There is no tab switch on the
+     * results page — the query would have to survive it, and "notes / todos" on a page you reached
+     * by tapping a magnifier reads as a second navigation bar competing with the first.
      */
-    val searchNotes: List<Item> = emptyList(),
-    val searchTodos: List<Item> = emptyList(),
+    val searchKind: Kind = Kind.NOTE,
+    /**
+     * Rows of [searchKind] matching [query], fetched from SQL. The in-memory lists only hold
+     * previews of the text, so searching them would silently miss matches deep inside a long note.
+     */
+    val searchResults: List<Item> = emptyList(),
     /**
      * Raise the keyboard as soon as the editor appears. True only when the editor was opened to
      * **write something new** (the FAB, or the widget's `+`); opening an existing entry is a
@@ -137,10 +141,6 @@ data class AppUiState(
     val pendingImport: PendingImport? = null,
 ) {
     val current: List<Item> get() = if (tab == Kind.NOTE) notes else todos
-
-    val searchResults: List<Item> get() = if (tab == Kind.NOTE) searchNotes else searchTodos
-
-    val visible: List<Item> get() = if (query.isBlank()) current else searchResults
 
     val inSelectionMode: Boolean get() = selection.isNotEmpty()
 
@@ -208,48 +208,38 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     private suspend fun runSearch() {
         val needle = _state.value.query
-        val notes = repository.search(Kind.NOTE, needle)
-        val todos = repository.search(Kind.TODO, needle)
-        // Drop the result if the user typed on while the query was running. Not keyed on the tab:
-        // both kinds were fetched, so switching tabs during the query cannot stale this.
-        if (_state.value.query == needle) {
-            _state.update { it.copy(searchNotes = notes, searchTodos = todos) }
+        val kind = _state.value.searchKind
+        val hits = repository.search(kind, needle)
+        // Drop the result if the user typed on while the query was running — or if a second search
+        // was opened for the other kind while this one was in flight, which the first version of
+        // this page could not do and a single-kind search can.
+        if (_state.value.query == needle && _state.value.searchKind == kind) {
+            _state.update { it.copy(searchResults = hits) }
         }
     }
 
     // ------------------------------------------------------------------ navigation
 
     fun selectTab(kind: Kind) = _state.update {
-        it.copy(tab = kind, query = "", searchNotes = emptyList(), searchTodos = emptyList(), selection = emptySet())
+        it.copy(tab = kind, query = "", searchResults = emptyList(), selection = emptySet())
     }
 
     /**
-     * The search page's tab switch: same keyword, other kind.
-     *
-     * It must not go through [selectTab], which drops the query — there, "notes / todos" picks
-     * which list the app shows, here it narrows the search that is already on screen. The new
-     * results are fetched straight away rather than through the typing debounce: a tab tap is a
-     * single deliberate action, not a keystroke in a burst. The previous kind's rows stay up
-     * until the new ones land, which is a few milliseconds of a `LIKE` scan.
-     */
-    fun selectSearchTab(kind: Kind) {
-        if (_state.value.tab == kind) return
-        // No re-query: runSearch() already fetched both kinds, so the other tab's rows are sitting
-        // in the state. Switching is instant, which is what makes the swipe feel attached to the
-        // finger rather than to the database.
-        _state.update { it.copy(tab = kind) }
-    }
-
-    /**
+     * @param kind what this search looks through. Decided by the caller because only the caller
+     *   knows where the user came from: the app's list passes its own tab, the widget passes the
+     *   tab the widget itself is showing — which is not necessarily the app's.
      * @param fromWidget true when the widget's search button opened the floating window: leaving
      *   search then dismisses that window instead of landing on the app's list.
      */
-    fun openSearch(fromWidget: Boolean = false) = _state.update {
+    fun openSearch(kind: Kind, fromWidget: Boolean = false) = _state.update {
         it.copy(
             screen = Screen.Search,
+            searchKind = kind,
+            // `tab` is deliberately left alone: opening a **hit** aligns the list to that hit's
+            // kind (see openItem), but merely searching must not flip the list behind your back —
+            // least of all when the search came from the widget, whose tab is its own.
             query = "",
-            searchNotes = emptyList(),
-            searchTodos = emptyList(),
+            searchResults = emptyList(),
             fromWidget = fromWidget,
             fromSearch = false,
         )
@@ -267,7 +257,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             exitToLauncher()
             return
         }
-        _state.update { it.copy(screen = Screen.List, query = "", searchNotes = emptyList(), searchTodos = emptyList()) }
+        _state.update { it.copy(screen = Screen.List, query = "", searchResults = emptyList()) }
     }
 
     /**
@@ -560,8 +550,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                 // screen. Leaving it set made the home list render `searchResults` instead of the
                 // real list: the header said "4 todos" while the body showed the empty state.
                 query = "",
-                searchNotes = emptyList(),
-                searchTodos = emptyList(),
+                searchResults = emptyList(),
             )
         }
     }

@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.window.Dialog
 import com.del.bitsay.ui.theme.Accent
 import com.del.bitsay.ui.theme.BlockShape
+import com.del.bitsay.ui.theme.PageHeaderPadding
 import com.del.bitsay.ui.theme.Paper
 import androidx.compose.ui.platform.LocalUriHandler
 import com.del.bitsay.core.util.AUTHOR_REPO
@@ -110,7 +111,7 @@ fun SettingsScreen(
             .padding(start = 20.dp, end = 20.dp, bottom = 32.dp),
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 4.dp),
+            Modifier.fillMaxWidth().padding(top = PageHeaderPadding, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             RoundIconButton(

@@ -88,6 +88,34 @@ val MeasureWidth = 720.dp
 /** Width actually given to the list pane in a window of [windowWidth]. */
 fun listPaneWidth(windowWidth: Dp): Dp = minOf(PaneListWidth, windowWidth * 0.45f)
 
+/**
+ * The window height below which the home header folds onto one line.
+ *
+ * The list header is three stacked things — a 38sp title, a count line, and a 40dp tab row — worth
+ * about 160dp. A phone on its side has 360dp in total, so the list was left with ~170dp: less than
+ * three rows, and an empty state with no room for its own sentence.
+ *
+ * Below this the tabs move up onto the title's row at one size down (see `SegmentedTabs(compact)`),
+ * next to the search and settings buttons, and the count line goes away. The title goes with it:
+ * the tabs already say 笔记 / 待办, and when two things say the same thing it is the smaller one
+ * that should go.
+ *
+ * 480dp is chosen to catch exactly the tall-and-narrow case. Phones in portrait (640dp+), tablets
+ * (700dp+) and unfolded foldables (900dp+) are all well clear of it; a landscape phone (360-430dp)
+ * and a split-screen half are under it.
+ */
+val CompactHeaderHeight = 480.dp
+
+/**
+ * The top padding every page header uses — the editor, search, settings, and the list's one-line
+ * header on a short window.
+ *
+ * It is one constant because those headers can now be seen **side by side**: on a wide window the
+ * list is pinned to the left of whatever page you opened. Two panes whose titles sit 8dp apart
+ * read as a bug, and "which screen am I on" is exactly the question a shared baseline answers.
+ */
+val PageHeaderPadding = 14.dp
+
 // ----------------------------------------------------------------------------
 // Shape. Taken straight from tokens.css.
 //

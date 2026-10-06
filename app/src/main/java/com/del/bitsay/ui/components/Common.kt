@@ -529,7 +529,14 @@ private val EmptyStateRoomyHeight = 400.dp
 @Composable
 fun EmptyState(
     title: String,
-    hint: String,
+    /**
+     * Optional. A hint earns its place only when it tells the reader something they cannot
+     * already see — "试试点右下角的 +" when the button is right there and unlabelled. A line that
+     * explains how the screen works ("searches notes only", "the list stays put on a wide screen")
+     * is a note for whoever reviewed the layout, not for whoever is using it; those screens get
+     * the title on its own.
+     */
+    hint: String? = null,
     modifier: Modifier = Modifier,
     size: Dp = 92.dp,
 ) {
@@ -557,7 +564,7 @@ fun EmptyState(
                 color = Ink,
                 modifier = Modifier.padding(top = if (roomy) 20.dp else 10.dp),
             )
-            if (roomy) {
+            if (roomy && hint != null) {
                 Text(
                     text = emphasized(hint, Ink),
                     textAlign = TextAlign.Center,

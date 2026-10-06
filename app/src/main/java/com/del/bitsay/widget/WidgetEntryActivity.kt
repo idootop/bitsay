@@ -92,8 +92,12 @@ class WidgetEntryActivity : ComponentActivity() {
 
             // Search lands on this same floating window's search page, so backing out of it
             // dismisses the window onto the home screen — exactly like the editor does.
+            //
+            // The kind is the *widget's* tab, read from the intent rather than from the app's
+            // list: the widget keeps its own notes/todos choice, and hitting search on a todos
+            // widget must not silently look through the notes the app happened to be showing.
             WidgetContract.ACTION_SEARCH -> {
-                viewModel.openSearch(fromWidget = true)
+                viewModel.openSearch(kind, fromWidget = true)
                 true
             }
 

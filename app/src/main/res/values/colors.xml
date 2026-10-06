@@ -7,22 +7,18 @@
 -->
 <resources>
     <color name="bg">#FFEDF0F8</color>
-    <color name="paper">#FFFFFFFF</color>
     <color name="ink">#FF191B26</color>
     <color name="ink_soft">#FF666B80</color>
     <color name="ink_faint">#FF9CA1B5</color>
-    <color name="line">#FFE8EAF3</color>
     <!-- Fallback stroke for the vector icons; every call site tints them anyway. -->
     <color name="icon_ink">#FF191B26</color>
     <color name="accent">#FF000000</color>
-    <color name="accent_ink">#FFFFFFFF</color>
 
     <!--
       The widget tile. The page colour, not white: rows are pure white now, and a white tile made
       them invisible. This is also the same floor/card relationship the app's own list has.
     -->
     <color name="widget_bg">#FFE6E9F2</color>
-    <color name="widget_row">#FFEDF0F8</color>
     <!--
       The scrollbar. Ink-faint at 60%, not the hairline colour: the tile is the page colour now, and
       #E8EAF3 against #EDF0F8 is a contrast of 1.05:1 — the bar was there but could not be seen.

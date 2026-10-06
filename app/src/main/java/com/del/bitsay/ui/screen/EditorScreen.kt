@@ -47,6 +47,7 @@ import com.del.bitsay.ui.theme.PageTitleStyle
 import com.del.bitsay.ui.theme.Line
 import com.del.bitsay.ui.theme.InkFaint
 import com.del.bitsay.ui.theme.InkSoft
+import com.del.bitsay.ui.theme.PageHeaderPadding
 import com.del.bitsay.ui.theme.Paper
 
 @Composable
@@ -90,7 +91,9 @@ fun EditorScreen(
     Column(
         modifier
             .fillMaxSize()
-            .padding(horizontal = 18.dp, vertical = 12.dp),
+            // Vertical 14 matches every other header — see PageHeaderPadding. The two panes are
+            // side by side on a wide window, so a 2dp difference here is a visible one.
+            .padding(horizontal = 18.dp, vertical = PageHeaderPadding),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             RoundIconButton(

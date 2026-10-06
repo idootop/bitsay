@@ -6,7 +6,6 @@
 -->
 <resources>
     <color name="bg">#FF101119</color>
-    <color name="paper">#FF1B1D29</color>
     <color name="ink">#FFF2F3F8</color>
     <color name="ink_soft">#FFA2A7BC</color>
 </resources>

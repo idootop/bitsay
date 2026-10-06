@@ -154,7 +154,7 @@ internal object WidgetRenderer {
         // --- buttons ---
         views.setOnClickPendingIntent(R.id.widget_add, quickAddIntent(context, widgetId, kind))
         views.setOnClickPendingIntent(R.id.widget_open_app, openAppIntent(context, widgetId))
-        views.setOnClickPendingIntent(R.id.widget_search, searchIntent(context, widgetId))
+        views.setOnClickPendingIntent(R.id.widget_search, searchIntent(context, widgetId, kind))
 
         if (scrollToTop) {
             views.setInt(R.id.widget_list, "smoothScrollToPosition", 0)
@@ -204,11 +204,17 @@ internal object WidgetRenderer {
      * It is deliberately *not* [MainActivity]: entering the app's task would leave the app's list
      * sitting behind the search page, so backing out would reveal a screen the user never asked
      * for. In its own task, back simply dismisses the window onto the home screen.
+     *
+     * The widget's own tab travels with it, because the search page looks through exactly one kind
+     * and the widget is the only thing that knows which one the user is looking at. Every render
+     * re-issues this intent with FLAG_UPDATE_CURRENT, so switching the widget's tab and then
+     * tapping search carries the new kind.
      */
-    private fun searchIntent(context: Context, widgetId: Int): PendingIntent {
+    private fun searchIntent(context: Context, widgetId: Int, kind: Kind): PendingIntent {
         val intent = Intent(context, WidgetEntryActivity::class.java).apply {
             action = WidgetContract.ACTION_SEARCH
             putExtra(WidgetContract.EXTRA_FROM_WIDGET, true)
+            putExtra(WidgetContract.EXTRA_KIND, kind.code)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         return PendingIntent.getActivity(

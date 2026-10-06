@@ -32,7 +32,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -52,6 +51,7 @@ import com.del.bitsay.ui.screen.EditorScreen
 import com.del.bitsay.ui.screen.ListScreen
 import com.del.bitsay.ui.screen.SearchScreen
 import com.del.bitsay.ui.screen.SettingsScreen
+import com.del.bitsay.ui.theme.CompactHeaderHeight
 import com.del.bitsay.ui.theme.Divider
 import com.del.bitsay.ui.theme.InkFaint
 import com.del.bitsay.ui.theme.MeasureWidth
@@ -153,6 +153,9 @@ fun BitSayRoot(
             // Read out here on purpose: inside the Row the RowScope becomes the implicit receiver
             // and `maxWidth` resolves against that instead.
             val windowWidth = maxWidth
+            // Height, not width: this one is about a phone on its side, where the window is wide
+            // and there is simply not enough of it top to bottom for a three-storey header.
+            val compactTop = maxHeight < CompactHeaderHeight
             if (windowWidth >= WideBreakpoint) {
                 Row(Modifier.fillMaxSize()) {
                     // The list never leaves a wide window. Opening an entry puts the editor *next
@@ -163,6 +166,7 @@ fun BitSayRoot(
                         state = state,
                         viewModel = viewModel,
                         seenItemIds = seenItemIds,
+                        compactTop = compactTop,
                         modifier = Modifier.width(listPaneWidth(windowWidth)).fillMaxHeight(),
                     )
 
@@ -199,6 +203,7 @@ fun BitSayRoot(
                         state = state,
                         viewModel = viewModel,
                         seenItemIds = seenItemIds,
+                        compactTop = compactTop,
                     )
 
                     is Screen.Editor -> EditorPane(state, viewModel)
@@ -281,13 +286,15 @@ private fun ListPane(
      * would then replay the entrance for the whole list instead of only for what actually changed.
      */
     seenItemIds: MutableMap<Kind, MutableSet<Long>>,
+    compactTop: Boolean,
     modifier: Modifier = Modifier,
 ) {
     ListScreen(
         state = state,
         seenItemIds = seenItemIds,
         onSelectTab = viewModel::selectTab,
-        onOpenSearch = viewModel::openSearch,
+        // The list decides what search looks through: whichever tab you were reading.
+        onOpenSearch = { viewModel.openSearch(state.tab) },
         onOpenSettings = viewModel::openSettings,
         onOpenItem = viewModel::openItem,
         onToggleDone = viewModel::toggleDone,
@@ -296,6 +303,7 @@ private fun ListPane(
         onToggleSelection = viewModel::toggleSelection,
         onClearSelection = viewModel::clearSelection,
         onDeleteSelected = viewModel::deleteSelected,
+        compactTop = compactTop,
         modifier = modifier,
     )
 }
@@ -316,7 +324,6 @@ private fun SearchPane(state: AppUiState, viewModel: AppViewModel, modifier: Mod
     SearchScreen(
         state = state,
         onQuery = viewModel::setQuery,
-        onSelectTab = viewModel::selectSearchTab,
         onBack = viewModel::closeSearch,
         onOpenItem = viewModel::openSearchResult,
         onToggleDone = viewModel::toggleDone,
@@ -351,6 +358,10 @@ private fun SettingsPane(
  * answer. The plant is here rather than a second empty-state headline because it is the app's one
  * established "nothing here yet" mark, and it is drawn at 46dp — a third of the empty state's
  * size — so it reads as a watermark, not as content.
+ *
+ * **One line, and it says what to do.** It used to carry a second line explaining that the list
+ * stays put on a wide screen. That is a sentence for whoever is reviewing the layout, not for
+ * whoever is using it: nobody thinks in "wide screens", they just see a list that is still there.
  */
 @Composable
 private fun WidePlaceholder(modifier: Modifier = Modifier) {
@@ -366,13 +377,6 @@ private fun WidePlaceholder(modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp, lineHeight = 20.sp),
             color = InkFaint,
             modifier = Modifier.padding(top = 14.dp),
-        )
-        Text(
-            text = stringResource(R.string.wide_blank_hint),
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 12.sp, lineHeight = 16.sp),
-            color = InkFaint,
-            modifier = Modifier.padding(top = 6.dp).alpha(0.72f),
         )
     }
 }

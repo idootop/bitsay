@@ -219,7 +219,6 @@ jobs:
 
           CERT=$(grep -m1 'certificate SHA-256 digest' "$CERTS" | awk '{print $NF}')
           SHA=$(sha256sum "$UNALIGNED" | awk '{print $1}')
-          SIZE=$(du -h "$UNALIGNED" | cut -f1)
 
           # 在 gradle 的产物目录里就地改名 —— 不换目录，避免踩到 AGP 的 output-metadata
           APK="${{ steps.version.outputs.apk }}"
@@ -228,54 +227,34 @@ jobs:
           {
             echo "cert=$CERT"
             echo "sha=$SHA"
-            echo "size=$SIZE"
           } >> "$GITHUB_OUTPUT"
           echo "签名证书 SHA-256: $CERT"
           echo "APK SHA-256:      $SHA"
 
-      # ⚠️ 这里的 heredoc 是**不带引号**的（内容要展开 $VERSION / $SHA 等），
+      # ⚠️ 这里的 heredoc 是**不带引号**的（内容要展开 ${VERSION} 等），
       #    所以正文里的变量一律写成 ${VAR} 带花括号：bash 会把紧跟在 $VAR 后面的
       #    多字节字符（比如全角括号）也算进变量名，`$VERSION（` 会被当成变量
       #    `VERSION（` 而报 unbound variable。真跑一遍才发现，CI 上会直接挂。
-      # release notes 是**给下载的人看的**，不是设计文档。
-      # 第一版把 API 31 的来龙去脉、包里有什么、versionCode 推导规则全塞了进去，
-      # 一屏都放不下 —— 那些是 PROGERSS 该写的东西。用户只关心三件事：
-      # 我这台手机能不能装、怎么装、要不要给权限。校验信息留着，但收进折叠块。
+      #
+      # release notes 是**给下载的人看的**：能装不能装、去哪下，两句话说清就够了。
+      # 中英各一份，中间一条分割线 —— 中文在前（主要读者），英文在后。
       - name: 生成 release notes
         env:
           VERSION: ${{ steps.version.outputs.version }}
-          CERT: ${{ steps.verify.outputs.cert }}
-          SHA: ${{ steps.verify.outputs.sha }}
-          SIZE: ${{ steps.verify.outputs.size }}
         run: |
           set -euo pipefail
           NOTES="$RUNNER_TEMP/release-notes.md"
+          URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/v${VERSION}/Bitsay-${VERSION}.apk"
           cat > "$NOTES" <<EOF
-          **支持 Android 12 及以上**，已经装过旧版的直接覆盖安装，数据不会丢。
+          **[📦 下载 Bitsay-${VERSION}.apk](${URL})**
 
-          ### [下载 Bitsay-${VERSION}.apk](https://github.com/${GITHUB_REPOSITORY}/releases/download/v${VERSION}/Bitsay-${VERSION}.apk)
+          PS: **支持 Android 12 及以上**，已经装过旧版的直接覆盖安装，数据不会丢。
 
-          手机上下载后点开，按提示允许「安装未知来源应用」即可。
-          这个 App 不申请任何权限 —— 没有网络、没有存储、没有通知，数据只留在你自己手机上。
+          ---
 
-          <details>
-          <summary>校验信息（可选）</summary>
+          **[📦 Download Bitsay-${VERSION}.apk](${URL})**
 
-          \`Bitsay-${VERSION}.apk\`，${SIZE}
-
-          \`\`\`
-          SHA-256           ${SHA}
-          签名证书 SHA-256   ${CERT}
-          \`\`\`
-
-          想核对的话（在下载目录里跑）：
-
-          \`\`\`bash
-          sha256sum Bitsay-${VERSION}.apk
-          apksigner verify --print-certs Bitsay-${VERSION}.apk
-          \`\`\`
-
-          </details>
+          PS: **Android 12 or newer.** Already have an older version? Install right over it — your data stays.
           EOF
 
       - name: 上传构建产物

@@ -19,7 +19,6 @@
 #    actions/checkout              v7.0.1
 #    actions/setup-java            v6.0.1
 #    gradle/actions/setup-gradle   v6.4.0
-#    actions/cache                 v6.1.0
 #    actions/upload-artifact       v7.0.1
 #    softprops/action-gh-release   v3.0.3
 # =============================================================================
@@ -93,27 +92,17 @@ jobs:
         with:
           cache-read-only: false
 
-      # Android SDK 包缓存。路径写死是因为 runs-on 已经钉了 ubuntu-24.04，
-      # runner 的 SDK 就固定在 /usr/local/lib/android/sdk；万一将来镜像改了路径，
-      # 后果只是缓存不命中、下面的安装步骤照常下载，不会挂。
-      - name: 缓存 Android SDK 包
-        uses: actions/cache@v6.1.0
-        with:
-          path: |
-            /usr/local/lib/android/sdk/platforms/android-37.0
-            /usr/local/lib/android/sdk/build-tools/37.0.0
-          key: android-sdk-${{ runner.os }}-platform-37.0-buildtools-37.0.0
-
+      # ⚠️ **不要**给 Android SDK 加 actions/cache —— 试过，是净亏，已撤掉。实测：
+      #    · 命中时只省下安装的 11s，还要多花 7s 解包 → 净赚约 4s
+      #    · 冷跑却要多花 23s 打包上传
+      #    · 而且 `/usr/local/lib/android/sdk` 属主是 root，解包时 tar 报
+      #      `Cannot utime: Operation not permitted`（退出码 2），恢复本身就不干净
+      #    真正的大头在 Gradle 那边（见上一步），这里不值得。
+      #
       # runner 自带的 SDK 不一定有 API 37（Android 17），缺了就装上
       - name: 确保 Android SDK 37 存在
         run: |
           set -uo pipefail
-          # 上一步的缓存命中就直接跳过 —— sdkmanager 哪怕只是查一遍仓库也要 10s 上下
-          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
-          if [ -d "$SDK/platforms/android-37.0" ] && [ -d "$SDK/build-tools/37.0.0" ]; then
-            echo "API 37 的 platform 与 build-tools 已在（来自缓存），跳过下载"
-            exit 0
-          fi
           SDKMANAGER=$(ls "${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | tail -1)
           if [ -z "$SDKMANAGER" ]; then
             echo "::error::找不到 sdkmanager，runner 的 Android SDK 布局变了"

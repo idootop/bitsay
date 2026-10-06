@@ -82,7 +82,6 @@
     <string name="widget_switch">Switch list</string>
     <string name="widget_search">Search</string>
     <string name="widget_open_app">Open the app</string>
-    <string name="widget_empty">Nothing here yet\nAdd one in the app</string>
 
     <string name="widget_config_title">Which list should it show?</string>
     <string name="widget_config_notes">Show notes</string>

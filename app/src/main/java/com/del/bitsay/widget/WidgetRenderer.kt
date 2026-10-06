@@ -53,7 +53,7 @@ internal object WidgetRenderer {
         val dark = ThemePrefs.isDark(context)
         val palette = paletteFor(dark)
 
-        val views = RemoteViews(context.packageName, R.layout.widget_bitsay_v2)
+        val views = RemoteViews(context.packageName, R.layout.widget_bitsay_v3)
         views.setInt(
             R.id.widget_root,
             "setBackgroundResource",
@@ -61,7 +61,30 @@ internal object WidgetRenderer {
         )
         views.setTextViewText(R.id.widget_tab_notes, ui.getString(R.string.tab_notes))
         views.setTextViewText(R.id.widget_tab_todos, ui.getString(R.string.tab_todos))
-        views.setTextViewText(R.id.widget_empty, ui.getString(R.string.widget_empty))
+        // Same copy the app's empty state uses, picked by which list this widget shows.
+        val noteTab = kind == Kind.NOTE
+        views.setTextViewText(
+            R.id.widget_empty_title,
+            ui.getString(if (noteTab) R.string.empty_notes_title else R.string.empty_todos_title),
+        )
+        // The app's hints mark the "+" with ** for bold. RemoteViews text is plain, so it is
+        // stripped here rather than shipped as literal asterisks.
+        views.setTextViewText(
+            R.id.widget_empty_hint,
+            ui.getString(if (noteTab) R.string.empty_notes_hint else R.string.empty_todos_hint)
+                .replace("**", ""),
+        )
+        // Colours must be assigned here, not left to the layout's android:textColor.
+        //
+        // The layout is inflated by the LAUNCHER, with the launcher's configuration — so a
+        // `@color/ink` in the XML resolves against the *system* night mode, not the app's theme
+        // setting. With the phone in light mode and the app set to dark, that painted near-black
+        // text on the widget's black tile. Every other text in this widget was already assigned
+        // here; these two were added without it and were the only ones that broke.
+        views.setTextColor(R.id.widget_empty_title, palette.ink.toArgb())
+        views.setTextColor(R.id.widget_empty_hint, palette.inkSoft.toArgb())
+        // The one green in the app, reserved for this plant.
+        iconTint(views, R.id.widget_empty_sprout, palette.leaf)
 
         // The three icon buttons are static ink vectors, and a RemoteViews layout cannot follow the
         // app's theme choice through resources (the host inflates it with its own configuration).

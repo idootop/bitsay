@@ -7,8 +7,17 @@
   a layout's *content* therefore never reaches a widget that is already on someone's home screen —
   the host keeps the tree it inflated the first time and only replays the actions.
 
+  COLOURS. Every android:textColor / android:src tint in this file is only an inflation default.
+  The launcher inflates this layout with ITS configuration, so `@color/ink` here follows the
+  *system* night mode, not the app's theme setting — the two can disagree, and when they do the
+  text is painted for the wrong background. Anything that must follow the app's theme has to be
+  assigned in WidgetRenderer from BitSayPalette. Check that before adding a view.
+
   Renaming the file gives it a new resource id, which is the one thing that forces a real
-  re-inflate. Without that, the listSelector fix below had no effect at all on the live widget.
+  re-inflate. Without that, a layout change has no effect at all on a widget already on a home
+  screen. Bumped to _v3 when the empty state gained its plant and two lines of text — **any future
+  change to this file's attributes needs another bump**, while runtime-applied colours and
+  drawables do not.
 -->
 <!--
   Widget layout:
@@ -130,16 +139,52 @@
             android:scrollbarTrackVertical="@android:color/transparent"
             android:scrollbars="vertical" />
 
-        <TextView
+        <!--
+          Empty state: the same three parts the app's EmptyState shows — the plant, a title, a hint.
+          It used to be one centred line of text, which made the widget look like it had failed to
+          load rather than like it was simply waiting for a first entry.
+
+          The plant is a vector rather than a drawing: RemoteViews cannot run custom drawing code.
+          Its size is fixed at what fits the 3x3 minimum, so there is no size-dependent branch here.
+        -->
+        <LinearLayout
             android:id="@+id/widget_empty"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="@string/widget_empty"
-            android:textColor="@color/ink_soft"
-            android:textSize="13sp"
-            android:visibility="gone" />
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/widget_empty_sprout"
+                android:layout_width="@dimen/widget_empty_sprout"
+                android:layout_height="@dimen/widget_empty_sprout"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_widget_sprout" />
+
+            <TextView
+                android:id="@+id/widget_empty_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="9dp"
+                android:gravity="center"
+                android:maxLines="1"
+                android:textColor="@color/ink"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_empty_hint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center"
+                android:lineSpacingExtra="3dp"
+                android:maxLines="2"
+                android:textColor="@color/ink_soft"
+                android:textSize="11.5sp" />
+        </LinearLayout>
     </LinearLayout>
 
     <ImageView

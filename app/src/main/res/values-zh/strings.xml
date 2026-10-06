@@ -77,7 +77,6 @@
     <string name="widget_switch">切换列表</string>
     <string name="widget_search">搜索</string>
     <string name="widget_open_app">打开应用</string>
-    <string name="widget_empty">这里空空的\n去 App 里记一条吧</string>
 
     <string name="widget_config_title">选择要显示的列表</string>
     <string name="widget_config_notes">显示笔记</string>

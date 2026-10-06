@@ -1505,6 +1505,69 @@ LaunchedEffect(Unit) { grow.animateTo(1f, tween(
 
 ⚠️ 多选用的 `Pick` 没动 —— 那是"选中"不是"完成"，语义不同，实心圆盘在那里是合适的。
 
+### 13.39 小组件空视图对齐 app
+
+原来只是一行居中文字（`widget_empty` = "这里空空的\n去 App 里记一条吧"）——
+看着像**加载失败**，不像"等你写第一条"。
+
+改成和 app 的 `EmptyState` 同一个结构：**嫩芽 + 标题 + 说明**，右下角的 `+` 本来就在。
+
+| 部分 | 来源 |
+|---|---|
+| 嫩芽 | 新增 `drawable/ic_widget_sprout.xml`，几何取自 `design/js/sprout.js`（空状态那株），缩进 24 视框；运行时用 `palette.leaf` 着色 |
+| 标题 / 说明 | **直接复用 app 的字符串** `empty_{notes,todos}_title/hint`，按 widget 的 kind 选 |
+| 原来的 `widget_empty` 字符串 | 已删除（中英各一条） |
+
+⚠️ **RemoteViews 不能跑自绘代码**，所以嫩芽必须是 vector 资源，不能像 app 那样用 `Canvas` 画。
+
+⚠️ **文案里的 `**` 要去掉**：app 的 hint 用 `**+**` 标粗，RemoteViews 的文字是纯文本，
+不去掉就会原样显示两个星号。
+
+⚠️ **尺寸按 3×3 最小值算过**：180 − 12(内边距) − 52(顶栏) = 116dp 可用；
+内容 44(嫩芽) + 9 + 17(标题) + 4 + 30(说明两行) ≈ 104dp ✓ 余 12dp。所以**不需要按尺寸分支**。
+
+⚠️ **又换了一次 layout id**：`widget_bitsay_v2` → **`widget_bitsay_v3`**。
+这次改的是**布局属性**（新增了三个子 View），不换 id 就到不了桌面上已有那个组件 ——
+和 13.18 的 `listSelector`、13.25 的 3×3 是同一条规则。
+**运行期应用的颜色/drawable 不需要换**（如 13.35），只有布局 XML 需要。
+
+### 13.40 空视图标题颜色错：宿主按**系统**深色模式解析布局
+
+**现象**：暗色下小组件空视图的标题几乎看不见。
+
+**根因**（就是 13.5 那条规则，我这次又踩了一遍）：
+
+> 小组件布局是**启动器用它自己的配置** inflate 的，
+> 所以布局里写 `@color/ink` 会按**系统**深色模式解析，**不是 app 内设置的主题**。
+
+实测环境正好是两者不一致：
+
+```
+系统深色模式 = no（亮色）
+app 内主题   = DARK
+```
+
+`@color/ink` 于是解析成亮色的 `#191B26`（近黑），落在纯黑的组件底上 —— 看不见。
+
+**为什么只有这两个 TextView 出问题**：小组件里其他文字（tab、行文字）都在代码里用
+`setTextColor` 显式设了色；**只有 13.39 新加的标题和说明是直接用布局属性**。
+
+修法：
+
+```kotlin
+views.setTextColor(R.id.widget_empty_title, palette.ink.toArgb())
+views.setTextColor(R.id.widget_empty_hint, palette.inkSoft.toArgb())
+```
+
+并在布局文件头部写死这条规则：
+
+> **COLOURS.** Every android:textColor / android:src tint in this file is only an inflation default.
+> The launcher inflates this layout with ITS configuration, so `@color/ink` here follows the
+> *system* night mode, not the app's theme setting. Anything that must follow the app's theme has
+> to be assigned in WidgetRenderer from BitSayPalette. **Check that before adding a view.**
+
+⚠️ 这条是**运行期设色**，所以**不需要换 layout id**（对比 13.39 加子 View 时必须换）。
+
 ### 13.15 空内容不保存 · 删除二次确认 · 作者区块
 
 **空内容**：仓库层 `ItemRepository.saveDraft` 对空文本 `return`，所以**输入过程中永远不会新建行**。

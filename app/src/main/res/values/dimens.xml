@@ -32,5 +32,8 @@
 
     <!-- Floating + button, mirroring the app's own FAB. -->
     <dimen name="widget_fab_size">48dp</dimen>
+    <!-- Sized to fit the 3x3 minimum: 180dp tile - 52dp header - padding leaves room for a plant
+         this tall plus two lines of text. -->
+    <dimen name="widget_empty_sprout">44dp</dimen>
     <dimen name="widget_fab_padding">12dp</dimen>
 </resources>

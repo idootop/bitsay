@@ -2436,3 +2436,52 @@ cache-read-only: true
 `cache-read-only: false` 意味着每次发版都会写缓存。发版频率低（一个版本一次），
 缓存 key 里带的是依赖文件的哈希，正常不会互相覆盖；
 真要出现顶掉，再按版本号分 key 即可（已写在注释里）。
+
+### 13.52 README 重做：中英两份 + logo + 预览截图
+
+需求：「优化下 readme，中英两份，默认英文，加一下 logo 和预览截图」+ 七条核心亮点文案。
+
+#### 素材是可复现的，不是一次性截的
+
+新增 `design/tools/shots.html`：把设计台的页面挂进一块**纯净屏**（360×800，没有手机外壳、
+没有刘海、没有状态栏），Chrome headless 出 2 倍图。为什么从设计台出而不是拍真机：
+
+- 设计台的页面和 App 是逐像素同步的（§13.46 做过全量对账），出图即所见
+- 真机上没有演示数据，空列表截出来没有说服力；往用户库里塞样本数据再删掉，不值当
+- **改完 UI 重跑一次就能刷新素材**，不会留下几张和产品对不上的旧图
+
+```bash
+tools/shots.html?p=notes|todos|editor&dark=1|tablet|widget|logo
+--force-device-scale-factor=2 --window-size=W,H
+```
+
+产出 `docs/images/`：`logo.svg`（应用图标 108 母版，补了 rx=24 圆角 ——
+母版是方形满幅、靠宿主裁切，README 里要的是桌面上看到的样子）、
+`shot-notes/todos/editor/widget/tablet.png`。
+
+#### 文案：先核实，再写
+
+README 里的硬指标都从产物里查过，不凭印象：
+权限（`aapt2 dump permissions` —— manifest 一条 `uses-permission` 都没有，
+包里那条 `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` 是 AndroidX 自动加的签名级自用权限，
+不对用户可见）、体积（2.28 MB）、语言（**中英两种**，不是"多语言"——
+`AppLanguage` 只有 SYSTEM/CHINESE/ENGLISH，APK 里那 80 多个 locale 是 AndroidX 带的）。
+
+七条亮点按用户给的方向重写成营销口径，每条**加粗小标题 + 一句话说清**。
+
+#### Markdown 换行规则：两种渲染器都要对
+
+GitHub 的 `/markdown` API（`mode=gfm`）按**硬换行**渲染 —— 源码里的单换行变成 `<br>`；
+而 README 在 github.com 上是**软换行**（单换行 = 空格）✗ 同一份源码两种结果。
+
+踩到的现象：`Download` / `·` / `中文` 分三行；亮点的加粗小标题和正文挤成一段。
+
+**结论：每一段写成一行源码，需要断行的地方显式写 `<br>`。** 这样两种规则下都一致。
+另外纯 HTML 块（`<p align="center">` 里只放 `<img>`）不会被插 `<br>`，截图那一排照旧。
+
+验证用的就是 GitHub 自己的渲染接口，最权威：
+
+```bash
+gh api -X POST /markdown -f mode=gfm -f context=idootop/bitsay -f text="$(cat README.md)"
+```
+两份都查过：6 张图、1 条 `<hr>`、导航行内 0 个 `<br>`、截图排 0 个 `<br>`、无未解析标记。

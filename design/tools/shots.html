@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>README 截图 / Logo 导出</title>
+<!-- 只引设计台的样式和模块，**不引 app.js** —— 那个会把整个演示台都挂起来 -->
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/base.css">
+<link rel="stylesheet" href="../css/components.css">
+<link rel="stylesheet" href="../css/pages/list.css">
+<link rel="stylesheet" href="../css/pages/editor.css">
+<link rel="stylesheet" href="../css/pages/search.css">
+<link rel="stylesheet" href="../css/pages/settings.css">
+<link rel="stylesheet" href="../css/pages/widget.css">
+<link rel="stylesheet" href="../css/pages/wide.css">
+<link rel="stylesheet" href="../css/dark.css">
+<style>
+  html,body{ margin:0; background:#fff; }
+  /* 纯净屏：没有手机外壳、没有刘海、没有状态栏，就是一块 360×800 的画布。
+     README 里要的是"应用长什么样"，不是"装在手机里什么样"。 */
+  #shot{ width:360px; height:800px; overflow:hidden; position:relative; background:var(--c-canvas); }
+  #shot > .app-root{ position:absolute; inset:0; }
+  #shot.wide{ width:1120px; height:700px; display:flex; }
+  #shot.wide .wide__screen{ width:1120px; height:700px; display:flex; }
+</style>
+</head>
+<body>
+<div id="shot"></div>
+
+<script src="../js/icons.js"></script>
+<script src="../js/store.js"></script>
+<script src="../js/sprout.js"></script>
+<script src="../js/brand.js"></script>
+<script src="../js/appicon.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/pages/list.js"></script>
+<script src="../js/pages/editor.js"></script>
+<script src="../js/pages/search.js"></script>
+<script src="../js/pages/settings.js"></script>
+<script src="../js/pages/widget.js"></script>
+<script>
+/* ==========================================================================
+   shots.html —— 生成 README 用的截图与 Logo，可重复执行
+   --------------------------------------------------------------------------
+   为什么从设计台出图而不是拍真机：
+     · 设计台的页面和 App 是逐像素同步的（见 PROGERSS §13.46 的对账），出图即所见
+     · 真机上没有演示数据，空列表截出来没有说服力；往用户库里塞样本数据再删掉，不值当
+     · 改完 UI 重跑一次就能刷新素材
+
+   用法（Chrome headless，--force-device-scale-factor=2 出 2 倍图给高清屏）：
+     tools/shots.html?p=notes            笔记列表（浅色）
+     tools/shots.html?p=todos            待办列表（浅色，含已完成）
+     tools/shots.html?p=editor&dark=1    编辑器（深色）
+     tools/shots.html?p=tablet           平板左右两栏
+     tools/shots.html?p=widget           桌面小组件（连手机外壳一起，说明它长在桌面上）
+     tools/shots.html?p=logo             应用图标 108 母版（透明背景，直接存盘用）
+
+   配合：
+     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new \
+       --disable-gpu --hide-scrollbars --allow-file-access-from-files \
+       --force-device-scale-factor=2 --window-size=360,800 --virtual-time-budget=6000 \
+       --screenshot=notes.png "file:///<abs>/design/tools/shots.html?p=notes"
+   ========================================================================== */
+const P = new URLSearchParams(location.search);
+const page = P.get('p') || 'notes';
+const dark = P.get('dark') === '1';
+document.body.dataset.dark = dark ? '1' : '0';
+
+// 演示数据：和设计台用的是同一份 seed()
+BitSay.store.reset();
+
+const shot = document.getElementById('shot');
+const noop = () => {};
+
+/** 桌面小组件那个竖长形态，对应真机 2×5（206×535dp）。 */
+function mountWidget() {
+  document.body.style.margin = '24px';
+  shot.style.width = '206px';
+  shot.style.height = '535px';
+  shot.style.borderRadius = '26px';
+  shot.style.overflow = 'hidden';
+  shot.style.boxShadow = '0 10px 30px rgba(0,0,0,.18)';
+  BitSay.pages.widget.mount(shot, { size: '2x5', kind: 'note', interactive: false });
+}
+
+/** 平板：左右两栏，左列表右编辑器。 */
+function mountTablet() {
+  shot.className = 'wide';
+  shot.innerHTML = `
+    <div class="wide__screen">
+      <div class="wide__pane wide__pane--list"><div class="wlist"></div></div>
+      <div class="wide__split"></div>
+      <div class="wide__pane wide__pane--detail"><div class="wdetail"></div></div>
+    </div>`;
+  const list = shot.querySelector('.wlist');
+  const detail = shot.querySelector('.wdetail');
+  BitSay.pages.list.mount(list, { onOpen: noop, onNew: noop, onSearch: noop, onSettings: noop });
+  const measure = document.createElement('div');
+  measure.className = 'wide__measure';
+  detail.appendChild(measure);
+  BitSay.pages.editor.mount(measure, {
+    id: BitSay.store.notes()[0]?.id, kind: 'note', autoFocus: false,
+    onBack: noop, onDelete: noop,
+  });
+}
+
+/** 应用图标 108 母版，透明背景 —— 直接当 logo 用。
+    用 appicon.FINAL 而不是 brand：brand 是那个不带墨色底板的芽，适合放进页面里当水印；
+    README 顶上要的是**完整图标**（墨黑圆角底板 + 嫩芽），和用户在桌面上看到的一致。 */
+function mountLogo() {
+  document.body.style.background = 'transparent';
+  shot.style.cssText = 'width:108px;height:108px;background:transparent;line-height:0';
+  shot.innerHTML = BitSay.appicon.FINAL.svg;
+}
+
+switch (page) {
+  case 'widget':
+    mountWidget();
+    break;
+  case 'tablet':
+    mountTablet();
+    break;
+  case 'logo':
+    mountLogo();
+    break;
+  case 'todos':
+    BitSay.pages.list.mount(shot, {
+      tab: 'todo', lockTab: true, onOpen: noop, onNew: noop, onSearch: noop, onSettings: noop,
+    });
+    break;
+  case 'editor':
+    BitSay.pages.editor.mount(shot, {
+      id: BitSay.store.notes()[0]?.id, kind: 'note', autoFocus: false, onBack: noop, onDelete: noop,
+    });
+    break;
+  default:
+    BitSay.pages.list.mount(shot, {
+      tab: 'note', lockTab: true, onOpen: noop, onNew: noop, onSearch: noop, onSettings: noop,
+    });
+}
+document.title = 'ready';
+</script>
+</body>
+</html>

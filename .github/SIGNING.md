@@ -116,12 +116,16 @@ CI 每次发版也会把这个指纹写进 release notes 和 job summary，用�
 
 ---
 
-## 六、关于「测试阶段不要真的发布」
+## 六、现在默认就是公开发布
 
-workflow 默认**只出 draft**：
+App 已经过了测试阶段，workflow 的默认值改成**直接发公开 release**：
 
-- 推 tag → 建 **draft** release（只有协作者看得到，资产和 notes 都已经生成好，确认无误再手动 Publish）
-- 手动触发 → `publish` 默认 `none`，**连 release 都不建**，只在 Actions 页面留一个构建产物
+- 推 tag → 建 **公开** release
+- 手动触发 → `publish` 默认 `release`（想要草稿就选 `draft`，只想拿构建产物就选 `none`）
 
-所以「推了个 tag 结果冒出一个公开 release」这件事不会发生。真要公开必须显式选 `release`，
-或者事后自己点 Publish。
+**唯一剩下的闸是上面那个 Environment 的人工批准** —— 不点批准，密钥不下发，
+既不会签名也不会发任何东西。所以「误推一个 tag」最多让你收到一条待批准通知，
+点忽略就结束了。
+
+想回到「默认只出草稿」：把 `.github/workflows/release.yml` 里 `publish` 的 `default`
+改成 `draft`，并把「决定发布方式」那一步里推 tag 的 `MODE="release"` 改成 `MODE="draft"`。

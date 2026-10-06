@@ -2,12 +2,13 @@
 #  发版：推 tag 或手动触发，出一个**已签名**的 release APK
 # -----------------------------------------------------------------------------
 #  两条入口：
-#    · 推送 tag（v1.0.0）→ 构建 + 签名 + 上传构建产物 + 建一个 **draft** release
-#    · 手动触发         → 自己填版本号，publish 选 none / draft / release
+#    · 推送 tag（v1.0.0）→ 构建 + 签名 + 上传构建产物 + 建一个 **公开** release
+#    · 手动触发         → 自己填版本号，publish 选 none / draft / release（默认 release）
 #
-#  ⚠️ **默认只出 draft，不会自动公开**。draft 只有仓库协作者看得到，
-#     资产和 release note 都生成好了，确认没问题再手动点 Publish。
-#     要真正公开必须显式选：手动触发 + publish=release，或者事后自己点 Publish。
+#  ⚠️ **默认就是公开发布**（2026-10 起，App 已经准备好正式发版）。
+#     唯一剩下的闸是 `release` 这个 Environment 的**人工批准** ——
+#     不点批准，既不会签名也不会发任何东西。
+#     想改成"只出草稿"：把下面的默认值改成 draft，或把 push tag 的分支改成 draft。
 #
 #  签名密钥放在名为 `release` 的 **Environment** 里（不是普通 repo secret）：
 #  给这个 environment 配上 required reviewers 之后，任何一次发版都必须有人点批准
@@ -37,11 +38,11 @@ on:
         required: true
         type: string
       publish:
-        description: '是否创建 GitHub Release（none = 只上传构建产物；draft = 不公开，推荐；release = 直接公开）'
+        description: '是否创建 GitHub Release（none = 只上传构建产物；draft = 不公开；release = 直接公开）'
         required: true
         type: choice
         options: [none, draft, release]
-        default: none
+        default: release
 
 # 默认最小权限；只有建 release 的那一步需要写
 permissions:
@@ -156,8 +157,8 @@ jobs:
           echo "解析结果：v$VERSION (versionCode $CODE)"
 
       # ---- 是否发 release -------------------------------------------------------
-      # 推 tag 默认 draft（不公开）；手动触发按输入来。测试阶段永远不会因为推了个 tag
-      # 就冒出一个人人都能看到的 release。
+      # 推 tag 直接公开发布；手动触发按输入来（默认也是 release）。
+      # 发版已经过了测试阶段，默认值就是要发；误发的代价由 Environment 的人工批准兜住。
       - name: 决定发布方式
         id: publish
         env:
@@ -167,7 +168,7 @@ jobs:
           if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
             MODE="$INPUT_PUBLISH"
           else
-            MODE="draft"
+            MODE="release"
           fi
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
           echo "发布方式：$MODE"
@@ -274,7 +275,7 @@ jobs:
           name: 碎碎念 Bitsay ${{ steps.version.outputs.tag }}
           body_path: ${{ runner.temp }}/release-notes.md
           files: app/build/outputs/apk/release/${{ steps.version.outputs.apk }}
-          # draft 时这一步产出的东西只有协作者看得到，确认无误再手动 Publish
+          # mode=draft 时产出只有协作者看得到；mode=release 直接公开
           draft: ${{ steps.publish.outputs.mode == 'draft' }}
           fail_on_unmatched_files: true
           # 追加 GitHub 自动生成的 commit 列表；和上面的 body 合在一起

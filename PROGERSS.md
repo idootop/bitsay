@@ -2371,3 +2371,68 @@ git config --local https.proxy http://127.0.0.1:7890
 
 - 远端 tag `v1.0.0`、以及一个 **draft** release（含 APK + notes）
 - 删掉：`gh release delete v1.0.0 --repo idootop/bitsay`（不加 `--cleanup-tag` 就不会动 tag）
+
+### 13.51 流水线缓存：210s → 55s
+
+需求：「加一下各阶段的缓存，加速构建」。
+
+#### 先量，别猜
+
+第一次跑的各步骤耗时（`gh api .../jobs` 里有 `started_at`/`completed_at`）：
+
+| 步骤 | 秒 | 占比 |
+|---|---|---|
+| **构建 release APK** | **183** | **87%** |
+| 确保 Android SDK 37 存在 | 11 | 5% |
+| 创建 GitHub Release | 7 | 3% |
+| 其余（checkout / JDK / Gradle / 上传） | 9 | 5% |
+
+所以只有一处值得动：Gradle 那一坨。
+
+#### 根因：缓存根本没存过
+
+`gradle/actions/setup-gradle` 的日志里躺着这一行：
+
+```
+cache-read-only: true
+```
+
+它**对非默认分支和 tag 默认只读** —— 而发版永远由 tag 触发，于是每次都只读不写。
+查 `repos/.../actions/caches`：**0 个缓存**。每一次发版都是冷启动，183s 全是白付的。
+
+改成显式 `cache-read-only: false` 之后，一次冷跑就攒下了 10 个缓存（约 910 MB）：
+`gradle-dependencies` 300MB、`gradle-wrapper-zips` 133MB、`gradle-transforms` 113MB、
+`gradle-generated-gradle-jars` 40MB、**`gradle-build-cache` 12MB**（任务产物）等。
+最后那个才是关键 —— 依赖和 Kotlin/Compose/dex/R8 的产物下次直接复用。
+
+同时去掉了 `--no-daemon`：setup-gradle 起的 daemon 在同一个 job 里复用，配置缓存才真正生效。
+
+#### Android SDK 缓存：加了，实测是净亏，又撤了
+
+按"各阶段都加缓存"先加了 `actions/cache` 缓存 `platforms/android-37.0` + `build-tools/37.0.0`。
+数据说话：
+
+- 命中时只省下安装的 **11s**，却要多花 **7s** 解包 → 净赚约 4s
+- 冷跑要多花 **23s** 打包上传
+- 而且解包时 tar 报 **`Cannot utime: Operation not permitted`（退出码 2）** ——
+  `/usr/local/lib/android/sdk` 属主是 root，改不了时间戳和权限，恢复本身就不干净
+
+**净亏，撤掉。** 那一跑也顺手删掉了已经存下的 android-sdk 缓存，
+并在 workflow 里留了注释说明"试过、亏、别再加"，免得以后有人再踩一遍。
+
+#### 实测三次
+
+| | run | 合计 | 其中「构建 release APK」 |
+|---|---|---|---|
+| 原始（无缓存） | 37427284342 | **215s** | 183s |
+| 首次带缓存（冷，含 23s SDK 打包） | 37427918725 | 207s | 160s |
+| **缓存命中** | 37428597308 | **55s** | **20s** |
+
+**215s → 55s（约 3.9×）**，构建步骤本身 **183s → 20s（约 9×）**。
+最后一跑无任何 warning / annotation（之前那条 SDK 的 tar 报错也随之消失）。
+
+#### 发版才写缓存，不会互相顶掉
+
+`cache-read-only: false` 意味着每次发版都会写缓存。发版频率低（一个版本一次），
+缓存 key 里带的是依赖文件的哈希，正常不会互相覆盖；
+真要出现顶掉，再按版本号分 key 即可（已写在注释里）。

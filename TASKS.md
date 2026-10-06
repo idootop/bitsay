@@ -138,3 +138,5 @@
 - ✅ 添加 GitHub Action 支持推送 tag 或手动打包发版，带 release note 和支持的安卓版本说明
 - ✅ 使用最新的 action 版本，action 不需要钉到 commit SHA，钉在最新的大版本的最新版本即可
 - ✅ 考虑怎么把我本地的 正式签名密钥 放到 GitHub 上安全打包发版，注意当前只是测试阶段，不要真的发布一个 public 的 release
+- ✅ 加一下各阶段的缓存，加速构建
+- ✅ 用 gh cli 设置环境变量，推送测试 CI 构建发版 draft 流程

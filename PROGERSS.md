@@ -2297,3 +2297,77 @@ bash 把变量名解析成 `VERSION（` → `unbound variable`，CI 上会直接
 
 - **没有加 PR/push 的基础 CI**（只做了发版）。要的话是一个独立的 `ci.yml`：`assembleDebug` + lint。
 - 密钥目前**只有本机一份**。文档里强调了要另行备份，但备份本身得你自己做。
+
+### 13.50 第一次真跑 CI：挂了一次，修好后全绿
+
+按需求用 `gh` 配好 environment + secret 并推 tag 实测。
+
+#### 配置（`gh`，值全走 stdin，不进命令行也不进 shell 历史）
+
+```bash
+gh api -X PUT repos/idootop/bitsay/environments/release
+gh api -X PUT repos/idootop/bitsay/environments/release --input - <<< \
+  '{"reviewers":[{"type":"User","id":35302658}]}'          # 必填审批人
+base64 -i keystore/bitsay-release.jks | tr -d '\n' | gh secret set KEYSTORE_BASE64 --env release
+# …另外三个同理
+```
+
+复查过：四个 secret 都在 **environment 级**（`gh secret list --env release` 有、`gh secret list` 没有），
+environment 的 `protection_rules` 是 `["required_reviewers"]`。
+
+#### 第一次跑：挂在「确保 Android SDK 37 存在」
+
+```
+Warning: Failed to find package 'platforms;android-37'
+##[error]Process completed with exit code 1.
+```
+
+**平台包名带小版本后缀**：Android 17 是 `platforms;android-37.0`，不是 `android-37`。
+本机 `~/Library/Android/sdk/platforms/` 里就摆着 `android-37.0`，一眼能看出来 —— 是我写包名时想当然了。
+改成两种命名都试，都失败则把仓库里可选的列出来再退出。
+
+顺带处理了另一条 annotation：`ubuntu-latest` 2026-10-19 起会迁到 Ubuntu 26。
+发版要可复现，改成钉死 `ubuntu-24.04`。
+
+#### 第二次跑：全绿，3m35s
+
+14 个步骤全 success。产出核对：
+
+| 项 | 结果 |
+|---|---|
+| release 状态 | `draft=true`、`published_at=null`、`assets=1` |
+| **匿名可见性** | `/releases/latest` 返回 **404**，`/releases` 列表长度 **0** —— 确实没公开 |
+| CI 包版本 | `versionCode=10000 versionName=1.0.0` |
+| **CI 包签名** | 证书 SHA-256 `1f644851…`，和本机 `assembleRelease` 出来的**完全相同** |
+| notes 里的校验值 | `afa4139e…` 与实际下载包的 `shasum -a 256` **一致** |
+| 构建产物 | artifact `Bitsay-1.0.0`，30 天后过期 |
+
+签名一致是最关键的一条：说明 CI 发的包能覆盖安装本机打的包，用户不会因为换了个构建环境就要卸载重装。
+
+#### 审批闸确实生效
+
+推 tag 之后 run 直接停在 `waiting`，`gh api .../pending_deployments` 里能看到
+environment `release` 和审批人 `idootop`。测试时是用 `gh api -X POST .../pending_deployments`
+以仓库所有者身份批准的（产出只是 draft，不公开）。
+
+⚠️ 注意 `environment_ids` 要用 `-F`（typed）而不是 `-f`，否则报
+`For 'items', "..." is not an integer (HTTP 422)`。
+
+#### 网络：本机 git 没走系统代理
+
+`git push` 一开始卡在 `fatal: the remote end hung up unexpectedly`。这台机器的系统代理是
+`127.0.0.1:7890`（HTTP/HTTPS/SOCKS 同端口），但 git 没有继承。给**这个仓库**配了本地代理
+（写进 `.git/config`，不会提交）：
+
+```bash
+git config --local http.proxy  http://127.0.0.1:7890
+git config --local https.proxy http://127.0.0.1:7890
+```
+
+`gh` 不读 git 的配置，走标准环境变量，所以 `gh` 命令前面都带了
+`HTTPS_PROXY=http://127.0.0.1:7890`。
+
+#### 留下的东西
+
+- 远端 tag `v1.0.0`、以及一个 **draft** release（含 APK + notes）
+- 删掉：`gh release delete v1.0.0 --repo idootop/bitsay`（不加 `--cleanup-tag` 就不会动 tag）

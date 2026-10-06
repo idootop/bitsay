@@ -36,6 +36,11 @@
 
     <string name="empty_notes_title">No notes yet</string>
     <string name="empty_notes_hint">Tap **+** to write your first one</string>
+
+    <!-- Shown in the empty detail pane of the wide (two-pane) layout. It is a signpost, not a
+         button: it must not look tappable, because there is nothing behind it. -->
+    <string name="wide_blank">Pick one on the left, or tap **+** to start a new one</string>
+    <string name="wide_blank_hint">The list stays put on a wide screen</string>
     <string name="empty_todos_title">Nothing to do today</string>
     <string name="empty_todos_hint">Tap **+** to add one</string>
     <string name="empty_search_title">Nothing found</string>

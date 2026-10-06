@@ -99,6 +99,15 @@ data class BitSayPalette(
      * The pure black belongs to the tile instead; see `widget_bg_dark.xml`.
      */
     val widgetRow: Color,
+    /**
+     * The seam between the two panes of the wide layout.
+     *
+     * Not [line]: that one is a hairline *on a white card*, and it disappears against [background]
+     * (1.05:1). This is a translucent [inkFaint], which is the only tone the canvas is allowed to
+     * carry — same family as the scrollbar, and it is deliberately weaker than it: a pane seam
+     * should be noticed only when you look for it.
+     */
+    val divider: Color,
 )
 
 internal val LightPalette = BitSayPalette(
@@ -116,6 +125,7 @@ internal val LightPalette = BitSayPalette(
     leaf = LeafLight,
     danger = Color(0xFFD23B2E),
     widgetRow = Color(0xFFFFFFFF),
+    divider = Color(0x578A90A6),
 )
 
 internal val DarkPalette = BitSayPalette(
@@ -135,6 +145,7 @@ internal val DarkPalette = BitSayPalette(
     leaf = LeafDarkValue,
     danger = Color(0xFFFF6B5C),
     widgetRow = SurfaceDarkValue,
+    divider = Color(0x6B6E7387),
 )
 
 internal val LocalPalette = staticCompositionLocalOf { LightPalette }
@@ -163,6 +174,9 @@ val Line: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.lin
 val Leaf: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.leaf
 val Danger: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.danger
 val WidgetRow: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.widgetRow
+
+/** The pane seam of the wide layout. See [BitSayPalette.divider] for why it is not [Line]. */
+val Divider: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.divider
 
 /** Material's own scheme, re-exported so screens have one import for all colours. */
 val Scheme @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme

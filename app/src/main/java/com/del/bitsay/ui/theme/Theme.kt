@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -61,6 +62,31 @@ private val DarkScheme = darkColorScheme(
     outline = DarkPalette.line,
     error = Error,
 )
+
+// ----------------------------------------------------------------------------
+// Responsive metrics. Taken straight from the "宽屏" block of tokens.css.
+//
+// Two panes instead of one, once the window is at least as wide as a small tablet. Below that —
+// every phone in portrait, and a folded cover screen — nothing here applies and the app stays the
+// single column it has always been.
+//
+// 600dp is not a number I picked: it is the floor at which "344dp list + a readable detail" still
+// fits. The list pane clamps to 45% of the window so the seam never eats the editor alive on the
+// narrow side of the threshold, and the detail column clamps at [MeasureWidth] so a 1400dp desktop
+// window does not stretch a paragraph across the whole screen.
+// ----------------------------------------------------------------------------
+
+/** The window width at which the list and the detail start sitting side by side. */
+val WideBreakpoint = 600.dp
+
+/** Preferred width of the list pane — `--pane-list`. Shrinks to 45% of the window when needed. */
+val PaneListWidth = 344.dp
+
+/** Longest line of running text the detail pane will produce — `--measure`. */
+val MeasureWidth = 720.dp
+
+/** Width actually given to the list pane in a window of [windowWidth]. */
+fun listPaneWidth(windowWidth: Dp): Dp = minOf(PaneListWidth, windowWidth * 0.45f)
 
 // ----------------------------------------------------------------------------
 // Shape. Taken straight from tokens.css.

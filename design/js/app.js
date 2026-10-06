@@ -15,7 +15,8 @@ BitSay.app = (function () {
     ['--c-ink', '主文字 Ink'], ['--c-ink-2', '次要 Ink-2'], ['--c-ink-3', '更弱 Ink-3'],
     ['--c-line', '发丝线 Line'],
     ['--c-accent', '强调色 纯黑'], ['--c-accent-soft', '强调浅底'],
-    ['--c-card', '条目底 Card'], ['--c-card-done', '已完成条目']
+    ['--c-card', '条目底 Card'], ['--c-card-done', '已完成条目'],
+    ['--c-divider', '宽屏分栏线']
   ];
 
   const el = (sel, root = document) => root.querySelector(sel);
@@ -93,7 +94,100 @@ BitSay.app = (function () {
     show('list');
   }
 
-  /* ---------------- ② 页面总览 ---------------- */
+  /* ---------------- ② 宽屏两栏（横屏 / 平板 / 折叠屏展开） ----------------
+     和 Android 侧 BitSayRoot 的宽屏分支一一对应：
+     左栏永远是列表（App 的脊柱，不该被推走），右栏 = 当前 screen。
+     手机 360dp 宽时这一整套不生效，走单栏前进/后退。 */
+  function wideShell(w, h, label) {
+    const wrap = document.createElement('div');
+    wrap.className = 'col';
+    wrap.innerHTML = `
+      <div class="wide" style="--w:${w}px;--h:${h}px">
+        <div class="wide__screen">
+          <div class="wide__pane wide__pane--list"><div class="wlist"></div></div>
+          <div class="wide__split"></div>
+          <div class="wide__pane wide__pane--detail"><div class="wdetail"></div></div>
+        </div>
+      </div>
+      <div class="col__cap">${esc(label)}</div>`;
+    return { wrap, list: el('.wlist', wrap), detail: el('.wdetail', wrap) };
+  }
+
+  /** 列表页返回的是退订函数，编辑器/设置返回的是 {unmount} —— 两种都要能收 */
+  function dispose(inst) {
+    if (typeof inst === 'function') inst();
+    else if (inst && inst.unmount) inst.unmount();
+  }
+
+  function mountWide(root) {
+    const box = el('#wide', root);
+    if (!box) return;
+    const specs = [
+      [800, 360, '手机 · 横屏 800×360dp（宽够、矮 —— 两栏反而救了键盘）'],
+      [720, 900, '折叠屏 · 展开竖屏 720×900dp'],
+      [1120, 700, '平板 · 横屏 1120×700dp（右栏正文被 --measure 收住）']
+    ];
+
+    specs.forEach(([w, h, label]) => {
+      const { wrap, list, detail } = wideShell(w, h, label);
+      box.appendChild(wrap);
+
+      let inst = null;
+      const clear = () => { dispose(inst); inst = null; detail.innerHTML = ''; };
+
+      const blank = () => {
+        clear();
+        detail.innerHTML = `<div class="wide__blank">
+          ${BitSay.brand.svg(46)}
+          <div class="wide__blank__text">从左侧选一条，或按 + 新建</div>
+          <div class="wide__blank__key">宽屏下列表留在原地，边看边改不用来回跳</div>
+        </div>`;
+      };
+
+      /* 右栏 = 当前 screen。和手机唯一的差别是「列表」这一档：
+         手机上它是整屏，宽屏上它已经在左栏了，所以右栏退回占位。 */
+      const show = (name, arg) => {
+        clear();
+        if (name === 'list') return blank();
+        const host = document.createElement('div');
+        host.className = 'wide__measure';
+        detail.appendChild(host);
+        switch (name) {
+          case 'editor':
+            inst = BitSay.pages.editor.mount(host, {
+              id: arg && arg.id, kind: (arg && arg.kind) || 'note',
+              quickCapture: !!(arg && arg.quick),
+              onBack: () => show('list'),
+              onDelete: () => show('list')
+            });
+            break;
+          case 'search':
+            inst = BitSay.pages.search.mount(host, {
+              onBack: () => show('list'),
+              onOpen: (id) => show('editor', { id: BitSay.store.find(id)?.kind })
+            });
+            break;
+          case 'settings':
+            inst = BitSay.pages.settings.mount(host, {
+              onBack: () => show('list'),
+              onTheme: (k) => applyThemeSetting(k)
+            });
+            break;
+        }
+      };
+
+      // 左栏只挂一次，全程不重建 —— 这正是宽屏布局的意义
+      BitSay.pages.list.mount(list, {
+        onOpen: (id) => show('editor', { id, kind: BitSay.store.find(id)?.kind }),
+        onNew: (kind) => show('editor', { kind, quick: true }),
+        onSearch: () => show('search'),
+        onSettings: () => show('settings')
+      });
+      blank();
+    });
+  }
+
+  /* ---------------- ③ 页面总览 ---------------- */
   function mountOverview(root) {
     const grid = el('#overview', root);
     const defs = [
@@ -386,6 +480,7 @@ BitSay.app = (function () {
     const wantDark = new URLSearchParams(location.search).get('dark') === '1';
 
     mountDemo(document);
+    mountWide(document);
     mountOverview(document);
     mountWidgets(document);
     mountEmptyStates(document);

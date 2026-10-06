@@ -31,6 +31,11 @@
 
     <string name="empty_notes_title">还没有笔记</string>
     <string name="empty_notes_hint">点右下角的 **+** 写下第一条</string>
+
+    <!-- 宽屏（左右两栏）右栏为空时的提示。它是路牌不是按钮：不能长得能点，
+         因为后面什么都没有。 -->
+    <string name="wide_blank">从左侧选一条，或按 **+** 新建</string>
+    <string name="wide_blank_hint">宽屏下列表留在原地，不用来回跳</string>
     <string name="empty_todos_title">今天没事要做</string>
     <string name="empty_todos_hint">点右下角的 **+** 加一条待办</string>
     <string name="empty_search_title">没找到</string>

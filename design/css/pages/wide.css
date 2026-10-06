@@ -1,0 +1,75 @@
+/* ==========================================================================
+   wide.css —— 宽屏（横屏 / 平板 / 折叠屏展开）
+   --------------------------------------------------------------------------
+   只有一条规则：**≥ 600dp 就把「列表」和「详情」并排放**。
+
+   为什么是左右而不是"把手机界面拉大"：竖屏手机上"列表 → 编辑器"是
+   前进/后退，宽屏上空间明明够，再把列表推走就是白扔一半屏幕 ——
+   而且改一条笔记要来回跳两次。左栏留在原地还有个副作用好处：
+   编辑时能看见别的条目，写东西时心里有上下文。
+
+   本页可调参数都在 tokens.css 的「宽屏」段：--bp-wide / --pane-list / --measure。
+   ========================================================================== */
+
+/* 演示台的外壳（对应 app.js 的 wideShell） */
+.wide{
+  width:calc(var(--w) + 18px); flex:0 0 auto;
+  background:#2C2A27; border-radius:30px; padding:9px;
+  box-shadow:0 12px 30px rgba(0,0,0,.20);
+}
+.wide__screen{
+  width:var(--w); height:var(--h); border-radius:22px; overflow:hidden;
+  position:relative; background:var(--c-canvas);
+  display:flex;                 /* ← 左右两栏就是从这一行开始的 */
+  transition:background var(--dur) var(--ease);
+}
+/* 纸纹要和 .phone__screen 一致，否则两台机器的底不像同一个 App */
+.wide__screen::before{
+  content:""; position:absolute; inset:0; pointer-events:none; z-index:0;
+  background-image:radial-gradient(circle,var(--c-line) 1.1px,transparent 1.2px);
+  background-size:var(--dot-size) var(--dot-size);
+  opacity:var(--dots); transition:opacity var(--dur) var(--ease);
+}
+
+/* ---------------- 两栏 ---------------- */
+.wide__pane{
+  position:relative; z-index:1; height:100%; overflow:hidden; min-width:0;
+  /* 画布色铺在每一栏上，而不是靠 .wide__screen：
+     占位提示没有被页面盖住，深色下会露出外壳的浅色底。 */
+  background:var(--c-canvas); transition:background var(--dur) var(--ease);
+}
+/* 左栏：列表。宽度 = min(--pane-list, 45%)，见 tokens.css 里的说明 */
+.wide__pane--list{ width:min(var(--pane-list), 45%); flex:0 0 auto; }
+.wide__pane--detail{ flex:1 1 auto; }
+
+/* 分栏线。1px 的半透明 ink-3，两边都是画布色，所以只能靠它划界 */
+.wide__split{ width:1px; flex:0 0 auto; background:var(--c-divider); z-index:2; }
+
+/* 每一栏内部的挂载点。**必须是绝对定位撑满**（和 base.css 的 .host 同理）：
+   写成普通 div 的话高度由内容决定，页面里 position:absolute 的 FAB
+   就会挂到"内容底部"而不是"这一栏的底部"—— 在手机上被 .phone__screen
+   的固定高度掩盖了，一放进两栏就露出来（实测 FAB 掉到栏底下方 800px）。 */
+.wlist,.wdetail{ position:absolute; inset:0; z-index:1; display:flex; flex-direction:column; }
+
+/* 右栏正文的最大阅读宽度。超宽屏上把文字拉到一整行是读不下去的。
+   **必须显式撑满 + 自己当 flex 容器**：它是 .wdetail（column flex）的子项，
+   只写 width:auto 会被收缩成"内容宽"（实测 395 的栏里只占 272），
+   里面的页面也就跟着只占内容高，于是栏底露出一条画布色 —— 深色下特别刺眼。
+   这和 base.css 的 .host 是同一个套路：挂载点必须替页面把尺寸定死。 */
+.wide__measure{
+  height:100%; width:100%; max-width:var(--measure); margin:0 auto;
+  display:flex; flex-direction:column;
+}
+
+/* 右栏为空时的占位。它只说明"这里会有什么"，不放任何可点的东西 —— 
+   一个长得像按钮的占位会引诱人去点，而它什么都做不了。 */
+.wide__blank{
+  height:100%; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:14px; text-align:center;
+  padding:0 24px;
+}
+.wide__blank svg{ color:var(--c-ink-3); opacity:.5; }
+.wide__blank__text{ font-size:var(--fs-ui); line-height:var(--lh-ui); color:var(--c-ink-3); }
+.wide__blank__key{
+  font-size:var(--fs-meta); line-height:var(--lh-meta); color:var(--c-ink-3); opacity:.72;
+}

@@ -373,7 +373,7 @@ fun InfoRow(painter: Painter, title: String, subtitle: String) {
  * worth, and the marker survives translation as long as translators keep it.
  */
 @Composable
-private fun emphasized(text: String, boldColor: Color): AnnotatedString {
+internal fun emphasized(text: String, boldColor: Color): AnnotatedString {
     if (!text.contains("**")) return AnnotatedString(text)
     return buildAnnotatedString {
         var i = 0
@@ -496,27 +496,77 @@ fun AppIconPlate(size: Dp = 52.dp, modifier: Modifier = Modifier) {
  * Text-first on purpose. A mascot was tried twice (a folded note, then a hamster) and rejected —
  * an app about plain text does not need a character. A botanical line drawing is a *still life*:
  * no face, no interaction, and it never appears anywhere except here.
+ *
+ * It has two forms. As drawn it is ~300dp of content, and the list's floating **+** owns the bottom
+ * 108dp of its corner, so the drawn form needs a window about 400dp tall — see
+ * [EmptyStateRoomyHeight]. A landscape phone, a split-screen half and a folded cover screen all
+ * give it less than that, and being sheared off at the bottom is how you end up with a plant and no
+ * sentence. Below the threshold it drops to plant + headline, **centred**.
+ *
+ * Centring is what makes the short form safe next to the button, and it is why the short form needs
+ * no bottom reservation: the content is a ~40dp plant over a ~104dp headline, both centred, so it
+ * stops around x=112dp in a 344dp pane while the FAB starts at x=256dp. They cannot meet. Reserving
+ * the corner as well — the first attempt — squeezed the headline to zero height in a 170dp page,
+ * which is a worse failure than the one it was guarding against.
  */
+/**
+ * How much of the bottom the floating **+** occupies, measured from the bottom edge of a list.
+ *
+ * The list scrolls *under* the button, so it pads its content by this much — see
+ * [com.del.bitsay.ui.components.ItemList]'s `bottomPadding`.
+ */
+val FAB_CLEARANCE = 108.dp
+
+/**
+ * The height below which [EmptyState] switches to its short form.
+ *
+ * The drawn form is ~300dp of content (72 top pad, a 127dp plant, the headline, a two-line hint)
+ * plus 64dp of breathing room at the bottom — and the list's floating **+** owns the last 108dp of
+ * its corner, so the content has to finish above that line. ~400dp is where both fit.
+ */
+private val EmptyStateRoomyHeight = 400.dp
+
 @Composable
-fun EmptyState(title: String, hint: String, modifier: Modifier = Modifier, size: Dp = 92.dp) {
-    Column(
-        modifier.fillMaxWidth().padding(top = 72.dp, bottom = 64.dp, start = 20.dp, end = 20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+fun EmptyState(
+    title: String,
+    hint: String,
+    modifier: Modifier = Modifier,
+    size: Dp = 92.dp,
+) {
+    BoxWithConstraints(
+        modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter,
     ) {
-        Sprout(size = size)
-        Text(
-            text = title,
-            style = EmptyTitleStyle,
-            color = Ink,
-            modifier = Modifier.padding(top = 20.dp),
-        )
-        Text(
-            text = emphasized(hint, Ink),
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.5.sp, lineHeight = 21.sp),
-            color = InkSoft,
-            modifier = Modifier.padding(top = 10.dp),
-        )
+        val roomy = maxHeight >= EmptyStateRoomyHeight
+        Column(
+            modifier = Modifier
+                .align(if (roomy) Alignment.TopCenter else Alignment.Center)
+                .fillMaxWidth()
+                .padding(
+                    top = if (roomy) 72.dp else 0.dp,
+                    bottom = if (roomy) 64.dp else 0.dp,
+                    start = 20.dp,
+                    end = 20.dp,
+                ),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Sprout(size = if (roomy) size else size * 0.45f)
+            Text(
+                text = title,
+                style = EmptyTitleStyle,
+                color = Ink,
+                modifier = Modifier.padding(top = if (roomy) 20.dp else 10.dp),
+            )
+            if (roomy) {
+                Text(
+                    text = emphasized(hint, Ink),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.5.sp, lineHeight = 21.sp),
+                    color = InkSoft,
+                    modifier = Modifier.padding(top = 10.dp),
+                )
+            }
+        }
     }
 }
 

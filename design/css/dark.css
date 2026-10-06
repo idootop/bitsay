@@ -18,6 +18,7 @@
   --c-leaf:      var(--c-leaf-d);
   --c-card:      var(--c-card-d);
   --c-card-done: var(--c-card-done-d);
+  --c-divider:   var(--c-divider-d);
 
   --c-accent:        var(--c-accent-d);
   --c-accent-ink:    var(--c-accent-ink-d);

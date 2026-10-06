@@ -211,6 +211,9 @@ vivo V2309A：wm size 1260x2800，wm density 560  →  1260/3.5 = 360dp，2800/3
 | 小组件行内边距 | 真机 `paddingStart=6dp / paddingEnd=8dp`；**待办行**的勾选圈 44dp 参与布局（文字缩进 50dp），**笔记行**的 icon 是 `View.GONE` 不占位（文字贴左）| `--w-row-pad-l` / `--w-row-pad-r` / `--w-tick-w` |
 | 桌面图标列 | x 265..322，首个 y 87，节距 ≈ 97 | `pages/homescreen.css` |
 | Dock | x 24..336，y 729..779 | 同上 |
+| **宽屏** 左栏 | min(344, 窗口宽 × 45%)，≥ 600dp 才分栏 | `pages/wide.css` + `tokens.css` 的「宽屏」段 |
+| 宽屏接缝 | 1dp，`--c-divider`（ink-3 的 34%，暗色 42%） | `.wide__split` |
+| 宽屏右栏正文 | 最大 720dp，居中 | `.wide__measure` |
 
 > 宿主（OriginOS 桌面）会把小组件按约 **0.91 倍**渲染，所以实测比声明的 48dp 略小。
 > 改小组件尺寸时，声明的 dp 和实测的 dp 都要想一下。

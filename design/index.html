@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="css/pages/settings.css">
 <link rel="stylesheet" href="css/pages/widget.css">
 <link rel="stylesheet" href="css/pages/homescreen.css">
+<link rel="stylesheet" href="css/pages/wide.css">
 <link rel="stylesheet" href="css/dark.css">
 <link rel="stylesheet" href="css/board.css">
 <link rel="stylesheet" href="css/appicon.css">
@@ -53,23 +54,29 @@
     右边是桌面小组件——勾一条待办，两边的数据是同一份。</p>
   <div class="stage" id="demo"></div>
 
-  <h2 class="sect-title"><span class="n">②</span>全部页面总览</h2>
+  <h2 class="sect-title"><span class="n">②</span>宽屏：横屏 / 平板 / 折叠屏</h2>
+  <p class="sect-sub">宽度 <b>≥ 600dp 就把列表和详情并排</b>，左栏固定 ≈344dp（临界宽度上按 45% 收缩），
+    右栏正文再套 720dp 的阅读宽度。下面三台都是<b>活的</b>：在左栏点一条，右栏就打开它；
+    点 <b>+</b> 直接在右栏新建。手机 360dp 宽时这一整套<b>完全不生效</b>，还是单栏前进/后退。</p>
+  <div class="stage" id="wide"></div>
+
+  <h2 class="sect-title"><span class="n">③</span>全部页面总览</h2>
   <p class="sect-sub">每个页面一台，全部是实时渲染的（不是截图）。搜索页预填了 <code>Q4</code>，
     可以点「待办」看<b>关键词保留、在当前分类下重查</b>的行为。</p>
   <div class="grid" id="overview"></div>
 
-  <h2 class="sect-title"><span class="n">③</span>桌面小组件</h2>
+  <h2 class="sect-title"><span class="n">④</span>桌面小组件</h2>
   <p class="sect-sub">顶栏顺序固定 <b>进 App ｜ 笔记 ｜ 待办 ｜ 搜索</b>；行高 48dp、单行、无日期；
     <b>装不下「顶栏 + 3 行」时顶栏自动收起</b>。点 tab 会同时切换所有尺寸的小组件。</p>
   <div class="stage" id="widgets"></div>
 
 
-  <h2 class="sect-title"><span class="n">④</span>空状态</h2>
+  <h2 class="sect-title"><span class="n">⑤</span>空状态</h2>
   <p class="sect-sub">空状态里那株<b>植物线描</b>会自己长出来：茎 0s → 左叶 .42s → 右叶 .66s（`stroke-dashoffset`），
     长完停在原地，整体再以 7s 周期极缓摆 1.4°。它是<b>静物，不是角色</b> —— 没有五官、不参与交互、不进常驻界面。</p>
   <div class="grid" id="empties"></div>
 
-  <h2 class="sect-title"><span class="n">⑤</span>应用图标</h2>
+  <h2 class="sect-title"><span class="n">⑥</span>应用图标</h2>
   <p class="sect-sub">概念是<b>空状态那株嫩芽</b> —— 它在页面里已经建立了"生长"的语言，图标就是把它压缩成一个能被认出来的记号。
     底色<b>统一墨黑</b>（绿底已删，纸色底不受欢迎）。画布按 Android 自适应图标规范（108×108，可见区 72，安全区半径 33），
     每个方案的最远点都核过 ≤32.6，所以圆形 / 圆角方 / 方形三种裁切都不会切到主体。</p>
@@ -77,11 +84,11 @@
   <h3 class="sect-sub3">备选（未采用，留作设计记录）</h3>
   <div class="icons-grid" id="appicons"></div>
 
-  <h2 class="sect-title"><span class="n">⑥</span>组件库</h2>
+  <h2 class="sect-title"><span class="n">⑦</span>组件库</h2>
   <p class="sect-sub">卡片、分段 tab、图标按钮、勾选圈、空状态 —— 全站复用同一套。</p>
   <div class="knobs" id="components"></div>
 
-  <h2 class="sect-title"><span class="n">⑦</span>设计令牌</h2>
+  <h2 class="sect-title"><span class="n">⑧</span>设计令牌</h2>
   <p class="sect-sub">与 <code>ui/theme/Color.kt</code> 一一对应；切亮暗时这里的值会跟着变。改颜色只改 <code>css/tokens.css</code>。</p>
   <div class="pal" id="palette"></div>
 

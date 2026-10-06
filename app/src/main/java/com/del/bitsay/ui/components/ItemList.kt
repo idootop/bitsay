@@ -91,7 +91,7 @@ fun ItemList(
     selection: Set<Long> = emptySet(),
     onLongClick: ((Item) -> Unit)? = null,
     /** Room at the tail of the list for whatever floats over it — the FAB on the home screen. */
-    bottomPadding: Dp = 108.dp,
+    bottomPadding: Dp = FAB_CLEARANCE,
     /**
      * Stagger positions for rows that appeared **together**, keyed by id: 0, 1, 2 … in the order the
      * eye meets them.

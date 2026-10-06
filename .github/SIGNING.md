@@ -116,7 +116,72 @@ CI 每次发版也会把这个指纹写进 release notes 和 job summary，用�
 
 ---
 
-## 六、现在默认就是公开发布
+## 六、密钥本身
+
+### 文件在哪
+
+| 文件 | 入库 | 说明 |
+|---|---|---|
+| `keystore/bitsay-release.jks` | ❌ | 密钥本体 |
+| `keystore.properties` | ❌ | 口令 + 路径，Gradle 从这里读 |
+| `keystore.properties.example` | ✅ | 模板，口令位置写的是 `CHANGE_ME` |
+| `.github/SIGNING.md` | ✅ | 本文件 |
+
+`keystore/` **整个目录都不进版本库**（`.gitignore` 里一条 `keystore/`），连目录里的说明文件也不进。
+目录留在本地，git 不看它。
+
+> 这一段原来写在 `keystore/README.md` 里，而那个文件跟着目录一起被移出了版本库 ——
+> 也就是说它只存在于「丢了就没了」的那份拷贝里。签名手册本身必须入库，所以挪到这里。
+
+### 规格
+
+| | |
+|---|---|
+| 算法 | RSA 4096 / SHA256withRSA |
+| 别名 | `bitsay` |
+| 有效期 | **36500 天（至 2126-09-07）** |
+| 签名方案 | APK Signature Scheme **v2**（minSdk 31，v1/JAR 不需要） |
+| 证书 DN | `CN=bitsay, OU=bitsay, O=del, L=Beijing, ST=Beijing, C=CN` |
+
+### 在新电脑上恢复签名
+
+```bash
+# 1) 把备份的 bitsay-release.jks 放回 keystore/
+# 2) 按模板创建 keystore.properties，填入真实口令
+cp keystore.properties.example keystore.properties
+$EDITOR keystore.properties
+
+# 3) 验证配置真的生效
+./gradlew :app:assembleRelease
+"$ANDROID_HOME"/build-tools/37.0.0/apksigner verify --print-certs \
+  app/build/outputs/apk/release/app-release.apk
+```
+
+⚠️ 没有 `keystore.properties` 时 `assembleRelease` **不会报错**，只是产出一个
+**未签名**的 APK（`app/build.gradle.kts` 里做了判断，方便纯构建场景）。
+所以第三步必须真的看一眼 `apksigner` 的输出，或者比对指纹是不是上面那一串。
+CI 里有一道 `apksigner verify` 专门拦这个，本地没有。
+
+---
+
+## 七、轮换密钥
+
+现在用的是 **v2** 方案。若将来必须换密钥（例如泄漏），不能直接换 ——
+同一个包名换了签名，老用户装不上更新，只能卸载重装（数据全丢）。
+
+正确做法是 **v3 + rotation**：在 `app/build.gradle.kts` 的 `signingConfigs` 里配置
+`lineage`，让新 APK 同时带上新旧两条签名链，老设备仍认旧签名、新设备逐步迁到新签名。
+
+**本仓库尚未配置**，真需要时先读官方文档：
+
+- [APK Signature Scheme v3](https://source.android.com/docs/security/features/apksigning/v3) —— 轮换（rotation）本身的规则
+- [Sign your app](https://developer.android.com/build/building-cmdline) —— AGP 侧怎么配
+
+在配好之前，**现有密钥不能丢也不能换**。
+
+---
+
+## 八、现在默认就是公开发布
 
 App 已经过了测试阶段，workflow 的默认值改成**直接发公开 release**：
 

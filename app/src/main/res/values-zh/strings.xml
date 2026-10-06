@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">碎碎念</string>
-    <string name="widget_label">碎碎念 · 列表</string>
+    <string name="widget_label">碎碎念</string>
     <string name="widget_description">在桌面查看笔记或待办，点一下就能记。</string>
 
     <string name="tab_notes">笔记</string>

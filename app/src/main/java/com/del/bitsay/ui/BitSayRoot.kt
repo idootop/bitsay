@@ -113,6 +113,12 @@ fun BitSayRoot(
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { viewModel.flushDraft() }
     LifecycleEventEffect(Lifecycle.Event.ON_START) { viewModel.refresh() }
 
+    // Ids each list has already shown, **one set per kind**. Not state: mutating it must not
+    // recompose anything. Per-kind matters — with a single shared set the notes page and the todos
+    // page (both alive inside the pager) overwrote each other every pass, so each one saw the
+    // other's ids as brand new and replayed its whole entrance.
+    val seenItemIds = remember { mutableMapOf<Kind, MutableSet<Long>>() }
+
     PaperBackground(modifier.fillMaxSize()) {
         Box(
             Modifier
@@ -123,6 +129,11 @@ fun BitSayRoot(
             when (val screen = state.screen) {
                 Screen.List -> ListScreen(
                     state = state,
+                    // Hoisted above the screen switch on purpose. ListScreen leaves the composition
+                    // whenever the editor or settings opens, taking any `remember` inside it with
+                    // it — and then coming back would replay the entrance for the whole list
+                    // instead of only for what actually changed.
+                    seenItemIds = seenItemIds,
                     onSelectTab = viewModel::selectTab,
                     onOpenSearch = viewModel::openSearch,
                     onOpenSettings = viewModel::openSettings,

@@ -10,6 +10,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -166,6 +167,32 @@ private val AppTypography = Typography().let { base ->
     )
 }
 
+// ----------------------------------------------------------------------------
+// Motion. Mirrors design/css/components.css — `@keyframes sprout` and its timing.
+// ----------------------------------------------------------------------------
+
+/** `cubic-bezier(.16,.9,.3,1)`: leaves fast, settles slowly. */
+val SproutEasing = CubicBezierEasing(0.16f, 0.9f, 0.3f, 1f)
+
+/** `animation: sprout .46s`. */
+const val SPROUT_DURATION_MS = 460
+
+/** `animation-delay: calc(var(--i) * 26ms)` — a row of new items comes up like seedlings. */
+const val SPROUT_STAGGER_MS = 26
+
+/**
+ * How many rows may share one stagger.
+ *
+ * The board staggers every row, but it renders the whole list at once. Here the list is a
+ * LazyColumn, so a row's position in the list is not its position in time: the 20th row is composed
+ * when it scrolls into view, and staggering it by its list index would hold it at alpha 0 for 520ms
+ * first — that is what made fast scrolling flash blank cards.
+ *
+ * So the stagger is capped to a screenful, and it only applies to rows that appear **together**
+ * (the first fill, or a batch a data change just produced). A row that arrives later by scrolling
+ * gets the same animation with no delay.
+ */
+const val SPROUT_MAX_ROWS = 10
 /** Resolves [mode] against the phone's own setting. */
 @Composable
 fun ThemeMode.isDark(): Boolean = when (this) {

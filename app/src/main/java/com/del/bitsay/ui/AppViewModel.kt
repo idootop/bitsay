@@ -89,6 +89,12 @@ data class AppUiState(
      */
     val fromWidget: Boolean = false,
     /**
+     * The editor was opened from a search hit, so leaving it returns to the results — query, tab
+     * and both result lists intact — rather than dumping the user on the home list. Without this
+     * the only way back to a search was to retype it.
+     */
+    val fromSearch: Boolean = false,
+    /**
      * Opened from the widget's `+`: a blank quick-capture editor with no save button — the text
      * is already being written as it is typed, so the way out is simply "back".
      */
@@ -239,7 +245,14 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
      *   search then dismisses that window instead of landing on the app's list.
      */
     fun openSearch(fromWidget: Boolean = false) = _state.update {
-        it.copy(screen = Screen.Search, query = "", searchNotes = emptyList(), searchTodos = emptyList(), fromWidget = fromWidget)
+        it.copy(
+            screen = Screen.Search,
+            query = "",
+            searchNotes = emptyList(),
+            searchTodos = emptyList(),
+            fromWidget = fromWidget,
+            fromSearch = false,
+        )
     }
 
     /**
@@ -261,7 +274,11 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
      * Opening a result has to keep the origin it was found from: a hit opened inside the widget's
      * window must back out to the home screen, not to the app's list.
      */
-    fun openSearchResult(id: Long) = openItem(id, fromWidget = _state.value.fromWidget)
+    fun openSearchResult(id: Long) = openItem(
+        id = id,
+        fromWidget = _state.value.fromWidget,
+        fromSearch = true,
+    )
 
     fun setQuery(value: String) {
         _state.update { it.copy(query = value) }
@@ -319,11 +336,12 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     fun startNewAsCurrentTab() = startNew(_state.value.tab)
 
-    fun openItem(id: Long, fromWidget: Boolean = false) {
+    fun openItem(id: Long, fromWidget: Boolean = false, fromSearch: Boolean = false) {
         cancelAutoSave()
         _state.update {
             it.copy(
                 fromWidget = fromWidget,
+                fromSearch = fromSearch,
                 quickCapture = false,
                 // Looking at an existing entry: show it, do not shove a keyboard in front of it.
                 autoFocusEditor = false,
@@ -334,7 +352,11 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             val item = repository.findById(id)
             if (item == null) {
                 // Deleted on another surface while the tap was in flight.
-                if (fromWidget) exitToLauncher() else openList()
+                when {
+                    fromWidget -> exitToLauncher()
+                    fromSearch -> closeEditorToSearch()
+                    else -> openList()
+                }
                 return@launch
             }
             _state.update {
@@ -512,20 +534,48 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     private fun closeEditor() = _state.update {
+        if (it.fromSearch) {
+            // Came from a search hit: put the results back exactly as they were. The query and both
+            // result lists are still in the state, so this is just a screen change — no re-query,
+            // no lost keyword, and the scroll position the pager was on is preserved too.
+            it.copy(
+                screen = Screen.Search,
+                draft = "",
+                editingId = 0L,
+                dirty = false,
+                fromWidget = false,
+                fromSearch = false,
+                quickCapture = false,
+            )
+        } else {
+            it.copy(
+                screen = Screen.List,
+                draft = "",
+                editingId = 0L,
+                dirty = false,
+                fromWidget = false,
+                fromSearch = false,
+                quickCapture = false,
+                // Landing on the *list* means "show me my list", so the query goes with the search
+                // screen. Leaving it set made the home list render `searchResults` instead of the
+                // real list: the header said "4 todos" while the body showed the empty state.
+                query = "",
+                searchNotes = emptyList(),
+                searchTodos = emptyList(),
+            )
+        }
+    }
+
+    /** Leaving the editor back into the results, without touching the query. */
+    private fun closeEditorToSearch() = _state.update {
         it.copy(
-            screen = Screen.List,
+            screen = Screen.Search,
             draft = "",
             editingId = 0L,
             dirty = false,
             fromWidget = false,
+            fromSearch = false,
             quickCapture = false,
-            // The editor can be opened from a search hit, and it always returns to the list — so
-            // the query has to go with it. Leaving it set made the home list silently render
-            // `searchResults` instead of the real list: count the header said "4 todos" while the
-            // body showed the empty state. Same reasoning as closeSearch().
-            query = "",
-            searchNotes = emptyList(),
-            searchTodos = emptyList(),
         )
     }
 

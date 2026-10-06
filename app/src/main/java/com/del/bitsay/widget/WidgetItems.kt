@@ -92,9 +92,11 @@ internal object WidgetItems {
             if (item.isTodo) 0 else edge, 0, edge, 0,
         )
 
-        // One row colour for everything. The rotating pastels were dropped along with the app's:
-        // on a home screen a rainbow list competes with the wallpaper it is sitting on.
-        val background = if (item.done) palette.cardDone else palette.background
+        // One row colour for everything, and it is the extreme: pure white in light mode, pure black
+        // in dark. The rotating pastels were dropped long ago (on a home screen a rainbow list
+        // competes with the wallpaper); what changed here is that the row no longer borrows the
+        // page colour, which left it too close to the tile to read as a row.
+        val background = if (item.done) palette.cardDone else palette.widgetRow
         views.setColorStateList(
             R.id.widget_item_root,
             "setBackgroundTintList",

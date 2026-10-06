@@ -63,7 +63,7 @@
   scrollbar-width:thin;
 }
 .widget__list::-webkit-scrollbar{ width:3px; }
-.widget__list::-webkit-scrollbar-thumb{ background:var(--c-line); border-radius:3px; }
+.widget__list::-webkit-scrollbar-thumb{ background:var(--c-scrollbar); border-radius:3px; }
 .widget__row{
   position:relative; height:var(--w-row-h); flex:0 0 auto;
   display:flex; align-items:center; overflow:hidden;

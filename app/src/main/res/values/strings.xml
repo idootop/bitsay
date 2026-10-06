@@ -6,7 +6,7 @@
 -->
 <resources>
     <string name="app_name">Bitsay</string>
-    <string name="widget_label">Bitsay · List</string>
+    <string name="widget_label">Bitsay</string>
     <string name="widget_description">See your notes or todos on the home screen — one tap to jot one down.</string>
 
     <string name="tab_notes">Notes</string>

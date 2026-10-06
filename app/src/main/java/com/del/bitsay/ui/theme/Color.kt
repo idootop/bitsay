@@ -19,12 +19,26 @@ import androidx.compose.ui.graphics.Color
 // whole app is [BitSayPalette.leaf], and it is reserved for the plant in the empty states.
 // ----------------------------------------------------------------------------
 
-private val CanvasLight = Color(0xFFEDF0F8) // page floor: cool grey, one step under the white cards
+// Deepened from #EDF0F8. At 1.14:1 against the white cards the floor barely registered, and the
+// whole screen read as one pale wash — the card structure only appeared once you looked for it.
+private val CanvasLight = Color(0xFFE6E9F2)
 private val SurfaceLight = Color(0xFFFFFFFF)
-private val CardDoneLight = Color(0xFFE7EAF2) // done: one step darker, never a colour
+/**
+ * A finished row keeps the **same white card** as an open one.
+ *
+ * Three tints were tried — #E7EAF2, then #EFF1F7 — and all of them read as "washed out" next to the
+ * crisp white rows; a grey card with grey struck-through text looks disabled rather than done.
+ *
+ * The dark theme keeps its own step (#171923): dimming a card into a dark floor reads as *receding*,
+ * which is the effect the grey was going for and never achieved on white. So the state is carried by
+ * the tick's check mark, the strike-through and [InkSoft] text — not by the surface.
+ */
+private val CardDoneLight = SurfaceLight
 private val InkLight = Color(0xFF191B26)
 private val Ink2Light = Color(0xFF666B80)
-private val Ink3Light = Color(0xFF9CA1B5)
+// Was #9CA1B5: only 2.57:1 on a white card, below the 3:1 that a UI component (the tick ring)
+// needs to be reliably visible. The floor and the placeholder text both use this.
+private val Ink3Light = Color(0xFF8A90A6)
 private val LineLight = Color(0xFFE8EAF3)
 private val LeafLight = Color(0xFF8CA487)
 private val AccentLight = Color(0xFF000000)
@@ -73,6 +87,18 @@ data class BitSayPalette(
     val leaf: Color,
     /** Destructive actions only — the confirm button on a delete dialog. Never decoration. */
     val danger: Color,
+    /**
+     * A widget list row — the raised surface, and it has to be raised in **both** themes.
+     *
+     * Pure white in light, and the app's dark card colour in dark. Pure black was tried for dark and
+     * reverted: against a dark tile it read as a hole, not as a row. The contrast ratio was the same
+     * either way (1.12:1), which is the trap — the number was fine and the direction was backwards.
+     * In a dark UI surfaces get *lighter* as they come forward, so a row darker than its tile reads
+     * as something cut into the widget.
+     *
+     * The pure black belongs to the tile instead; see `widget_bg_dark.xml`.
+     */
+    val widgetRow: Color,
 )
 
 internal val LightPalette = BitSayPalette(
@@ -89,6 +115,7 @@ internal val LightPalette = BitSayPalette(
     line = LineLight,
     leaf = LeafLight,
     danger = Color(0xFFD23B2E),
+    widgetRow = Color(0xFFFFFFFF),
 )
 
 internal val DarkPalette = BitSayPalette(
@@ -107,6 +134,7 @@ internal val DarkPalette = BitSayPalette(
     line = LineDarkValue,
     leaf = LeafDarkValue,
     danger = Color(0xFFFF6B5C),
+    widgetRow = SurfaceDarkValue,
 )
 
 internal val LocalPalette = staticCompositionLocalOf { LightPalette }
@@ -134,6 +162,7 @@ val InkFaint: Color @Composable @ReadOnlyComposable get() = LocalPalette.current
 val Line: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.line
 val Leaf: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.leaf
 val Danger: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.danger
+val WidgetRow: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.widgetRow
 
 /** Material's own scheme, re-exported so screens have one import for all colours. */
 val Scheme @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme

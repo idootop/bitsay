@@ -42,12 +42,15 @@ import com.del.bitsay.ui.components.SegmentedTabs
 import com.del.bitsay.ui.theme.Accent
 import com.del.bitsay.ui.theme.AccentInk
 import com.del.bitsay.ui.theme.DisplayStyle
+import com.del.bitsay.ui.theme.SPROUT_MAX_ROWS
 import com.del.bitsay.ui.theme.Ink
 import com.del.bitsay.ui.theme.InkSoft
 
 @Composable
 fun ListScreen(
     state: AppUiState,
+    /** See [ItemList.entering]. Owned by the caller so it survives this screen being torn down. */
+    seenItemIds: MutableMap<Kind, MutableSet<Long>>,
     onSelectTab: (Kind) -> Unit,
     onOpenSearch: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -126,7 +129,9 @@ fun ListScreen(
                     position = pagerState.currentPage + pagerState.currentPageOffsetFraction,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 20.dp, end = 20.dp, top = 2.dp),
+                        // The gap between the tabs and the first row lives here, on the element
+                        // above the list, rather than inside the list as head padding.
+                        .padding(start = 20.dp, end = 20.dp, top = 2.dp, bottom = 14.dp),
                 )
             }
 
@@ -136,6 +141,29 @@ fun ListScreen(
             ) { page ->
                 val kind = tabs[page]
                 val items = if (kind == Kind.NOTE) state.notes else state.todos
+
+                // Which rows are new since the last pass. Keyed on `items`, so it recomputes when
+                // the list changes rather than on every recomposition — a tick or a delete leaves
+                // the id set identical and therefore animates nothing.
+                // Rebuilt only when the list itself changes. Rows consume their own entries as
+                // they are composed (see ItemList), so what is left here is exactly "still to be
+                // shown for the first time".
+                val entering = remember(items) {
+                    val seen = seenItemIds.getOrPut(kind) { mutableSetOf() }
+                    var order = 0
+                    // In list order, and only up to SPROUT_MAX_ROWS: see that constant for why a
+                    // row further down must not be armed. Building the map in list order also means
+                    // the stagger follows what the eye sees, top to bottom.
+                    val batch = LinkedHashMap<Long, Int>()
+                    for (id in items.asSequence().map { it.id }) {
+                        if (order >= SPROUT_MAX_ROWS) break
+                        if (id !in seen) batch[id] = order++
+                    }
+                    seen.clear()
+                    seen.addAll(items.map { it.id })
+                    batch
+                }
+
                 if (items.isEmpty()) {
                     val note = kind == Kind.NOTE
                     EmptyState(
@@ -149,6 +177,7 @@ fun ListScreen(
                 } else {
                     ItemList(
                         items = items,
+                        entering = entering,
                         selecting = state.inSelectionMode,
                         selection = state.selection,
                         onClick = { item ->

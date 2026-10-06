@@ -126,7 +126,9 @@ fun SearchScreen(
             position = pagerState.currentPage + pagerState.currentPageOffsetFraction,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 14.dp),
+                // Same as the home tabs: the gap to the first row is declared here, on the element
+                // above the list, now that ItemList no longer carries head padding of its own.
+                .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 14.dp),
         )
 
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->

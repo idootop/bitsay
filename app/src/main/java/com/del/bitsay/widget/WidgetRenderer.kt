@@ -85,8 +85,10 @@ internal object WidgetRenderer {
         // The active tab is a plain canvas-coloured pill with ink text — not a colour. Both tabs
         // keep the same shape and only swap which one is lit, so "which list am I looking at" is
         // answered by contrast rather than by hue.
-        tint(views, R.id.widget_tab_notes, if (kind == Kind.NOTE) palette.background else Color.Transparent)
-        tint(views, R.id.widget_tab_todos, if (kind == Kind.TODO) palette.background else Color.Transparent)
+        // The lit tab is the same surface as a row, not a grey wash: the tile is the page colour
+        // now, so a page-coloured pill would be invisible on it.
+        tint(views, R.id.widget_tab_notes, if (kind == Kind.NOTE) palette.widgetRow else Color.Transparent)
+        tint(views, R.id.widget_tab_todos, if (kind == Kind.TODO) palette.widgetRow else Color.Transparent)
         views.setTextColor(
             R.id.widget_tab_notes,
             (if (kind == Kind.NOTE) palette.ink else palette.inkFaint).toArgb(),

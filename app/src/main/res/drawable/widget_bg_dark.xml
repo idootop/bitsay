@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="#FF2C2A27" />
+    <!--
+      Pure black. This is where the "纯黑" goes: the rows are the raised surface and must be lighter
+      than the tile in both themes, so the tile takes the extreme and the rows take the surface step.
+      #101119 was tried and made the pure-black rows read as holes cut into the widget.
+    -->
+    <solid android:color="#FF000000" />
     <stroke
         android:width="1.5dp"
         android:color="#FF443F39" />

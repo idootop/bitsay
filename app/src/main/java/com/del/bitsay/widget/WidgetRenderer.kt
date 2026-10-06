@@ -102,10 +102,6 @@ internal object WidgetRenderer {
         val empty = items.isEmpty()
         views.setViewVisibility(R.id.widget_list, if (empty) View.GONE else View.VISIBLE)
         views.setViewVisibility(R.id.widget_empty, if (empty) View.VISIBLE else View.GONE)
-        views.setViewVisibility(
-            R.id.widget_header,
-            if (showHeader(context, manager, widgetId)) View.VISIBLE else View.GONE,
-        )
 
         val rows = WidgetItems.build(context, items, palette)
         views.setRemoteAdapter(
@@ -140,23 +136,6 @@ internal object WidgetRenderer {
         }
 
         manager.updateAppWidget(widgetId, views)
-    }
-
-    /**
-     * The header is dropped on widgets too short to show it *and* a usable list. The thresholds
-     * come from the actual dimens rather than hard-coded numbers, so changing a row height in
-     * `dimens.xml` automatically moves the cutoff.
-     */
-    fun showHeader(context: Context, manager: AppWidgetManager, widgetId: Int): Boolean {
-        val options: Bundle = runCatching { manager.getAppWidgetOptions(widgetId) }
-            .getOrDefault(Bundle.EMPTY)
-        val res = context.resources
-        val density = res.displayMetrics.density
-        return WidgetLayout.showHeader(
-            minHeightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT),
-            headerHeightDp = (res.getDimension(R.dimen.widget_header_height) / density).toInt(),
-            rowHeightDp = (res.getDimension(R.dimen.widget_row_height) / density).toInt(),
-        )
     }
 
     /**

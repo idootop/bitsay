@@ -1069,6 +1069,148 @@ if (!mColorMappingChanged && remoteViews.canRecycleView(mView)) {
 `WidgetItems.kt` 里现在只剩两个**有实际功能**的染色：勾选圈颜色（`setImageTintList`）和
 行底色（`setBackgroundTintList`）—— 这两个是需求，不是补丁。
 
+### 13.19 首页 tab 可左右滑动 + 指示块跟随滚动
+
+`ListScreen` 的列表区改成 `HorizontalPager`（两页 = 笔记 / 待办）。state 里本来就有
+`notes` 和 `todos` 两个列表，所以相邻页能渲染真实内容，不用等状态追上来。
+
+#### 踩到的 bug：单向可滑
+
+第一版只有**左滑有效、右滑无效**，现象是标题写着"待办"、列表却是笔记。
+
+原因是我把 `state.tab` 直接读进了 `LaunchedEffect(pagerState)` 的闭包里：
+
+```kotlin
+LaunchedEffect(pagerState) {                       // 只在 pagerState 变化时重启
+    snapshotFlow { pagerState.settledPage }.collect { page ->
+        if (tabs[page] != state.tab) onSelectTab(tabs[page])   // ← state 是首次组合时捕获的
+    }
+}
+```
+
+这个 effect **只启动一次**，所以里面的 `state.tab` 永远是第一次组合的值（`NOTE`）。
+于是左滑 `TODO != NOTE` 成立、触发；右滑 `NOTE == NOTE` 不成立、不触发。
+
+修法是 `rememberUpdatedState(state.tab)`（`onSelectTab` 同理）。**凡是 key 不是某个 state
+的 LaunchedEffect，里面读 state 都要走 rememberUpdatedState** —— 这类 bug 不会崩，
+只会让某个方向悄悄失效。
+
+#### 指示块跟随滚动进度
+
+`SegmentedTabs` 从"每个 item 各自带背景"改成"一个独立指示块按进度位移"：
+
+- 新增 `position: Float?` 参数，传 pager 的连续位置
+  `pagerState.currentPage + pagerState.currentPageOffsetFraction`
+- 传 `null` 时回落到 `selected`（搜索页没有 pager，用这种）
+- item 之间**不留间距**：位移量就是"段宽 × 序号"，有间距的话行程会随序号变
+- 文字颜色按 `at > 0.5f` 切换：拖动到一半时两个标签都处于半亮，只按 `selected` 切会闪
+
+**实机验证**：抓了滑动过程中的连续帧，指示块随拖动右移；拖动不过半程时正确回弹。
+
+### 13.20 图标：设置齿轮 · GitHub · 链接 · widget 线性芽
+
+| 图标 | 说明 |
+|---|---|
+| `ic_settings` | 换成用户指定的圆齿齿轮（外圈 evenodd 路径 + 中心圆，2px 描边） |
+| `ic_github` | GitHub 章鱼，**填充**而非描边 —— 19dp 下章鱼轮廓糊成一团，而且这个形状大家认的就是填色 |
+| `ic_link` | 关于里 Del Wang 那一行用链环；源码那一行换章鱼 |
+| `ic_widget_open_app` | 从"实心破土标记"换成**线性镂空芽**（两叶一茎，只描边）。它旁边的邻居是 2px 描边的搜索图标，实心的双色标记放在一起像贴上去的贴纸 |
+
+widget 线性芽的几何取自 `design/js/sprout.js`（64×88 视框）缩放进 24，**描边保持 2 个视框单位不跟着缩** ——
+否则渲染出来只有 0.46dp，和搜索图标不是一个重量级。
+
+### 13.21 设置里的应用图标对齐桌面图标
+
+`AppIconPlate` 原来把标记画成 66% 高，比桌面上看到的小一圈。
+
+关键几何是**自适应图标的可见区**：108×108 画布只保证中间 72×72 可见，启动器就是裁这块再套遮罩。
+标记是 40×50 居中，所以在桌面上它占图标高度的 `50/72 = 69.4%`。
+改成按这个比例画，两处才一致。
+
+⚠️ 仍然是**自己画**而不是 `painterResource(R.mipmap.ic_launcher)` —— `AdaptiveIconDrawable`
+没有自带遮罩，直接画出来是个大方块、内容缩在中间一圈空白里。
+
+### 13.22 搜索页也做成滑动联动
+
+首页那套 pager 复制到搜索页。但搜索页多一个前提：**结果原本只存当前 tab 的**，
+分页必须两边的结果都在手，否则相邻页是空的、滑过去要等重查。
+
+所以 `AppUiState` 把 `searchResults` 拆成 `searchNotes` / `searchTodos`：
+
+- `runSearch()` **一次查两个 kind**（本地 SQLite 的 LIKE 扫描，代价可以接受）
+- `searchResults` 变成按 `tab` 取值的派生属性，`visible` 不用改
+- `selectSearchTab` 因此**不再需要重查**，切 tab 变成瞬时的 —— 这也是"跟手"的前提
+- 结果回来时仍然只按 `query` 校验（不再按 tab），因为两个 kind 都取了
+
+**实机验证**：搜 "1" 后左滑到待办页显示"没找到"、右滑回笔记页显示命中行，
+每页渲染各自的结果 ✓
+
+`SegmentedTabs` 全项目只有两个使用点（首页 / 搜索页），已都改成 pager 驱动。
+
+### 13.23 关于页图标缺角的根因
+
+现象：设置里「关于」的圆角图标，底下**右半块石头缺一个角**；桌面图标是完整的。
+
+根因是我那个土壤辅助函数把两个瓣当成同一种形状处理了，而它们**不是**：
+
+```
+左瓣  M34,79    C34,71 41,67 50,66   L52.5,79   Z   -- 先曲线，后直线
+右瓣  M57.5,79  L60,66  C69,67 74,71 74,79    Z   -- 先直线，后曲线
+```
+
+我写的 helper 固定"moveTo → cubicTo → lineTo → close"。对左瓣正确，对右瓣就错了：
+它从底部顶点直接弯向 (74,71)，**从来没经过 (60,66)** —— 缺的就是这个角。
+
+修法不只是换顺序，而是**把两条路径分别写出来**，并且加了三个局部小工具
+（`Path.m/l/c`），让每段读起来和 XML 里的 `d` 一模一样，以后可以直接逐字对照
+`ic_launcher_foreground.xml`，不可能再搞错顺序。
+
+⚠️ 这次事故的教训：`BrandMark` 是"照着 vector 再画一遍"，两处几何一旦不同步，
+错的那边不会报错，只会悄悄少一块。**改启动图标就必须同时改 BrandMark。**
+
+### 13.24 widget 芽的比例
+
+`ic_widget_open_app` 从"实心破土标记"改成**线性镂空芽**后，用户反馈茎太高。
+
+比例**没有照搬** `design/js/sprout.js`（那是空状态那株）：节点从 29% 压到 **68%** 处，
+茎只占整体高度的 **34%**，叶子同时加宽。18dp 下细高版本读起来像"一根杆顶个芽"。
+
+描边保持 2 个视框单位**不跟着几何缩放** —— 否则渲染出来只有 0.46dp，和搜索图标不是一个重量级。
+
+### 13.25 小组件最小尺寸改 3x3 · 去掉 header 收起逻辑
+
+尺寸按 Android 的单元格公式 `70n - 30`：3 格 = 180dp。
+
+| | 改前 | 改后 |
+|---|---|---|
+| `minWidth` / `minHeight` | 180 / 110 | **180 / 180** |
+| `minResizeWidth` / `minResizeHeight` | 110 / 110 | **180 / 180** |
+| `targetCellWidth` / `targetCellHeight` | 3 / 2 | **3 / 3** |
+
+**同时删掉整套"太矮就收起 header"的逻辑**（`WidgetLayout` / `WidgetRenderer.showHeader` /
+布局里的显隐调用）：最小尺寸既然是 3x3，已经不存在需要丢 header 的高度了，留着就是死代码。
+`widget_header` 现在恒为可见（布局默认值）。
+
+⚠️ **已放在桌面上的组件不会自动变大** —— 启动器只在重新添加时读 `minWidth/minHeight`。
+用户需要删掉重加，或者手动拉到 3 行高。
+
+### 13.26 页面背景改纯色
+
+`PaperBackground` 从"天光 → 纸面 → 土壤"三段渐变 + 顶部打光，改成**一个平色**
+（`--c-canvas` / `#EDF0F8`）。
+
+理由不只是审美：底部那个偏绿的 `moss` 停靠点读起来像渍不像层次，而且**上下两张白卡会坐在
+不同深浅的底上** —— 平色之后卡片和底的对比处处一致。
+
+顺带删掉随之失效的令牌：`--c-sky` / `--c-moss` / `--c-glow` 及其 `-d` 版本，
+app 侧对应 `BitSayPalette.sky/moss/glow`。
+
+**实机验证**：从 y=300 到 y=2750 逐点采样，全是同一个 `#EDF0F8`。
+
+⚠️ 清理令牌时我**误删了 `--c-canvas-d`**（暗色画布值），而 `dark.css` 还在引用它 ——
+这会让暗色模式的底色整个失效。已加回，并且写了个校验脚本扫全部 CSS，
+确认没有"被引用但未定义"的变量。
+
 ### 13.15 空内容不保存 · 删除二次确认 · 作者区块
 
 **空内容**：仓库层 `ItemRepository.saveDraft` 对空文本 `return`，所以**输入过程中永远不会新建行**。

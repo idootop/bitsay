@@ -45,15 +45,12 @@ BitSay.icons = (function () {
     lang:     () => wrap(`<circle cx="12" cy="12" r="8.6"/><path d="M3.4 12h17.2"/>
                           <ellipse cx="12" cy="12" rx="4.1" ry="8.6"/>`),
     // 顶栏"进 App"：便签 + 对勾
-    // 品牌标记「破土」—— 和 Android 的 ic_widget_open_app.xml 是同一份几何（缩放 0.38 到 24）。
-    // 这里不能复用 wrap()：破土是**填充**图形，wrap() 用的是描边。
-    openApp:  () => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                          <path d="M4.4 21.5C4.4 18.46 7.44 16.94 12 16.94C16.56 16.94 19.6 18.46 19.6 21.5Z"/>
-                          <path d="M12 21.5C11.62 17.32 11.62 13.14 12 8.96"
-                                fill="none" stroke="currentColor" stroke-width="1.67" stroke-linecap="round"/>
-                          <path d="M12 8.96C8.2 9.34 5.54 6.3 5.54 2.5C9.34 2.5 12 5.16 12 8.96Z"/>
-                          <path d="M12 8.96C15.8 9.34 18.46 6.3 18.46 2.5C14.66 2.5 12 5.16 12 8.96Z"/>
-                        </svg>`,
+    // widget 顶栏"进 App"：**线性镂空芽**，两叶一茎，只描边。
+    // 它旁边是 2px 描边的搜索图标，实心双色标记放在一起像贴上去的贴纸。
+    // 比例比空状态那株叶大茎短（节点 y=46 而非 36）—— 18dp 下细高版本读起来像根杆顶个芽。
+    openApp:  () => wrap(`<path d="M12,22 C11.7,17.76 11.7,14.12 12,10.48"/>
+                          <path d="M12,10.48 C8.36,10.79 4.73,7.45 4.73,2 C8.97,2 12,5.64 12,10.48 Z"/>
+                          <path d="M12,10.48 C15.64,10.79 19.27,7.45 19.27,2 C15.03,2 12,5.64 12,10.48 Z"/>`),
     widget:   () => wrap(`<rect x="4" y="4" width="7" height="7" rx="2"/>
                           <rect x="13" y="4" width="7" height="7" rx="2"/>
                           <rect x="4" y="13" width="7" height="7" rx="2"/>

@@ -13,6 +13,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -68,7 +71,6 @@ import androidx.compose.ui.unit.dp
 import com.del.bitsay.ui.theme.Accent
 import com.del.bitsay.ui.theme.AccentInk
 import com.del.bitsay.ui.theme.Background
-import com.del.bitsay.ui.theme.Glow
 import com.del.bitsay.ui.theme.CardShape
 import com.del.bitsay.ui.theme.EmptyTitleStyle
 import com.del.bitsay.ui.theme.Ink
@@ -76,39 +78,19 @@ import com.del.bitsay.ui.theme.InkFaint
 import com.del.bitsay.ui.theme.InkSoft
 import com.del.bitsay.ui.theme.Leaf
 import com.del.bitsay.ui.theme.Line
-import com.del.bitsay.ui.theme.Moss
 import com.del.bitsay.ui.theme.Paper
-import com.del.bitsay.ui.theme.Sky
 
 /**
- * The page floor: a dawn gradient plus one soft light from above.
+ * The page floor: one flat colour.
  *
- * There is deliberately **no dot grid**. A dot grid is the language of squared paper, and this app
- * is about things growing out of soil — the two fight. The atmosphere comes from the light instead.
+ * It was a three-stop gradient (sky -> canvas -> moss) with a soft light bleeding in from the top.
+ * Dropped for two reasons: the greenish `moss` stop at the bottom read as a stain rather than as
+ * depth, and a page whose colour drifts vertically fights the flat white cards sitting on it —
+ * a card at the top and a card at the bottom ended up on visibly different backgrounds.
  */
 @Composable
 fun PaperBackground(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
-    val sky = Sky
-    val mid = Background
-    val moss = Moss
-    val glow = Glow
-    Box(modifier.fillMaxSize()) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(Brush.verticalGradient(0f to sky, 0.46f to mid, 1f to moss)),
-        )
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(glow, Color.Transparent),
-                        center = Offset(0.5f, -0.14f),
-                        radius = 1400f,
-                    ),
-                ),
-        )
+    Box(modifier.fillMaxSize().background(Background)) {
         content()
     }
 }
@@ -188,8 +170,14 @@ fun RoundIconButton(
 /**
  * Pill switch between notes and todos.
  *
- * The trough is a translucent wash of the ink colour rather than a fixed grey, so the same value
- * reads correctly on both the light and the dark floor.
+ * The indicator is a single sliding pill rather than a background on each item, because it has to
+ * track a pager: [position] is the pager's continuous page offset (0 = first, 1 = second), so the
+ * pill travels with the finger during a drag instead of jumping when the pager settles.
+ *
+ * Pass `position = null` where there is no pager behind the tabs; the pill then snaps to [selected].
+ *
+ * The trough is a translucent wash of the ink colour rather than a fixed grey, so one value reads
+ * correctly on both the light and the dark floor.
  */
 @Composable
 fun <T> SegmentedTabs(
@@ -198,35 +186,51 @@ fun <T> SegmentedTabs(
     label: @Composable (T) -> String,
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
+    position: Float? = null,
 ) {
     val trough = Ink.copy(alpha = 0.06f)
-    Row(
+    BoxWithConstraints(
         modifier
             .clip(CircleShape)
             .background(trough)
             .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        options.forEach { option ->
-            val active = option == selected
-            Box(
-                Modifier
-                    .weight(1f)
-                    .height(40.dp)
-                    .clip(CircleShape)
-                    .background(if (active) Accent else Color.Transparent)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                    ) { onSelect(option) },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = label(option),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold,
-                    color = if (active) AccentInk else InkFaint,
-                )
+        // No gap between items: the pill's offset is a plain multiple of the segment width, and a
+        // gap would make the travel distance depend on the index.
+        val segment = maxWidth / options.size
+        val at = (position ?: options.indexOf(selected).toFloat())
+            .coerceIn(0f, (options.size - 1).toFloat())
+
+        Box(
+            Modifier
+                .offset(x = segment * at)
+                .width(segment)
+                .height(40.dp)
+                .clip(CircleShape)
+                .background(Accent),
+        )
+        Row(Modifier.height(40.dp)) {
+            options.forEach { option ->
+                val active = option == selected
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) { onSelect(option) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = label(option),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold,
+                        // A crossfade rather than a hard swap: mid-drag both labels are half-lit, so
+                        // switching on `selected` alone would blink one of them.
+                        color = if (at > 0.5f == (options.indexOf(option) == 1)) AccentInk else InkFaint,
+                    )
+                }
             }
         }
     }
@@ -406,68 +410,83 @@ private val BRAND_SPROUT = Color(0xFF7FC98F)
  */
 @Composable
 fun BrandMark(height: Dp = 46.dp, modifier: Modifier = Modifier) {
-    // The artwork is 40 wide by 50 tall inside the icon's 108x108 viewBox.
+    // The artwork occupies x 34..74, y 29..79 of the icon's 108x108 viewBox: 40 wide, 50 tall.
     Canvas(modifier.size(width = height * 0.8f, height = height)) {
         val s = this.size.height / 50f
         val ox = this.size.width / 2f - 54f * s
         val oy = -29f * s
         fun p(x: Float, y: Float) = Offset(ox + x * s, oy + y * s)
 
-        // A closed shape made of one cubic plus a straight edge: moveTo, cubicTo, lineTo, close.
-        fun soil(x0: Float, y0: Float, c1x: Float, c1y: Float, c2x: Float, c2y: Float,
-                 mx: Float, my: Float, ex: Float, ey: Float): Path = Path().apply {
-            val a = p(x0, y0); moveTo(a.x, a.y)
-            val c1 = p(c1x, c1y); val c2 = p(c2x, c2y); val m = p(mx, my)
-            cubicTo(c1.x, c1.y, c2.x, c2.y, m.x, m.y)
-            val e = p(ex, ey); lineTo(e.x, e.y)
-            close()
+        // These three keep the bodies below readable as the icon's own coordinates, so they can be
+        // checked line-by-line against res/drawable/ic_launcher_foreground.xml.
+        fun Path.m(x: Float, y: Float) = p(x, y).let { moveTo(it.x, it.y) }
+        fun Path.l(x: Float, y: Float) = p(x, y).let { lineTo(it.x, it.y) }
+        fun Path.c(x1: Float, y1: Float, x2: Float, y2: Float, x3: Float, y3: Float) {
+            val a = p(x1, y1); val b = p(x2, y2); val d = p(x3, y3)
+            cubicTo(a.x, a.y, b.x, b.y, d.x, d.y)
         }
-        // The sprout is pure cubics, so it can use one walker.
-        fun curve(v: FloatArray): Path = Path().apply {
-            val a = p(v[0], v[1]); moveTo(a.x, a.y)
-            var i = 2
-            while (i + 5 < v.size) {
-                val c1 = p(v[i], v[i + 1]); val c2 = p(v[i + 2], v[i + 3]); val e = p(v[i + 4], v[i + 5])
-                cubicTo(c1.x, c1.y, c2.x, c2.y, e.x, e.y)
-                i += 6
-            }
+
+        // The two soil lobes are NOT the same shape, and the difference is not cosmetic:
+        //
+        //   left   M34,79   C34,71 41,67 50,66   L52.5,79  Z    -- curve, then a straight edge
+        //   right  M57.5,79 L60,66  C69,67 74,71 74,79   Z      -- straight edge FIRST, then curve
+        //
+        // An earlier version ran both through one "moveTo, cubicTo, lineTo, close" helper. That is
+        // right for the left lobe and wrong for the right one: it curved away from the bottom vertex
+        // without ever touching (60,66), which is the corner that went missing in Settings.
+        val soilLeft = Path().apply {
+            m(34f, 79f); c(34f, 71f, 41f, 67f, 50f, 66f); l(52.5f, 79f); close()
         }
-        drawPath(soil(34f, 79f, 34f, 71f, 41f, 67f, 50f, 66f, 52.5f, 79f), BRAND_SOIL)
-        drawPath(soil(57.5f, 79f, 60f, 66f, 69f, 67f, 74f, 71f, 74f, 79f), BRAND_SOIL)
+        val soilRight = Path().apply {
+            m(57.5f, 79f); l(60f, 66f); c(69f, 67f, 74f, 71f, 74f, 79f); close()
+        }
+        val leafLeft = Path().apply {
+            m(54f, 46f); c(44f, 47f, 37f, 39f, 37f, 29f); c(47f, 29f, 54f, 36f, 54f, 46f); close()
+        }
+        val leafRight = Path().apply {
+            m(54f, 46f); c(64f, 47f, 71f, 39f, 71f, 29f); c(61f, 29f, 54f, 36f, 54f, 46f); close()
+        }
+
+        drawPath(soilLeft, BRAND_SOIL)
+        drawPath(soilRight, BRAND_SOIL)
+        // The stem is the only stroked part; everything else is filled.
         drawPath(
-            curve(floatArrayOf(54f, 79f, 53f, 68f, 53f, 57f, 54f, 46f)),
+            Path().apply { m(54f, 79f); c(53f, 68f, 53f, 57f, 54f, 46f) },
             color = BRAND_SPROUT,
             style = Stroke(width = 4.4f * s, cap = StrokeCap.Round),
         )
-        drawPath(curve(floatArrayOf(54f,46f, 44f,47f, 37f,39f, 37f,29f)).apply {
-            val a = p(47f, 29f); val b = p(54f, 36f); val c = p(54f, 46f)
-            cubicTo(a.x, a.y, b.x, b.y, c.x, c.y); close()
-        }, BRAND_SPROUT)
-        drawPath(curve(floatArrayOf(54f,46f, 64f,47f, 71f,39f, 71f,29f)).apply {
-            val a = p(61f, 29f); val b = p(54f, 36f); val c = p(54f, 46f)
-            cubicTo(a.x, a.y, b.x, b.y, c.x, c.y); close()
-        }, BRAND_SPROUT)
+        drawPath(leafLeft, BRAND_SPROUT)
+        drawPath(leafRight, BRAND_SPROUT)
     }
 }
 
 /**
- * The app icon, drawn as it appears on the launcher: the mark on an ink plate with rounded corners.
+ * The app icon, drawn to match what the launcher actually shows.
  *
- * Rendered rather than loaded from `mipmap/ic_launcher`, because an AdaptiveIconDrawable has no
- * mask of its own — drawn directly it comes out as a full square with the artwork floating in the
- * middle of a lot of empty margin, which is not what the icon looks like anywhere else.
+ * Not `painterResource(R.mipmap.ic_launcher)`: an AdaptiveIconDrawable carries no mask, so drawn
+ * directly it comes out as the full 108x108 square with the artwork floating in the middle of a
+ * lot of margin — nothing like the icon on the home screen.
+ *
+ * The geometry that matters is the **visible area**: an adaptive icon only guarantees the central
+ * 72x72 of its 108x108 canvas, and that is the region launchers crop to and then mask. The artwork
+ * is 40x50 centred in the canvas, so on the home screen it reads as 50/72 = 69.4% of the icon's
+ * height. Drawing the mark at 66% (the earlier value) made it visibly smaller here than on the
+ * launcher, which is what this fixes.
  */
+private const val ADAPTIVE_VISIBLE = 72f / 108f
+private const val MARK_HEIGHT_IN_CANVAS = 50f / 108f
+
 @Composable
 fun AppIconPlate(size: Dp = 52.dp, modifier: Modifier = Modifier) {
     Box(
         modifier
             .size(size)
-            // ~22% is the squircle radius the launcher actually applies.
+            // ~22% is the squircle radius a launcher applies.
             .clip(RoundedCornerShape(size * 0.22f))
             .background(Color(0xFF17140F)),
         contentAlignment = Alignment.Center,
     ) {
-        BrandMark(height = size * 0.66f)
+        BrandMark(height = size * (MARK_HEIGHT_IN_CANVAS / ADAPTIVE_VISIBLE))
     }
 }
 

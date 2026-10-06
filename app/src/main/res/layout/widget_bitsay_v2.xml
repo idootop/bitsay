@@ -33,6 +33,9 @@
         <!--
           Header: the way into the app sits on the left, search on the right, the two list tabs
           between them — the two icon buttons are symmetric about the tabs, search on the right.
+
+          Always visible. It used to be hidden below three rows of content, but the widget's minimum
+          is 3x3 now, so there is no size left at which it would be dropped.
         -->
         <LinearLayout
             android:id="@+id/widget_header"

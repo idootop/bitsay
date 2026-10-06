@@ -1,17 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  "Open the app". Carries the launcher mark — the seedling breaking out of the soil — so the
-  button reads as "the app itself" rather than as a generic arrow or menu glyph.
+  "Open the app", drawn the way the empty state draws its plant: **outline only**, two leaves on one
+  stem. Replaces the filled 破土 mark that used to sit here — this button is chrome, and its
+  neighbour is the search icon, a 2px stroked magnifier. A solid two-tone badge beside it read as a
+  sticker glued onto the bar.
 
-  Two deliberate departures from the launcher foreground:
+  Proportions are deliberately leafier than design/js/sprout.js: the node sits at y=46 rather than
+  y=36, so the stem is shorter and the two leaves are wider. At 18dp in the widget bar the taller
+  version read as a thin stalk with a bud on top rather than as a sprout.
 
-  1. ONE colour (#3D3A38), like every other widget icon. The widget chrome is single-colour line
-     art; a two-tone green-and-ink badge here would look like a sticker glued onto it.
-  2. The two soil lobes are merged back into one mound. At 24dp the 5-unit V-gap shrinks to 1.9
-     units, which stops reading as a gap and starts reading as a rendering artefact.
-
-  Geometry is the launcher artwork scaled by 0.38 about (54,54) into the 24x24 viewport, which
-  brings it to the same optical size as ic_widget_search (x 4.4-19.6, y 2.5-21.5).
+  Scaled from its own 64x88 space into 24 with 2 units of margin. The stroke stays at 2 viewBox
+  units (it is not scaled with the geometry) so it renders at the same weight as ic_widget_search.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
@@ -19,18 +18,24 @@
     android:viewportWidth="24"
     android:viewportHeight="24">
     <path
-        android:fillColor="#FF3D3A38"
-        android:pathData="M4.4,21.5 C4.4,18.46 7.44,16.94 12,16.94 C16.56,16.94 19.6,18.46 19.6,21.5 Z" />
+        android:fillColor="#00000000"
+        android:pathData="M12,22 C11.7,17.76 11.7,14.12 12,10.48"
+        android:strokeColor="@color/icon_ink"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
     <path
         android:fillColor="#00000000"
-        android:pathData="M12,21.5 C11.62,17.32 11.62,13.14 12,8.96"
-        android:strokeColor="#FF3D3A38"
+        android:pathData="M12,10.48 C8.36,10.79 4.73,7.45 4.73,2 C8.97,2 12,5.64 12,10.48 Z"
+        android:strokeColor="@color/icon_ink"
+        android:strokeWidth="2"
         android:strokeLineCap="round"
-        android:strokeWidth="1.67" />
+        android:strokeLineJoin="round" />
     <path
-        android:fillColor="#FF3D3A38"
-        android:pathData="M12,8.96 C8.2,9.34 5.54,6.3 5.54,2.5 C9.34,2.5 12,5.16 12,8.96 Z" />
-    <path
-        android:fillColor="#FF3D3A38"
-        android:pathData="M12,8.96 C15.8,9.34 18.46,6.3 18.46,2.5 C14.66,2.5 12,5.16 12,8.96 Z" />
+        android:fillColor="#00000000"
+        android:pathData="M12,10.48 C15.64,10.79 19.27,7.45 19.27,2 C15.03,2 12,5.64 12,10.48 Z"
+        android:strokeColor="@color/icon_ink"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
 </vector>

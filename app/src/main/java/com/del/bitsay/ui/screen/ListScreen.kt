@@ -14,9 +14,14 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -57,6 +62,35 @@ fun ListScreen(
 ) {
     var confirmDelete by remember { mutableStateOf(false) }
 
+    // Notes and todos are two pages of one pager, so a horizontal swipe moves between them. Both
+    // lists already live in the state, which is what makes this cheap: the page next to the current
+    // one renders real content rather than a placeholder that swaps in after the state catches up.
+    val tabs = remember { listOf(Kind.NOTE, Kind.TODO) }
+    val pagerState = rememberPagerState(pageCount = { tabs.size })
+
+    // Swipe -> tab. settledPage, not currentPage: reacting mid-drag would flip the tab, and with it
+    // the header title, while the finger is still moving.
+    //
+    // rememberUpdatedState is load-bearing. This effect is keyed on pagerState, so it is launched
+    // once and must not restart; a plain `state.tab` read inside it would be the value captured at
+    // that first composition, forever. The symptom was a one-way swipe: swiping to todos worked
+    // (TODO != stale NOTE), swiping back did not (NOTE == stale NOTE), leaving the header reading
+    // "todos" above a list of notes.
+    val currentTab by rememberUpdatedState(state.tab)
+    val selectTab by rememberUpdatedState(onSelectTab)
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.settledPage }.collect { page ->
+            val kind = tabs[page]
+            if (kind != currentTab) selectTab(kind)
+        }
+    }
+    // Tab -> swipe. Re-running after a swipe is a no-op because the page already matches, so the
+    // two effects cannot chase each other.
+    LaunchedEffect(state.tab) {
+        val page = tabs.indexOf(state.tab)
+        if (page >= 0 && pagerState.currentPage != page) pagerState.animateScrollToPage(page)
+    }
+
     if (confirmDelete) {
         ConfirmDialog(
             title = stringResource(R.string.confirm_delete_batch, state.selection.size),
@@ -84,40 +118,49 @@ fun ListScreen(
                     onOpenSettings = onOpenSettings,
                 )
                 SegmentedTabs(
-                    options = listOf(Kind.NOTE, Kind.TODO),
+                    options = tabs,
                     selected = state.tab,
                     label = { stringResource(if (it == Kind.NOTE) R.string.tab_notes else R.string.tab_todos) },
                     onSelect = onSelectTab,
+                    // Live scroll offset, so the indicator travels with the drag.
+                    position = pagerState.currentPage + pagerState.currentPageOffsetFraction,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 20.dp, end = 20.dp, top = 2.dp),
                 )
             }
-            val items = state.visible
-            if (items.isEmpty()) {
-                val note = state.tab == Kind.NOTE
-                EmptyState(
-                    title = stringResource(
-                        if (note) R.string.empty_notes_title else R.string.empty_todos_title,
-                    ),
-                    hint = stringResource(
-                        if (note) R.string.empty_notes_hint else R.string.empty_todos_hint,
-                    ),
-                )
-            } else {
-                ItemList(
-                    items = items,
-                    selecting = state.inSelectionMode,
-                    selection = state.selection,
-                    onClick = { item ->
-                        if (state.inSelectionMode) onToggleSelection(item.id) else onOpenItem(item.id)
-                    },
-                    onLongClick = { item -> onBeginSelection(item.id) },
-                    // While picking rows a tap means "select", never "tick".
-                    onToggleDone = { item ->
-                        if (state.inSelectionMode) onToggleSelection(item.id) else onToggleDone(item.id)
-                    },
-                )
+
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize(),
+            ) { page ->
+                val kind = tabs[page]
+                val items = if (kind == Kind.NOTE) state.notes else state.todos
+                if (items.isEmpty()) {
+                    val note = kind == Kind.NOTE
+                    EmptyState(
+                        title = stringResource(
+                            if (note) R.string.empty_notes_title else R.string.empty_todos_title,
+                        ),
+                        hint = stringResource(
+                            if (note) R.string.empty_notes_hint else R.string.empty_todos_hint,
+                        ),
+                    )
+                } else {
+                    ItemList(
+                        items = items,
+                        selecting = state.inSelectionMode,
+                        selection = state.selection,
+                        onClick = { item ->
+                            if (state.inSelectionMode) onToggleSelection(item.id) else onOpenItem(item.id)
+                        },
+                        onLongClick = { item -> onBeginSelection(item.id) },
+                        // While picking rows a tap means "select", never "tick".
+                        onToggleDone = { item ->
+                            if (state.inSelectionMode) onToggleSelection(item.id) else onToggleDone(item.id)
+                        },
+                    )
+                }
             }
         }
 

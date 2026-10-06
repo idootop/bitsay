@@ -14,10 +14,9 @@
   position:relative; flex:1 1 auto; min-height:0;
   display:flex; flex-direction:column;
   padding-top:var(--safe-top);
-  /* 天光 → 纸面 → 土壤。顶部那一层白光让整屏像"被晨光照着" */
-  background:
-    radial-gradient(124% 66% at 50% -14%, var(--c-glow), rgba(255,255,255,0) 64%),
-    linear-gradient(180deg, var(--c-sky) 0%, var(--c-canvas) 46%, var(--c-moss) 100%);
+  /* 整页**纯色**。原来是"天光 → 纸面 → 土壤"三段渐变 + 顶部一层打光，已去掉：
+     底部那点绿读起来像渍不像层次，而且会让上下两张白卡坐在不同深浅的底上。 */
+  background:var(--c-canvas);
   color:var(--c-ink);
   font-size:var(--fs-body); line-height:var(--lh-body);
   font-family:var(--font-body);

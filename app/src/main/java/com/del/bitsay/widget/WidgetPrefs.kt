@@ -54,22 +54,3 @@ class WidgetPrefs(context: Context) {
         const val FILE = "bitsay_widgets"
     }
 }
-
-/**
- * The only thing about the widget that reacts to being resized.
- *
- * Rows are always a fixed single line, so height never changes how an item looks — it only
- * decides whether the header earns its keep. The rule is expressed in **content terms** rather
- * than in cells or in a magic dp number: show the tabs only if the list still gets
- * [MIN_ROWS_WITH_HEADER] rows underneath them. At the 2x2 minimum that is false, so a small
- * widget trades its header for a usable list; from three rows up the header comes back.
- *
- * The launcher reports new options through `onAppWidgetOptionsChanged` on every resize.
- */
-internal object WidgetLayout {
-
-    const val MIN_ROWS_WITH_HEADER = 3
-
-    fun showHeader(minHeightDp: Int, headerHeightDp: Int, rowHeightDp: Int): Boolean =
-        minHeightDp >= headerHeightDp + MIN_ROWS_WITH_HEADER * rowHeightDp
-}

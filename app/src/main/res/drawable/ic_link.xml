@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- External link: a chain of two rounded links. Reads as "this goes somewhere else". -->
+<!--
+  External link: two rounded chain links. Used for the author's homepage.
+
+  Same 2px stroke as the rest of the settings icons — an earlier version of this file was 1.9 and
+  read a hair lighter than its neighbours.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -9,14 +14,14 @@
         android:fillColor="#00000000"
         android:pathData="M10.2,13.8 A3.6,3.6 0 0 0 15.3,13.8 L18.4,10.7 A3.6,3.6 0 0 0 13.3,5.6 L12,6.9"
         android:strokeColor="@color/icon_ink"
-        android:strokeWidth="2"
+        android:strokeWidth="2.0"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
         android:fillColor="#00000000"
         android:pathData="M13.8,10.2 A3.6,3.6 0 0 0 8.7,10.2 L5.6,13.3 A3.6,3.6 0 0 0 10.7,18.4 L12,17.1"
         android:strokeColor="@color/icon_ink"
-        android:strokeWidth="2"
+        android:strokeWidth="2.0"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
 </vector>

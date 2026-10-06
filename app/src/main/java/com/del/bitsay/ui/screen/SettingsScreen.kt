@@ -197,13 +197,13 @@ fun SettingsScreen(
         SectionLabel(stringResource(R.string.settings_author))
         AppCard(contentPadding = PaddingValues(0.dp)) {
             SettingRow(
-                painter = painterResource(R.drawable.ic_language),
+                painter = painterResource(R.drawable.ic_link),
                 title = stringResource(R.string.settings_author_name),
                 subtitle = stringResource(R.string.settings_author_site),
                 onClick = { uriHandler.openUri(AUTHOR_SITE) },
             )
             SettingRow(
-                painter = painterResource(R.drawable.ic_link),
+                painter = painterResource(R.drawable.ic_github),
                 title = stringResource(R.string.settings_author_source),
                 subtitle = AUTHOR_REPO_LABEL,
                 onClick = { uriHandler.openUri(AUTHOR_REPO) },

@@ -15,6 +15,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -68,7 +73,27 @@ fun SearchScreen(
         keyboard?.show()
     }
 
-    val results = state.searchResults
+    // Same two-page pager as the home list, so a swipe moves between the note hits and the todo
+    // hits. Both result lists are in the state (runSearch fetches both kinds in one pass), so the
+    // page next to the current one renders real rows instead of waiting for a re-query.
+    val tabs = remember { listOf(Kind.NOTE, Kind.TODO) }
+    val pagerState = rememberPagerState(pageCount = { tabs.size })
+
+    // rememberUpdatedState is load-bearing — see the same block in ListScreen. This effect is keyed
+    // on pagerState, so it launches once and a plain `state.tab` read inside it would stay frozen
+    // at its first-composition value, making the swipe work in one direction only.
+    val currentTab by rememberUpdatedState(state.tab)
+    val selectTab by rememberUpdatedState(onSelectTab)
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.settledPage }.collect { page ->
+            val kind = tabs[page]
+            if (kind != currentTab) selectTab(kind)
+        }
+    }
+    LaunchedEffect(state.tab) {
+        val page = tabs.indexOf(state.tab)
+        if (page >= 0 && pagerState.currentPage != page) pagerState.animateScrollToPage(page)
+    }
 
     Column(modifier.fillMaxSize()) {
         Row(
@@ -94,31 +119,35 @@ fun SearchScreen(
         }
 
         SegmentedTabs(
-            options = listOf(Kind.NOTE, Kind.TODO),
+            options = tabs,
             selected = state.tab,
             label = { stringResource(if (it == Kind.NOTE) R.string.tab_notes else R.string.tab_todos) },
             onSelect = onSelectTab,
+            position = pagerState.currentPage + pagerState.currentPageOffsetFraction,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 20.dp, end = 20.dp, top = 14.dp),
         )
 
-        when {
-            state.query.isBlank() -> EmptyState(
-                title = stringResource(R.string.empty_search_idle_title),
-                hint = stringResource(R.string.empty_search_idle_hint),
-            )
-            results.isEmpty() -> EmptyState(
-                title = stringResource(R.string.empty_search_title),
-                hint = stringResource(R.string.empty_search_hint),
-            )
-            // Same rows as the home list, only without the room its FAB needs at the bottom.
-            else -> ItemList(
-                items = results,
-                onClick = { onOpenItem(it.id) },
-                onToggleDone = { onToggleDone(it.id) },
-                bottomPadding = 24.dp,
-            )
+        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+            val results = if (tabs[page] == Kind.NOTE) state.searchNotes else state.searchTodos
+            when {
+                state.query.isBlank() -> EmptyState(
+                    title = stringResource(R.string.empty_search_idle_title),
+                    hint = stringResource(R.string.empty_search_idle_hint),
+                )
+                results.isEmpty() -> EmptyState(
+                    title = stringResource(R.string.empty_search_title),
+                    hint = stringResource(R.string.empty_search_hint),
+                )
+                // Same rows as the home list, only without the room its FAB needs at the bottom.
+                else -> ItemList(
+                    items = results,
+                    onClick = { onOpenItem(it.id) },
+                    onToggleDone = { onToggleDone(it.id) },
+                    bottomPadding = 24.dp,
+                )
+            }
         }
     }
 }

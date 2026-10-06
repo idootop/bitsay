@@ -105,10 +105,15 @@ data class AppUiState(
      */
     val selection: Set<Long> = emptySet(),
     /**
-     * Rows matching [query], fetched from SQL. The in-memory lists only hold previews of the
-     * text, so searching them would silently miss matches deep inside a long note.
+     * Rows matching [query], **one list per kind**, fetched from SQL. The in-memory lists only hold
+     * previews of the text, so searching them would silently miss matches deep inside a long note.
+     *
+     * Both kinds are kept rather than just the visible one so the search screen can be a pager:
+     * a page has to render its own results, and re-querying on every tab change would leave the
+     * neighbouring page blank until the new rows landed.
      */
-    val searchResults: List<Item> = emptyList(),
+    val searchNotes: List<Item> = emptyList(),
+    val searchTodos: List<Item> = emptyList(),
     /**
      * Raise the keyboard as soon as the editor appears. True only when the editor was opened to
      * **write something new** (the FAB, or the widget's `+`); opening an existing entry is a
@@ -126,6 +131,8 @@ data class AppUiState(
     val pendingImport: PendingImport? = null,
 ) {
     val current: List<Item> get() = if (tab == Kind.NOTE) notes else todos
+
+    val searchResults: List<Item> get() = if (tab == Kind.NOTE) searchNotes else searchTodos
 
     val visible: List<Item> get() = if (query.isBlank()) current else searchResults
 
@@ -194,18 +201,20 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     private suspend fun runSearch() {
-        val (kind, needle) = _state.value.let { it.tab to it.query }
-        val results = repository.search(kind, needle)
-        // Drop the result if the user typed on while the query was running.
-        if (_state.value.query == needle && _state.value.tab == kind) {
-            _state.update { it.copy(searchResults = results) }
+        val needle = _state.value.query
+        val notes = repository.search(Kind.NOTE, needle)
+        val todos = repository.search(Kind.TODO, needle)
+        // Drop the result if the user typed on while the query was running. Not keyed on the tab:
+        // both kinds were fetched, so switching tabs during the query cannot stale this.
+        if (_state.value.query == needle) {
+            _state.update { it.copy(searchNotes = notes, searchTodos = todos) }
         }
     }
 
     // ------------------------------------------------------------------ navigation
 
     fun selectTab(kind: Kind) = _state.update {
-        it.copy(tab = kind, query = "", searchResults = emptyList(), selection = emptySet())
+        it.copy(tab = kind, query = "", searchNotes = emptyList(), searchTodos = emptyList(), selection = emptySet())
     }
 
     /**
@@ -219,13 +228,10 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
      */
     fun selectSearchTab(kind: Kind) {
         if (_state.value.tab == kind) return
+        // No re-query: runSearch() already fetched both kinds, so the other tab's rows are sitting
+        // in the state. Switching is instant, which is what makes the swipe feel attached to the
+        // finger rather than to the database.
         _state.update { it.copy(tab = kind) }
-        if (_state.value.query.isBlank()) {
-            _state.update { it.copy(searchResults = emptyList()) }
-            return
-        }
-        searchJob?.cancel()
-        searchJob = viewModelScope.launch { runSearch() }
     }
 
     /**
@@ -233,7 +239,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
      *   search then dismisses that window instead of landing on the app's list.
      */
     fun openSearch(fromWidget: Boolean = false) = _state.update {
-        it.copy(screen = Screen.Search, query = "", searchResults = emptyList(), fromWidget = fromWidget)
+        it.copy(screen = Screen.Search, query = "", searchNotes = emptyList(), searchTodos = emptyList(), fromWidget = fromWidget)
     }
 
     /**
@@ -248,7 +254,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             exitToLauncher()
             return
         }
-        _state.update { it.copy(screen = Screen.List, query = "", searchResults = emptyList()) }
+        _state.update { it.copy(screen = Screen.List, query = "", searchNotes = emptyList(), searchTodos = emptyList()) }
     }
 
     /**
@@ -518,7 +524,8 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             // `searchResults` instead of the real list: count the header said "4 todos" while the
             // body showed the empty state. Same reasoning as closeSearch().
             query = "",
-            searchResults = emptyList(),
+            searchNotes = emptyList(),
+            searchTodos = emptyList(),
         )
     }
 

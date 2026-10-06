@@ -20,8 +20,6 @@ import androidx.compose.ui.graphics.Color
 // ----------------------------------------------------------------------------
 
 private val CanvasLight = Color(0xFFEDF0F8) // page floor: cool grey, one step under the white cards
-private val SkyLight = Color(0xFFEFF4FC) // gradient top
-private val MossLight = Color(0xFFE8EEE6) // gradient bottom
 private val SurfaceLight = Color(0xFFFFFFFF)
 private val CardDoneLight = Color(0xFFE7EAF2) // done: one step darker, never a colour
 private val InkLight = Color(0xFF191B26)
@@ -33,9 +31,7 @@ private val AccentLight = Color(0xFF000000)
 private val AccentInkLight = Color(0xFFFFFFFF)
 private val AccentSoftLight = Color(0xFFEFF1F6)
 
-private val SkyDarkValue = Color(0xFF131722)
 private val CanvasDarkValue = Color(0xFF101119)
-private val MossDarkValue = Color(0xFF101611)
 private val SurfaceDarkValue = Color(0xFF1B1D29)
 private val CardDoneDarkValue = Color(0xFF171923)
 private val InkDarkValue = Color(0xFFF2F3F8)
@@ -67,12 +63,6 @@ data class BitSayPalette(
     /** Sheet / dialog / widget surface. */
     val paper: Color,
     val background: Color,
-    /** Top and bottom stops of the page gradient, with [background] in the middle. */
-    val sky: Color,
-    val moss: Color,
-    /** Dawn light at the very top of the page. Fully transparent in dark mode: a 92% white wash
-     *  over a near-black floor greys the whole screen out. */
-    val glow: Color,
     val ink: Color,
     /** Timestamps, hints. */
     val inkSoft: Color,
@@ -93,9 +83,6 @@ internal val LightPalette = BitSayPalette(
     cardDone = CardDoneLight,
     paper = SurfaceLight,
     background = CanvasLight,
-    sky = SkyLight,
-    moss = MossLight,
-    glow = Color(0xEBFFFFFF),
     ink = InkLight,
     inkSoft = Ink2Light,
     inkFaint = Ink3Light,
@@ -114,9 +101,6 @@ internal val DarkPalette = BitSayPalette(
     cardDone = CardDoneDarkValue,
     paper = SurfaceDarkValue,
     background = CanvasDarkValue,
-    sky = SkyDarkValue,
-    moss = MossDarkValue,
-    glow = Color.Transparent,
     ink = InkDarkValue,
     inkSoft = Ink2DarkValue,
     inkFaint = Ink3DarkValue,
@@ -144,9 +128,6 @@ val Card: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.car
 val CardDone: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.cardDone
 val Paper: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.paper
 val Background: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.background
-val Sky: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.sky
-val Moss: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.moss
-val Glow: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.glow
 val Ink: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.ink
 val InkSoft: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.inkSoft
 val InkFaint: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.inkFaint

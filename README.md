@@ -6,8 +6,6 @@
 
 <strong>A notes &amp; todos app that lives on your home screen.</strong>
 
-<br>
-
 [![中文](https://img.shields.io/badge/README-中文-blue)](README.zh-CN.md)
 [![Download](https://img.shields.io/badge/Download-APK（2MB）-black?logo=android&logoColor=white)](https://github.com/idootop/bitsay/releases/latest) 
 ![Android 12+](https://img.shields.io/badge/Android-12%2B-3DDC84?logo=android&logoColor=white) 

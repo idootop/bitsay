@@ -6,9 +6,6 @@
 
 <strong>一个极简的桌面小组件：笔记 &amp; 待办</strong>
 
-<br>
-
-
 [![English](https://img.shields.io/badge/README-English-blue)](README.md)
 [![Download](https://img.shields.io/badge/Download-APK（2MB）-black?logo=android&logoColor=white)](https://github.com/idootop/bitsay/releases/latest) 
 ![Android 12+](https://img.shields.io/badge/Android-12%2B-3DDC84?logo=android&logoColor=white) 

@@ -4,59 +4,48 @@
 
 <h1>BitSay</h1>
 
-<strong>Notes &amp; todos, always in sight.</strong>
+<strong>A notes &amp; todos app that lives on your home screen.</strong>
 
 <br>
-<br>
 
-<a href="https://github.com/idootop/bitsay/releases/latest"><b>Download</b></a> &nbsp;·&nbsp; <a href="README.zh-CN.md">中文</a>
+[![中文](https://img.shields.io/badge/README-中文-blue)](README.zh-CN.md)
+[![Download](https://img.shields.io/badge/Download-APK（2MB）-black?logo=android&logoColor=white)](https://github.com/idootop/bitsay/releases/latest) 
+![Android 12+](https://img.shields.io/badge/Android-12%2B-3DDC84?logo=android&logoColor=white) 
+![No permissions](https://img.shields.io/badge/Permissions-none-success) 
+[![License MIT](https://img.shields.io/badge/License-MIT-blue)](LICENSE) 
 
 </div>
 
 ---
 
-## Why BitSay
-
-**📌 Jot it down without opening anything.**<br>The widget *is* the app. Write a note, tick a todo or search your list straight from the home screen — no launch, no splash, no waiting.
-
-**⚡ Ideas don't wait.**<br>Tap `+` and start typing. What you write is saved as you write it, so a half-finished thought survives a phone call, a locked screen or a dead battery.
-
-**👀 Keep what matters in front of you.**<br>Pin the list you actually need — today's todos, that one thing you keep forgetting — somewhere you already look a hundred times a day. Out of sight really is out of mind; this fixes that.
-
-**🔒 Nothing gets lost, and nothing gets out.**<br>Everything autosaves. One tap exports a complete backup, one tap restores it on a new phone. The app requests **no permissions at all** and contains no network code — your notes sit in a local database and stay there.
-
-**🪶 Tiny and quiet.**<br>**2 MB**, no ads, no account, no sign-up, no telemetry. Free and open source under MIT.
-
-**📱 Looks right on whatever you're holding.**<br>Light and dark, English and 中文, and layouts that adapt from a phone to a tablet or an unfolded foldable — on a wide screen the list stays put and the editor opens beside it, instead of one covering the other.
-
-## Screenshots
+## Preview
 
 <p align="center">
-  <img src="docs/images/shot-widget.png" width="150" alt="Home screen widget">
-  <img src="docs/images/shot-notes.png" width="150" alt="Notes">
-  <img src="docs/images/shot-todos.png" width="150" alt="Todos">
-  <img src="docs/images/shot-editor.png" width="150" alt="Editor in dark mode">
+  <img src="docs/images/en-desk-todo.jpeg" width="220"> <img src="docs/images/en-home-note.jpeg" width="220"> <img src="docs/images/en-settings.jpeg" width="220">
 </p>
 
-<p align="center"><sub>Home screen widget &nbsp;·&nbsp; Notes &nbsp;·&nbsp; Todos &nbsp;·&nbsp; Editor (dark)</sub></p>
+<p align="center"><sub>On the home screen &nbsp;·&nbsp; Notes &nbsp;·&nbsp; Settings</sub></p>
 
 <p align="center">
-  <img src="docs/images/shot-tablet.png" width="700" alt="Tablet and foldable layout">
+  <img src="docs/images/en-tablet.jpeg" width="720" alt="Tablet and foldable layout">
 </p>
+
+<p align="center"><sub>On a wide screen the list stays put and the editor opens beside it</sub></p>
+
+## What it does
+
+- **The widget is the app.** Read the list, tick things off, search, or add something new — all from the home screen, without opening anything.
+- **What matters stays in front of you.** The list you can’t afford to forget sits where you already look a hundred times a day.
+- **Quick capture.** Tap `+`, start typing, walk away. What you write is saved as you write it.
+- **Plain text, nothing else.** No titles, no formatting, no attachments, no folders. One note is one block of text.
+- **Backup and restore.** Export everything into a single file, import it on your next phone.
+- **No permissions, no network.** Nothing to sign in to; your notes stay in a local database on your phone.
+- **Light and dark**, English and 中文, and layouts for phones, tablets and unfolded foldables.
+- **2 MB.** No ads, no account, no telemetry.
 
 ## Install
 
-Download the latest `Bitsay-x.y.z.apk` from [**Releases**](https://github.com/idootop/bitsay/releases/latest) and open it on your phone. Android will ask you to allow installing from this source — that is the only prompt you will ever see, because the app asks for nothing else.
-
-Each release also lists the APK's SHA-256 and its signing certificate fingerprint, so you can verify what you downloaded if you want to.
-
-## Requirements
-
-**Android 12 (API 31) or newer.**
-
-Not an arbitrary floor: the widget is built on `RemoteViews.RemoteCollectionItems`, `targetCellWidth` and `previewLayout`, which all arrived in API 31 — and are still the non-deprecated collection APIs on Android 17.
-
-The app requests **no permissions at all** — no network, no storage, no notifications.
+Download `Bitsay.apk` from [**Releases**](https://github.com/idootop/bitsay/releases/latest) and open it on your phone. Requires **Android 12 or newer**.
 
 ## License
 

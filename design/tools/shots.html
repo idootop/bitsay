@@ -51,7 +51,8 @@
      tools/shots.html?p=notes            笔记列表（浅色）
      tools/shots.html?p=todos            待办列表（浅色，含已完成）
      tools/shots.html?p=editor&dark=1    编辑器（深色）
-     tools/shots.html?p=tablet           平板左右两栏
+     tools/shots.html?p=tablet           平板左右两栏（默认中文）
+     tools/shots.html?p=tablet&lang=en   同一张图的英文版
      tools/shots.html?p=widget           桌面小组件（连手机外壳一起，说明它长在桌面上）
      tools/shots.html?p=logo             应用图标 108 母版（透明背景，直接存盘用）
 
@@ -64,10 +65,71 @@
 const P = new URLSearchParams(location.search);
 const page = P.get('p') || 'notes';
 const dark = P.get('dark') === '1';
+const en = P.get('lang') === 'en';
 document.body.dataset.dark = dark ? '1' : '0';
 
 // 演示数据：和设计台用的是同一份 seed()
 BitSay.store.reset();
+
+/* ---- 英文渲染 ----------------------------------------------------------------
+   设计台（以及 App 的默认演示数据）都是中文的，但 README 有两份。
+   这里加一层很薄的英文替换，只作用于**出图**，不动设计台的页面模块：
+     1. 换掉演示数据
+     2. 覆盖相对/绝对时间的格式化
+     3. 挂载后把界面文案的中文文本节点替成英文
+   第 3 步必须在挂载**之后**做 —— 那些字符串是各页面自己拼进 DOM 的。
+   ---------------------------------------------------------------------------- */
+if (en) {
+  const t = Date.now();
+  let n = 0;
+  const mk = (kind, text, ageMin, done) => ({
+    id: ++n, kind, text, done: !!done,
+    createdAt: t - ageMin * 60000, updatedAt: t - ageMin * 60000,
+  });
+  BitSay.store.state.items = [
+    mk('note', 'Meeting notes: 1. Lock the Q4 goal 2. Schedule the review', 60 * 26),
+    mk('note', 'Reading notes: In Praise of Imperfection', 60 * 48),
+    mk('note', 'Widget question: why fix the row height at 48dp?', 60 * 3),
+    mk('note', 'Finish the backup before switching phones', 60 * 20),
+    mk('note', 'Where the shape of the input decides the performance', 60 * 34),
+    mk('note', 'Sparse activation, as borrowed from biological neurons', 60 * 40),
+    mk('todo', 'Buy milk and eggs', 60 * 20),
+    mk('todo', 'Reply to the client email', 60 * 28),
+    mk('todo', 'Book the dentist', 60 * 55, true),
+  ];
+  const pad = (v) => String(v).padStart(2, '0');
+  const day = (ts) => {
+    const d = new Date(ts), now = new Date();
+    if (d.toDateString() === now.toDateString()) return 'Today';
+    if (new Date(now - 86400000).toDateString() === d.toDateString()) return 'Yesterday';
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+  BitSay.store.timeText = (ts) => `${day(ts)} ${pad(new Date(ts).getHours())}:${pad(new Date(ts).getMinutes())}`;
+  BitSay.store.absolute = (ts) => {
+    const d = new Date(ts);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+}
+
+/** 挂载之后替换界面文案。长词在前，否则「条笔记」会先被「笔记」吃掉半截。 */
+function localize(root) {
+  if (!en) return;
+  const COPY = [
+    [/条笔记/g, 'notes'], [/条待办/g, 'todos'],
+    [/返回时自动保存/g, 'Saves on exit'],
+    [/已自动保存/g, 'Saved'], [/创建于/g, 'Created'],
+    [/笔记/g, 'Notes'], [/待办/g, 'Todos'],
+    [/今天/g, 'Today'], [/昨天/g, 'Yesterday'],
+  ];
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (w.nextNode()) nodes.push(w.currentNode);
+  nodes.forEach((node) => {
+    let v = node.nodeValue;
+    COPY.forEach(([re, to]) => { v = v.replace(re, to); });
+    node.nodeValue = v;
+  });
+}
 
 const shot = document.getElementById('shot');
 const noop = () => {};
@@ -138,6 +200,7 @@ switch (page) {
       tab: 'note', lockTab: true, onOpen: noop, onNew: noop, onSearch: noop, onSettings: noop,
     });
 }
+localize(shot);
 document.title = 'ready';
 </script>
 </body>

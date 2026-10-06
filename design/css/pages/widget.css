@@ -139,3 +139,85 @@
   box-shadow:0 0 0 1px var(--sh-line), 0 6px 18px rgba(0,0,0,.10);
 }
 .wprev svg{ display:block; border-radius:24px; }
+
+
+/* ==========================================================================
+   玻璃质感试验：半透明 vs 磨砂
+   --------------------------------------------------------------------------
+   半透明（.glass--tint）—— **Android 小组件真能做到**。
+   底色带 alpha 即可：RemoteViews 用 setBackgroundColor / setBackgroundTintList
+   都能传带透明度的颜色，壁纸会透出来。
+
+   磨砂（.glass--blur）—— **Android 小组件做不到**，这里只是把差距摆出来看。
+   它靠 CSS 的 backdrop-filter，把背后的壁纸真正模糊掉；Android 侧要做同样的事
+   需要给 View 设 RenderEffect，而 RemoteViews 的反射调用只认这些参数类型：
+     Bitmap / boolean / Bundle / CharSequence / ColorStateList / float / Icon /
+     int / Intent / long / String
+   RenderEffect 不在其中，也没有任何 blur 相关的 RemoteViews API。
+   ========================================================================== */
+.glass--tint{
+  --w-tile: rgba(238,241,248,.66);
+  --w-row:  rgba(255,255,255,.82);
+}
+[data-dark="1"] .glass--tint{
+  --w-tile: rgba(16,17,25,.58);
+  --w-row:  rgba(27,29,41,.74);
+}
+/* 玻璃总得有一条边，否则在浅色壁纸上会化开 */
+.glass--tint, .glass--blur{
+  box-shadow:var(--e-widget), inset 0 0 0 1px rgba(255,255,255,.34);
+}
+[data-dark="1"] .glass--tint, [data-dark="1"] .glass--blur{
+  box-shadow:var(--e-widget), inset 0 0 0 1px rgba(255,255,255,.12);
+}
+
+.glass--blur{
+  --w-tile: rgba(238,241,248,.52);
+  --w-row:  rgba(255,255,255,.66);
+  backdrop-filter:blur(18px) saturate(1.15);
+  -webkit-backdrop-filter:blur(18px) saturate(1.15);
+}
+[data-dark="1"] .glass--blur{
+  --w-tile: rgba(16,17,25,.46);
+  --w-row:  rgba(27,29,41,.60);
+}
+
+
+/* --------------------------------------------------------------------------
+   半透明 + 自己在组件里做磨砂（.glass--frost）
+   --------------------------------------------------------------------------
+   模糊**背景**不可能（RemoteViews 传不了 RenderEffect），但"磨砂"本身是一种
+   **材质错觉**：真实毛玻璃的样子 = 半透明 + 极细的颗粒 + 一条高光边 + 雾面感，
+   并不要求背后真的糊掉。所以这一版完全不依赖模糊，全在组件自己的图层里做：
+
+     · 半透明底色          → 壁纸透进来（RemoteViews 能传带 alpha 的颜色）
+     · 细噪点叠层          → 雾面颗粒（Android 侧 = 一张可平铺的小 PNG + BitmapDrawable）
+     · 顶部一道柔和高光    → 玻璃的厚度感（shape gradient）
+     · 1px 白描边          → 边缘不化开（shape stroke）
+
+   这一档才是**可能真机落地**的"磨砂"。右边那台 backdrop-filter 只是对照组。
+   -------------------------------------------------------------------------- */
+.glass--frost{
+  --w-tile: rgba(242,245,251,.68);
+  --w-row:  rgba(255,255,255,.78);
+}
+[data-dark="1"] .glass--frost{
+  --w-tile: rgba(18,20,28,.60);
+  --w-row:  rgba(30,33,45,.72);
+}
+.glass--frost::after{
+  content:""; position:absolute; inset:0; z-index:9; pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:140px 140px;
+  opacity:.30; mix-blend-mode:overlay;
+}
+[data-dark="1"] .glass--frost::after{ opacity:.22; mix-blend-mode:soft-light; }
+/* 顶部高光：玻璃受压的那道亮边 */
+.glass--frost::before{
+  content:""; position:absolute; inset:0; z-index:8; pointer-events:none;
+  background:linear-gradient(180deg, rgba(255,255,255,.34), rgba(255,255,255,0) 42%);
+  border-radius:inherit;
+}
+[data-dark="1"] .glass--frost::before{
+  background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,0) 42%);
+}

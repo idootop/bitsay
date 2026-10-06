@@ -54,10 +54,12 @@ internal object WidgetRenderer {
         val palette = paletteFor(dark)
 
         val views = RemoteViews(context.packageName, R.layout.widget_bitsay_v3)
+        // 半透明 + 自做磨砂。见 widget_bg_glass.xml 顶部那段：真·背景模糊在 RemoteViews 里
+        // 做不到（传不了 RenderEffect），但磨砂是材质错觉，半透明 + 细颗粒 + 顶部高光就够。
         views.setInt(
             R.id.widget_root,
             "setBackgroundResource",
-            if (dark) R.drawable.widget_bg_dark else R.drawable.widget_bg,
+            if (dark) R.drawable.widget_bg_glass_dark else R.drawable.widget_bg_glass,
         )
         views.setTextViewText(R.id.widget_tab_notes, ui.getString(R.string.tab_notes))
         views.setTextViewText(R.id.widget_tab_todos, ui.getString(R.string.tab_todos))

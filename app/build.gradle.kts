@@ -22,8 +22,8 @@ val keystoreProps = Properties().apply {
 // versionCode is derived, never typed: major*10000 + minor*100 + patch. So v1.2.3
 // is 10203 and v2.0.0 is 20000 — it always increases across releases, which is the
 // only thing Android actually requires of it, and it reads back as the version.
-val appVersionName: String = (findProperty("versionName") as String?) ?: "1.0.0"
-val appVersionCode: Int = (findProperty("versionCode") as String?)?.toIntOrNull() ?: 10_000
+val appVersionName: String = (findProperty("versionName") as String?) ?: "1.1.0"
+val appVersionCode: Int = (findProperty("versionCode") as String?)?.toIntOrNull() ?: 10_100
 
 android {
     namespace = "com.del.bitsay"

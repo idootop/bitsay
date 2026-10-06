@@ -2485,3 +2485,63 @@ GitHub 的 `/markdown` API（`mode=gfm`）按**硬换行**渲染 —— 源码�
 gh api -X POST /markdown -f mode=gfm -f context=idootop/bitsay -f text="$(cat README.md)"
 ```
 两份都查过：6 张图、1 条 `<hr>`、导航行内 0 个 `<br>`、截图排 0 个 `<br>`、无未解析标记。
+
+### 13.53 小组件玻璃质感：半透明 + 自做磨砂
+
+需求：「把桌面小组件的画布背景变成带透明度的磨砂玻璃质感，这样可以看到桌面壁纸融为一体，
+列表里的 item 的底色也适合改成不同透明度和磨砂的质感」→「半透明 + 我们自己组件里做磨砂质感
+高斯模糊可以吗，先简单做一下 demo 测试验证下效果可不可行」→「直接真机小组件测试」。
+
+#### 先说死的那条：真·背景模糊做不到
+
+小组件是宿主（桌面）inflate 的 `RemoteViews`，能力被白名单卡死。查 `android-37.0/android.jar`：
+
+- `RemoteViews` 类里和模糊/效果相关的**只有** `setLightBackgroundLayoutId`，没有任何 blur API
+- 远程调用走 `views.setInt(id, "方法名", …)` 的反射，**只认这些参数类型**：
+  `Bitmap / boolean / Bundle / CharSequence / ColorStateList / float / Icon / int / Intent / long / String`
+- 给 View 设 `RenderEffect`（高斯模糊）要传 **RenderEffect 对象**，不在列表里
+
+所以「把背后的壁纸糊掉」这条路是**堵死的**，不是没试。
+
+#### 但磨砂是材质错觉，不要求背后真糊
+
+真实毛玻璃 = 半透明 + 极细颗粒 + 一道高光边。三样都能在**我们自己的图层**里做：
+
+| 层 | 做法 | 落在哪 |
+|---|---|---|
+| 半透明底色 | 壁纸透进来 | `@color/widget_glass_tile` `#ADF2F5FB` / 暗色 `#9912141C` |
+| 雾面颗粒 | 48×48 可平铺噪点 PNG（白色，alpha 量化到 0/7/14/22 四档）| `drawable-nodpi/widget_noise.png`，**1132 字节** |
+| 顶部高光 | 白色柔光渐变 | `<gradient angle=270>` |
+| 行 | 78% 白；暗色 72% | `BitSayPalette.widgetRow` |
+
+三层合成一个 `layer-list`（`widget_bg_glass.xml` / `_dark.xml`），由渲染器 `setBackgroundResource` 换上。
+
+⚠️ **`cardDone` 没有动。** 它同时画着 App 自己的列表（`ItemList.kt:273`），那边的底是平的画布、
+必须不透明。小组件新增了 `widgetDone` 字段 —— 一旦表面变半透明，这两份"已完成"就不再是同一个颜色了。
+
+⚠️ 噪点位图放 **`drawable-nodpi`**：放普通 `drawable/` 会被按密度缩放，颗粒会糊成一团。
+`tileMode="repeat"` 且**不要给 gravity**，给了就变成居中一次而不是铺满。
+
+#### 真机实测（vivo V2309A）
+
+| 位置 | 底板颜色 | 旁边壁纸 |
+|---|---|---|
+| 浅色 · 压在天空 | `#CCDCF8` | `#4887EE` |
+| 深色 · 压在天空 | `#425981` | `#4887EE` |
+| 深色 · 压在草地 | `#3B4731` | `#4E6A30` |
+
+正文对比度 **12.68:1**（门槛 4.5:1）—— 半透明没有把可读性吃掉。
+
+#### 顺手记两个坑
+
+1. **XML 注释里不能出现连续两个连字符。** 我在注释里写了 CSS 类名 `.glass--frost`，
+   aapt2 直接报 `注释中不允许出现字符串 "--"`。改文字说明，别写字面量。
+2. 设计台量色时**必须关掉 transition**（老坑，见 §13.52）—— 第一次拍深色那组，
+   底板还停在浅色，差点又当成 bug。
+
+#### 还没做
+
+- **组件列表里的预览图 `widget_preview.xml` 还是旧的不透明版**，和现在的观感对不上，需要重画。
+- 半透明唯一的真风险是**花哨壁纸**：大面积渐变最友好，换成照片壁纸时字可能吃力。
+  App 侧不打算为此加"不透明度"开关，除非真机上确认有问题。
+- 设计台的 `.glass--frost` 那台和 `widget_bg_glass.xml` 是一一对应的，改一边要改另一边。

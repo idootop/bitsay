@@ -415,6 +415,25 @@ BitSay.app = (function () {
     });
   }
 
+  /* ---------------- ③.6 玻璃质感试验 ----------------
+     同一张壁纸、同一个小组件，只换底色处理，看差距有多大。 */
+  function mountGlassTrial(root) {
+    const box = el('#glasstrial', root);
+    if (!box) return;
+    const specs = [
+      ['现状 · 不透明', ''],
+      ['半透明 tint · Android 能做到', 'glass--tint'],
+      ['半透明 + 自做磨砂 · 可能可落地', 'glass--frost'],
+      ['真·背景模糊 · Android 做不到（对比）', 'glass--blur'],
+    ];
+    specs.forEach(([label, cls]) => {
+      const { wrap, mount } = homeScreen(label);
+      box.appendChild(wrap);
+      BitSay.pages.widget.mount(mount, { size: '2x5', kind: 'note', interactive: false });
+      if (cls) mount.querySelector('.widget').classList.add(cls);
+    });
+  }
+
   /* ---------------- ③.8 应用图标 ---------------- */
   function mountAppIcons(root) {
     const box = el('#appicons', root);
@@ -558,6 +577,7 @@ BitSay.app = (function () {
     mountOverview(document);
     mountWidgets(document);
     mountWidgetPreview(document);
+    mountGlassTrial(document);
     mountEmptyStates(document);
     mountAppIcons(document);
     mountComponents(document);

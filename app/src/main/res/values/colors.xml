@@ -26,4 +26,9 @@
       second accent.
     -->
     <color name="widget_scrollbar">#998A90A6</color>
+
+    <!-- 玻璃底板的半透明底色。两个都放 values/，由 WidgetRenderer 按 App 主题选 drawable ——
+         小组件跟随的是 App 的设置，不是系统的夜间模式，所以不能用 values-night。 -->
+    <color name="widget_glass_tile">#ADF2F5FB</color>
+    <color name="widget_glass_tile_dark">#9912141C</color>
 </resources>

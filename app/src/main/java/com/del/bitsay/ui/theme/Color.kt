@@ -100,6 +100,14 @@ data class BitSayPalette(
      */
     val widgetRow: Color,
     /**
+     * The widget's **done** row.
+     *
+     * A field of its own because [cardDone] cannot be reused: that one paints the app's own list
+     * rows, which sit on a flat canvas and must stay opaque. The widget sits on the wallpaper, so
+     * its surfaces are translucent — and once they are, the two lists stop being the same colour.
+     */
+    val widgetDone: Color,
+    /**
      * The seam between the two panes of the wide layout.
      *
      * Not [line]: that one is a hairline *on a white card*, and it disappears against [background]
@@ -124,7 +132,8 @@ internal val LightPalette = BitSayPalette(
     line = LineLight,
     leaf = LeafLight,
     danger = Color(0xFFD23B2E),
-    widgetRow = Color(0xFFFFFFFF),
+    widgetRow = Color(0xC7FFFFFF),
+    widgetDone = Color(0xC7FFFFFF),
     divider = Color(0x578A90A6),
 )
 
@@ -144,7 +153,8 @@ internal val DarkPalette = BitSayPalette(
     line = LineDarkValue,
     leaf = LeafDarkValue,
     danger = Color(0xFFFF6B5C),
-    widgetRow = SurfaceDarkValue,
+    widgetRow = Color(0xB81E212D),
+    widgetDone = Color(0xB8171923),
     divider = Color(0x6B6E7387),
 )
 

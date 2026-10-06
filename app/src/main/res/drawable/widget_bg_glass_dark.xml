@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  小组件底板 —— 半透明 + 自做磨砂。
+
+  为什么不是"真模糊"：RemoteViews 的反射调用只认 Bitmap / boolean / Bundle /
+  CharSequence / ColorStateList / float / Icon / int / Intent / long / String 这些参数类型，
+  给 View 设 RenderEffect（高斯模糊）需要传 RenderEffect 对象，不在其中；
+  RemoteViews 本身也没有任何 blur 相关的 API。所以**背后那张壁纸没法被模糊**。
+
+  但"磨砂"本身是材质错觉，不要求背后真的糊掉。真实毛玻璃 = 半透明 + 极细颗粒 +
+  顶部一道高光。这三样全在**我们自己的图层里**做，不依赖任何平台模糊能力：
+
+    1. 半透明底色  → 壁纸透进来
+    2. 平铺噪点    → 雾面颗粒（48×48 的 PNG，放在 drawable-nodpi 里避免被密度缩放）
+    3. 顶部高光    → 玻璃的厚度感
+
+  几何和设计台上「半透明 + 自做磨砂」那台一一对应，改一边要改另一边。
+  （别在 XML 注释里写那个 CSS 类名：它含两个连续的连字符，而 XML 注释里不允许。）
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 1. 半透明底板（深色） -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/widget_glass_tile_dark" />
+        </shape>
+    </item>
+
+    <!-- 2. 雾面颗粒。tileMode=repeat 按位图原尺寸平铺 ——
+         不要给 gravity，给了会变成居中一次而不是铺满 -->
+    <item>
+        <bitmap
+            android:src="@drawable/widget_noise"
+            android:tileMode="repeat" />
+    </item>
+
+    <!-- 3. 顶部高光：从上往下的白色柔光 -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:endColor="#00FFFFFF"
+                android:startColor="#1AFFFFFF"
+                android:type="linear" />
+        </shape>
+    </item>
+</layer-list>

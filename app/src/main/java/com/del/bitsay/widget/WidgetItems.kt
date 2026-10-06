@@ -96,7 +96,7 @@ internal object WidgetItems {
         // in dark. The rotating pastels were dropped long ago (on a home screen a rainbow list
         // competes with the wallpaper); what changed here is that the row no longer borrows the
         // page colour, which left it too close to the tile to read as a row.
-        val background = if (item.done) palette.cardDone else palette.widgetRow
+        val background = if (item.done) palette.widgetDone else palette.widgetRow
         views.setColorStateList(
             R.id.widget_item_root,
             "setBackgroundTintList",

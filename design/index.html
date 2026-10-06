@@ -71,6 +71,13 @@
     <b>装不下「顶栏 + 3 行」时顶栏自动收起</b>。点 tab 会同时切换所有尺寸的小组件。</p>
   <div class="stage" id="widgets"></div>
 
+  <h3 class="sect-sub3">玻璃质感试验：半透明 vs 磨砂</h3>
+  <p class="sect-sub">同一张壁纸、同一个小组件，只换底色的处理方式。
+    <b>半透明</b>是 Android 小组件真能做到的（RemoteViews 能传带 alpha 的颜色）；
+    <b>磨砂</b>（把壁纸真正模糊掉）<b>做不到</b> —— 那需要给 View 设 <code>RenderEffect</code>，
+    而 RemoteViews 的反射调用不认这个参数类型，也没有任何 blur 相关的 API。第三台只是把差距摆出来。</p>
+  <div class="stage" id="glasstrial"></div>
+
   <h3 class="sect-sub3">组件列表里的预览图（<code>android:previewImage</code>）</h3>
   <p class="sect-sub">用户是在<b>组件列表</b>里第一次看到这个组件的，那里显示的不是上面这些实时样机，
     而是一张静态预览图（API 31+ 才可能用 <code>previewLayout</code> 实时渲染，之前的版本只能靠它）。

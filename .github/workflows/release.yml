@@ -54,7 +54,9 @@ concurrency:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    # 钉死版本，不用 ubuntu-latest：runner 镜像会迁移（2026-10-19 起 latest 要换到 Ubuntu 26），
+    # 那会悄无声息地换掉整个工具链。发版这种"必须可复现"的地方不吃这个惊喜。
+    runs-on: ubuntu-24.04
     # 密钥挂在这个 environment 上。配上 required reviewers 后，job 会先停下来等人批准。
     environment: release
     # 顶层给的是只读；只有这个 job 需要写 —— 建 release / 传资产要 contents: write。
@@ -81,16 +83,33 @@ jobs:
       - name: 装 Gradle
         uses: gradle/actions/setup-gradle@v6.4.0
 
-      # ubuntu runner 自带的 SDK 不一定有 API 37（Android 17），缺了就装上
+      # runner 自带的 SDK 不一定有 API 37（Android 17），缺了就装上
       - name: 确保 Android SDK 37 存在
         run: |
-          SDKMANAGER=$(ls "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | tail -1)
+          set -uo pipefail
+          SDKMANAGER=$(ls "${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | tail -1)
           if [ -z "$SDKMANAGER" ]; then
             echo "::error::找不到 sdkmanager，runner 的 Android SDK 布局变了"
             exit 1
           fi
+          "$SDKMANAGER" --version
+
           yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
-          "$SDKMANAGER" "platforms;android-37" "build-tools;37.0.0"
+
+          # ⚠️ 平台的包名带**小版本后缀**：Android 17 是 `platforms;android-37.0`，
+          #    不是 `android-37` —— 少写 .0 会得到 "Failed to find package"（第一次就是这么挂的）。
+          #    不同镜像的命名可能不一样，两种都试，都失败就把可选的列出来。
+          install() {
+            echo "尝试安装：$*"
+            "$SDKMANAGER" "$@" > /dev/null 2>&1
+          }
+          install "platforms;android-37.0" "build-tools;37.0.0" \
+            || install "platforms;android-37" "build-tools;37.0.0" \
+            || {
+              echo "::error::装不上 Android 37 的 SDK 包，仓库里可选的有："
+              "$SDKMANAGER" --list 2>/dev/null | grep -E "platforms;android-3[6-9]|build-tools;3[6-9]" | sort -u || true
+              exit 1
+            }
 
       # ---- 版本号：tag 是唯一事实来源，versionCode 由版本号推导 ------------------
       - name: 解析版本号

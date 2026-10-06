@@ -251,10 +251,12 @@ jobs:
           set -euo pipefail
           NOTES="$RUNNER_TEMP/release-notes.md"
           cat > "$NOTES" <<EOF
-          **支持 Android 12 及以上。** 已经装过旧版的直接覆盖安装，数据不会丢。
+          **支持 Android 12 及以上**，已经装过旧版的直接覆盖安装，数据不会丢。
 
-          安装时按提示允许「安装未知来源应用」即可。这个 App 不申请任何权限 ——
-          没有网络、没有存储、没有通知，数据只留在你自己手机上。
+          ### [下载 Bitsay-${VERSION}.apk](https://github.com/${GITHUB_REPOSITORY}/releases/download/v${VERSION}/Bitsay-${VERSION}.apk)
+
+          手机上下载后点开，按提示允许「安装未知来源应用」即可。
+          这个 App 不申请任何权限 —— 没有网络、没有存储、没有通知，数据只留在你自己手机上。
 
           <details>
           <summary>校验信息（可选）</summary>
@@ -266,7 +268,7 @@ jobs:
           签名证书 SHA-256   ${CERT}
           \`\`\`
 
-          想核对的话：
+          想核对的话（在下载目录里跑）：
 
           \`\`\`bash
           sha256sum Bitsay-${VERSION}.apk

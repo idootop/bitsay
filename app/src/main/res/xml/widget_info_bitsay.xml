@@ -1,11 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  小组件的描述信息。
+
+  **不需要 -v31 限定符**：minSdk 已经是 31，description / previewLayout / targetCell* 全都能用。
+  之前拆成 xml/ 和 xml-v31/ 两份，结果两份漂移了 —— 老的那份连 description 都没有，
+  而它在任何受支持的设备上都永远不会被选中（-v31 命中一切），纯粹是负债。合成一份。
+
+  previewImage 是给**组件列表**用的静态图：API 31+ 的桌面可以拿 previewLayout 实时渲染，
+  但 31 以下只能靠这张图，而且不少桌面即使在 31+ 也仍然优先用它。
+-->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:configure="com.del.bitsay.widget.WidgetConfigActivity"
+    android:description="@string/widget_description"
     android:initialLayout="@layout/widget_bitsay_v3"
     android:minHeight="180dp"
     android:minResizeHeight="180dp"
     android:minResizeWidth="180dp"
     android:minWidth="180dp"
+    android:previewImage="@drawable/widget_preview"
+    android:previewLayout="@layout/widget_bitsay_v3"
     android:resizeMode="horizontal|vertical"
+    android:targetCellHeight="3"
+    android:targetCellWidth="3"
     android:updatePeriodMillis="0"
-    android:widgetCategory="home_screen" />
+    android:widgetCategory="home_screen"
+    android:widgetFeatures="reconfigurable" />

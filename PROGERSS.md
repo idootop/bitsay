@@ -2137,3 +2137,71 @@ SVG 撑满整块组件（描边被放大到填满叶子，看起来像实心绿�
 - `assembleDebug` / `assembleRelease` 均通过 —— 资源缺失会直接编译失败，所以这是强证据
 - 设计台：0 个 JS 错误、`var()` 无新增未定义、调色板 30 个 token 与 `Color.kt` 全等
 - `design/README.md` 补了工具用法和量测陷阱说明
+
+### 13.48 组件列表里的预览图（`android:previewImage`）
+
+需求：「桌面小组件在添加的时候，在组件列表里是支持设置预览图的吧，建议加一下预览效果图」。
+
+#### 之前的状态：两个 widget_info 文件，且都缺预览图
+
+| | `xml/widget_info_bitsay.xml` | `xml-v31/widget_info_bitsay.xml` |
+|---|---|---|
+| `description` / `previewLayout` / `targetCell*` / `widgetFeatures` | **都没有** | 有 |
+| `previewImage` | 没有 | 没有 |
+
+**而 `xml/` 那份在受支持的设备上永远不会被选中** —— minSdk 已经是 31，`-v31` 命中一切。
+两份还漂移了（老的那份少 5 个属性），纯粹是负债。合并成一份，去掉 `-v31` 限定符。
+
+#### 预览图画什么
+
+- 画布 **180×180**，和组件的 `minWidth/minHeight=180dp` 一致，也就是它的最小形态
+- 内容：底板 + 顶栏（进 App ｜ [笔记][待办] ｜ 搜索）+ 3 行笔记 + 右下角的 **+**
+- 文字用**灰条占位，不写真实文案**：预览图不跟语言走，写死中文在英文系统上就露馅
+- 浅色 / 深色两张（`drawable/` + `drawable-night/`）—— 按**系统**深色模式取。
+  组件本身跟随的是 App 的设置，但静态图拿不到这个信息，只能按系统猜；
+  `previewLayout` 被宿主 inflate 时也是同样的处境（§13.40 那个 bug 就是这么来的）
+
+先在设计台画（`js/app.js` 的 `widgetPreviewSvg`，第 ④ 节末尾新增一块），确认之后再落成 vector。
+
+#### 验证：把 vector 的 pathData 直接喂给 SVG 渲染
+
+手算了圆角矩形 / 胶囊（stadium）/ 圆的 arc 路径和 `<group>` 的 translate+scale，
+这部分最容易算错。用一个一次性 harness 把 `widget_preview.xml` 的
+`<path>`/`<group>` 翻成 SVG（pathData 语法本来就相同，只需换颜色和变换），
+和设计台那张**并排渲染对比 —— 完全一致** ✓
+
+产物核对（`aapt2 dump`）：
+
+```
+debug   : previewImage=@0x7f04002d  →  () res/drawable/widget_preview.xml
+                                      (night) res/drawable-night-v8/widget_preview.xml
+release : previewImage=@0x7f04002d  →  () res/81.xml  (night) res/yi.xml   ← 资源名被混淆
+```
+两个 variant 都带上了 `previewImage` / `previewLayout` / `description` / `targetCell*` ✓
+
+#### ⚠️ 这台设备上验证不了「选择器里显示预览图」
+
+vivo 的组件选择器是**列表式**的（应用图标 + 名称），不显示预览图；AOSP 风格的宫格选择器才会用。
+好消息是不用碰桌面就能打开它：
+
+```bash
+adb shell am start -a android.appwidget.action.APPWIDGET_PICK --ei appWidgetId 1
+# → com.android.settings/AppWidgetPickActivity
+```
+
+（注意：这个列表里往上下滑会**把选择器关掉**并落到桌面。看完按 BACK 关掉，不要点条目 —— 那会真的添加组件。）
+
+**顺带拿到的真实证据**：关掉之后桌面上那个组件正好是空状态 ——
+绿色嫩芽 + 「还没有笔记」+「点右下角的 + 写下第一条」，
+和设计台、App 三边完全一致（这正是 13.47 修的那处）。
+
+#### ⚠️ 另一个坑：删掉带限定符的 res 目录后，构建缓存会还魂
+
+`rm -rf res/xml-v31/` 之后 debug 和 release 都报
+`AAPT: error: resource xml/widget_info_bitsay not found`，**连 `./gradlew clean` 都修不好** ——
+Gradle 的构建缓存把陈旧的 `mergeResources` 结果又还原了回来。
+必须 `./gradlew :app:mergeReleaseResources --rerun-tasks`（对应 variant）
+强制重跑一次资源合并。
+
+**结论：删/改带限定符的 res 目录（`-v31`、`-night`、`-zh` …）之后，
+不要相信增量构建，直接强制重跑对应 variant 的 merge 任务。**

@@ -110,6 +110,16 @@ f.addEventListener('load', () => {
   check('首页标题 38px', homeTitle && w.getComputedStyle(homeTitle).fontSize === '38px',
     homeTitle ? w.getComputedStyle(homeTitle).fontSize : '-');
 
+  /* ---------- ⑥.5 组件列表预览图（和 drawable/widget_preview.xml 同几何） ---------- */
+  const prev = qa('#widgetpreview svg');
+  check('预览图两张（浅/深）', prev.length === 2, 'got ' + prev.length);
+  if (prev.length === 2) {
+    const bg = (s) => q('rect', s).getAttribute('fill');
+    check('浅色底板 = 画布色', bg(prev[0]) === '#E6E9F2', bg(prev[0]));
+    check('深色底板 = 纯黑', bg(prev[1]) === '#000000', bg(prev[1]));
+    check('画布 180×180', prev[0].getAttribute('viewBox') === '0 0 180 180');
+  }
+
   /* ---------- ⑦ 深浅色切换不报错 ---------- */
   click(q('#modes .btn[data-d="1"]'));
   check('切深色后 body 标记', d.body.dataset.dark === '1');

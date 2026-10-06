@@ -209,6 +209,7 @@ vivo V2309A：wm size 1260x2800，wm density 560  →  1260/3.5 = 360dp，2800/3
 | **小组件** | **206 × 535**，位于桌面 (36, 75) | `pages/widget.css` |
 | 小组件底板 / 行 | 底板 = **画布色** `#E6E9F2`（暗色 **纯黑**），行 = **白** `#FFFFFF`（暗色 `#1B1D29`）| `--w-tile` / `--w-row` |
 | 小组件点亮的 tab | 和一行 item **同一个面**（不是灰底、不是画布色） | `.widget__tab--on` |
+| 组件列表预览图 | **180×180**，顶栏 + 3 行 + FAB，文字用灰条占位 | `js/app.js` `widgetPreviewSvg` ↔ `drawable/widget_preview.xml` |
 | 小组件顶栏 / 图标按钮 | 47 / 43.7 | `--w-head-h` / `--w-btn` |
 | 小组件行 | 卡片 43，节距 47 | `--w-row-h` / `--w-row-gap` |
 | 小组件勾选圈 | 占位 40（= 真机声明 44dp × 0.91），字形盒 26 → **实际画出的圆 18.8dp** | `--w-tick-w` / `--w-tick-glyph` |

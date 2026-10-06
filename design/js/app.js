@@ -360,6 +360,61 @@ BitSay.app = (function () {
     });
   }
 
+  /* ---------------- ③.5 组件列表里的预览图 ----------------
+     和 drawable/widget_preview.xml(+ -night) **几何逐字相同**，改一边要改另一边。
+     画布 180×180 单位 = 180dp（组件最小形态 minWidth/minHeight=180dp）。 */
+  function widgetPreviewSvg(dark) {
+    const tile  = dark ? '#000000' : '#E6E9F2';
+    const row   = dark ? '#1B1D29' : '#FFFFFF';
+    const bar   = dark ? '#3A3D4D' : '#C9CEDC';   // 占位文字条
+    const ink   = dark ? '#F2F3F8' : '#191B26';   // 顶栏图标
+    const faint = dark ? '#6E7387' : '#8A90A6';   // 未选中的 tab 文字条
+    const trough= dark ? 'rgba(242,243,248,.07)' : 'rgba(25,27,38,.06)';
+    const accent= dark ? '#FFFFFF' : '#000000';
+    const accentInk = dark ? '#111318' : '#FFFFFF';
+    // 三条占位文字，长度不同才像真的列表
+    const barW = [96, 64, 108];
+    const rows = [40, 76, 112].map((y, i) => `
+      <rect x="8" y="${y}" width="164" height="32" rx="9" fill="${row}"/>
+      <rect x="20" y="${y + 13}" width="${barW[i]}" height="6" rx="3" fill="${bar}"/>`).join('');
+    return `<svg viewBox="0 0 180 180" width="180" height="180" xmlns="http://www.w3.org/2000/svg">
+      <rect width="180" height="180" rx="24" fill="${tile}"/>
+      <!-- 顶栏：进 App ｜ [笔记][待办] ｜ 搜索 -->
+      <g transform="translate(11,11) scale(0.7)" fill="none" stroke="${ink}"
+         stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12,22 C11.7,17.76 11.7,14.12 12,10.48"/>
+        <path d="M12,10.48 C8.36,10.79 4.73,7.45 4.73,2 C8.97,2 12,5.64 12,10.48 Z"/>
+        <path d="M12,10.48 C15.64,10.79 19.27,7.45 19.27,2 C15.03,2 12,5.64 12,10.48 Z"/>
+      </g>
+      <rect x="46" y="9" width="76" height="22" rx="11" fill="${trough}"/>
+      <rect x="48" y="11" width="36" height="18" rx="9" fill="${row}"/>
+      <rect x="59" y="17" width="14" height="6" rx="3" fill="${ink}"/>
+      <rect x="94" y="17" width="14" height="6" rx="3" fill="${faint}"/>
+      <g transform="translate(148,10) scale(0.72)" fill="none" stroke="${ink}"
+         stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="10.6" cy="11" r="6.6"/><path d="M15.6 15.6 L20 20"/>
+      </g>
+      ${rows}
+      <circle cx="152" cy="152" r="14" fill="${accent}"/>
+      <g stroke="${accentInk}" stroke-width="2.4" stroke-linecap="round">
+        <path d="M152 145 V159 M145 152 H159"/>
+      </g>
+    </svg>`;
+  }
+
+  function mountWidgetPreview(root) {
+    const box = el('#widgetpreview', root);
+    if (!box) return;
+    [['浅色（drawable/widget_preview.xml）', false],
+     ['深色（drawable-night/widget_preview.xml）', true]].forEach(([cap, dark]) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'col';
+      wrap.innerHTML = `<div class="wprev">${widgetPreviewSvg(dark)}</div>
+        <div class="col__cap">${esc(cap)}</div>`;
+      box.appendChild(wrap);
+    });
+  }
+
   /* ---------------- ③.8 应用图标 ---------------- */
   function mountAppIcons(root) {
     const box = el('#appicons', root);
@@ -502,6 +557,7 @@ BitSay.app = (function () {
     mountWide(document);
     mountOverview(document);
     mountWidgets(document);
+    mountWidgetPreview(document);
     mountEmptyStates(document);
     mountAppIcons(document);
     mountComponents(document);

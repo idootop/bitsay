@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  组件列表里显示的那张预览图（android:previewImage）。
+
+  **画布 180×180 = 组件的 minWidth/minHeight**，也就是它最小的形态：顶栏 + 3 行的笔记列表 + 右下角的 +。
+  用户是在组件列表里第一次看到这个组件的，那里不跑实时渲染（API 31 以下连 previewLayout 都没有），
+  所以这张图得自己把组件的样子说清楚。
+
+  文字用灰条占位、不写真实文案：预览图不跟语言走，写死中文在英文系统上就露馅。
+  同名的 -night 版本按**系统**深色模式取 —— 组件本身跟随的是 App 的设置，静态图拿不到这个信息，
+  只能按系统猜，previewLayout 也是同样的处境。
+
+  几何和设计台 tools 里那张 SVG（js/app.js 的 widgetPreviewSvg）逐字对应，改一边要改另一边。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="180dp"
+    android:height="180dp"
+    android:viewportWidth="180"
+    android:viewportHeight="180">
+
+    <!-- 底板 -->
+    <path android:fillColor="#FFE6E9F2" android:pathData="M24,0 h132 a24,24 0 0 1 24,24 v132 a24,24 0 0 1 -24,24 h-132 a24,24 0 0 1 -24,-24 v-132 a24,24 0 0 1 24,-24 Z"/>
+
+    <!-- 顶栏：进 App ｜ [笔记][待办] ｜ 搜索 -->
+    <group android:translateX="11" android:translateY="11" android:scaleX="0.7" android:scaleY="0.7">
+        <path android:fillColor="#00000000" android:strokeColor="#FF191B26" android:strokeWidth="2.6"
+            android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M12,22 C11.7,17.76 11.7,14.12 12,10.48"/>
+        <path android:fillColor="#00000000" android:strokeColor="#FF191B26" android:strokeWidth="2.6"
+            android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M12,10.48 C8.36,10.79 4.73,7.45 4.73,2 C8.97,2 12,5.64 12,10.48 Z"/>
+        <path android:fillColor="#00000000" android:strokeColor="#FF191B26" android:strokeWidth="2.6"
+            android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M12,10.48 C15.64,10.79 19.27,7.45 19.27,2 C15.03,2 12,5.64 12,10.48 Z"/>
+    </group>
+    <path android:fillColor="#0F191B26" android:pathData="M57,9 h54 a11,11 0 0 1 0,22 h-54 a11,11 0 0 1 0,-22 Z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M57,11 h18 a9,9 0 0 1 9,9 v0 a9,9 0 0 1 -9,9 h-18 a9,9 0 0 1 -9,-9 v-0 a9,9 0 0 1 9,-9 Z"/>
+    <path android:fillColor="#FF191B26" android:pathData="M62,17 h8 a3,3 0 0 1 0,6 h-8 a3,3 0 0 1 0,-6 Z"/>
+    <path android:fillColor="#FF8A90A6" android:pathData="M97,17 h8 a3,3 0 0 1 0,6 h-8 a3,3 0 0 1 0,-6 Z"/>
+    <group android:translateX="148" android:translateY="10" android:scaleX="0.72" android:scaleY="0.72">
+        <path android:fillColor="#00000000" android:strokeColor="#FF191B26" android:strokeWidth="2.6"
+            android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M10.6,11 m-6.6,0 a6.6,6.6 0 1,0 13.2,0 a6.6,6.6 0 1,0 -13.2,0"/>
+        <path android:fillColor="#00000000" android:strokeColor="#FF191B26" android:strokeWidth="2.6"
+            android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M15.6,15.6 L20,20"/>
+    </group>
+
+    <!-- 三行笔记：行是白/深灰，文字只用长度不同的灰条占位 -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M17,40 h146 a9,9 0 0 1 9,9 v14 a9,9 0 0 1 -9,9 h-146 a9,9 0 0 1 -9,-9 v-14 a9,9 0 0 1 9,-9 Z"/>
+    <path android:fillColor="#FFC9CEDC" android:pathData="M23,53 h90 a3,3 0 0 1 0,6 h-90 a3,3 0 0 1 0,-6 Z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M17,76 h146 a9,9 0 0 1 9,9 v14 a9,9 0 0 1 -9,9 h-146 a9,9 0 0 1 -9,-9 v-14 a9,9 0 0 1 9,-9 Z"/>
+    <path android:fillColor="#FFC9CEDC" android:pathData="M23,89 h58 a3,3 0 0 1 0,6 h-58 a3,3 0 0 1 0,-6 Z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M17,112 h146 a9,9 0 0 1 9,9 v14 a9,9 0 0 1 -9,9 h-146 a9,9 0 0 1 -9,-9 v-14 a9,9 0 0 1 9,-9 Z"/>
+    <path android:fillColor="#FFC9CEDC" android:pathData="M23,125 h102 a3,3 0 0 1 0,6 h-102 a3,3 0 0 1 0,-6 Z"/>
+    <!-- 右下角的 + -->
+    <path android:fillColor="#FF000000" android:pathData="M138,152 a14,14 0 1 0 28,0 a14,14 0 1 0 -28,0 Z"/>
+    <path android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="2.4"
+        android:strokeLineCap="round" android:pathData="M152,145 V159 M145,152 H159"/>
+</vector>

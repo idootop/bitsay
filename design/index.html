@@ -71,6 +71,15 @@
     <b>装不下「顶栏 + 3 行」时顶栏自动收起</b>。点 tab 会同时切换所有尺寸的小组件。</p>
   <div class="stage" id="widgets"></div>
 
+  <h3 class="sect-sub3">组件列表里的预览图（<code>android:previewImage</code>）</h3>
+  <p class="sect-sub">用户是在<b>组件列表</b>里第一次看到这个组件的，那里显示的不是上面这些实时样机，
+    而是一张静态预览图（API 31+ 才可能用 <code>previewLayout</code> 实时渲染，之前的版本只能靠它）。
+    画布 <b>180×180dp</b> —— 和 <code>minWidth/minHeight</code> 一致，也就是组件的最小形态：
+    顶栏 + 3 行的笔记列表，右下角是 + 。文字用灰条占位，<b>不放真实文案</b>：预览图不跟着语言走，
+    写死中文在英文系统上就露馅了。浅色 / 深色两张，按<b>系统</b>深色模式取（组件本身跟的是 App 设置，
+    但静态图没有这个信息，只能按系统猜 —— 和 <code>previewLayout</code> 的处境一样）。</p>
+  <div class="stage" id="widgetpreview"></div>
+
 
   <h2 class="sect-title"><span class="n">⑤</span>空状态</h2>
   <p class="sect-sub">空状态里那株<b>植物线描</b>会自己长出来：茎 0s → 左叶 .42s → 右叶 .66s（`stroke-dashoffset`），

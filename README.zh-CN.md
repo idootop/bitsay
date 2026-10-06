@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/images/logo.svg" width="96" alt="碎碎念">
+<img src="assets/logo.svg" width="96" alt="碎碎念">
 
 <h1>碎碎念</h1>
 
@@ -19,13 +19,13 @@
 ## 预览
 
 <p align="center">
-  <img src="docs/images/cn-desk-todo.jpeg" width="220"> <img src="docs/images/cn-home-note.jpeg" width="220"> <img src="docs/images/cn-settings.jpeg" width="220">
+  <img src="assets/cn-desk-todo.jpeg" width="220"> <img src="assets/cn-home-note.jpeg" width="220"> <img src="assets/cn-settings.jpeg" width="220">
 </p>
 
 <p align="center"><sub>桌面小组件 &nbsp;·&nbsp; 笔记 &nbsp;·&nbsp; 设置</sub></p>
 
 <p align="center">
-  <img src="docs/images/cn-tablet.jpeg" width="720" alt="平板与折叠屏布局">
+  <img src="assets/cn-tablet.jpeg" width="720" alt="平板与折叠屏布局">
 </p>
 
 <p align="center"><sub>完美适配平板、折叠屏设备</sub></p>

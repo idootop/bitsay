@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/images/logo.svg" width="96" alt="BitSay">
+<img src="assets/logo.svg" width="96" alt="BitSay">
 
 <h1>BitSay</h1>
 
@@ -19,13 +19,13 @@
 ## Preview
 
 <p align="center">
-  <img src="docs/images/en-desk-todo.jpeg" width="220"> <img src="docs/images/en-home-note.jpeg" width="220"> <img src="docs/images/en-settings.jpeg" width="220">
+  <img src="assets/en-desk-todo.jpeg" width="220"> <img src="assets/en-home-note.jpeg" width="220"> <img src="assets/en-settings.jpeg" width="220">
 </p>
 
 <p align="center"><sub>On the home screen &nbsp;·&nbsp; Notes &nbsp;·&nbsp; Settings</sub></p>
 
 <p align="center">
-  <img src="docs/images/en-tablet.jpeg" width="720" alt="Tablet and foldable layout">
+  <img src="assets/en-tablet.jpeg" width="720" alt="Tablet and foldable layout">
 </p>
 
 <p align="center"><sub>On a wide screen the list stays put and the editor opens beside it</sub></p>

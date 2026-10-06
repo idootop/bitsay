@@ -66,8 +66,9 @@ out/
 # ⚠️ 删掉这几行 = 把正式分发签名和口令公开出去，不要动。
 #    反面代价：密钥不进库，所以 keystore/ 与 keystore.properties 必须另行备份，
 #    否则换电脑 / 丢盘之后就永远无法给 com.del.bitsay 发更新。
-keystore/*
-!keystore/README.md
+keystore/
+#    整个目录都不进库（连里面的 README 也不进）：目录还在本地，只是 git 不看它。
+#    签名相关的手册在 .github/SIGNING.md。
 *.jks
 *.keystore
 *.p12

@@ -2455,7 +2455,7 @@ tools/shots.html?p=notes|todos|editor&dark=1|tablet|widget|logo
 --force-device-scale-factor=2 --window-size=W,H
 ```
 
-产出 `docs/images/`：`logo.svg`（应用图标 108 母版，补了 rx=24 圆角 ——
+产出 `assets/`：`logo.svg`（应用图标 108 母版，补了 rx=24 圆角 ——
 母版是方形满幅、靠宿主裁切，README 里要的是桌面上看到的样子）、
 `shot-notes/todos/editor/widget/tablet.png`。
 

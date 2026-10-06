@@ -1,0 +1,127 @@
+# 把正式签名密钥交给 GitHub 打包
+
+发版 workflow 需要四个值才能签出**和本地一致**的 release 包。这份文档只讲怎么把它们安全地放上去，
+以及为什么这么放。
+
+> ⚠️ **密钥丢 = 永远无法给 `com.del.bitsay` 发更新。** 用同一个包名发新版，签名必须一致，
+> 否则用户只能卸载重装（数据全丢）。`.gitignore` 把密钥挡在库外是对的，但代价是
+> `keystore/bitsay-release.jks` 和它的口令**必须另外备份**（密码管理器 / 离线介质 / 私密仓库），
+> 不能只存在这一台电脑上。
+
+---
+
+## 一、要配什么
+
+| 名称 | 内容 | 怎么来 |
+|---|---|---|
+| `KEYSTORE_BASE64` | `.jks` 文件的 base64 | 见下面的命令 |
+| `KEYSTORE_PASSWORD` | `keystore.properties` 里的 `storePassword` | 你自己设的 |
+| `KEY_ALIAS` | `keyAlias` | 你自己设的 |
+| `KEY_PASSWORD` | `keyPassword` | 你自己设的 |
+
+生成 base64（**单行**，不带换行）：
+
+```bash
+base64 -i keystore/bitsay-release.jks | tr -d '\n' | pbcopy   # macOS，直接进剪贴板
+base64 -i keystore/bitsay-release.jks | tr -d '\n'            # Linux
+```
+
+> macOS 的 `base64` 默认就会折行，`tr -d '\n'` 是必须的。workflow 里也做了 `tr -d '[:space:]'`
+> 兜底，但别依赖它。
+
+---
+
+## 二、放在 **Environment** 里，不是普通 repo secret
+
+这是整件事最重要的一条。
+
+普通 repo secret 对**任何**能跑 workflow 的地方都可见。而这个仓库里有一个长期有效的
+分发签名密钥 —— 一旦泄露，别人就能签出「看起来是你发的」安装包，而且**没有吊销手段**。
+
+所以：
+
+1. 仓库 → **Settings → Environments → New environment**，名字填 **`release`**
+2. 在这个 environment 里加那四个 secret（**不是**在 Repository secrets 里加）
+3. 给这个 environment 配 **Required reviewers**，填上你自己
+
+配好之后，`.github/workflows/release.yml` 里那句 `environment: release` 会让 job
+**先停下来等人点批准**才继续，密钥也只有在批准之后才会下发到 runner。
+
+**效果：即使误推了一个 `v1.0.0` tag，也不会有任何东西被签出来、被发出去，除非你亲手点了批准。**
+
+命令行配置（需要 `gh` 且已登录）：
+
+```bash
+gh api -X PUT repos/:owner/:repo/environments/release
+
+for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+  gh secret set "$name" --env release --repo :owner/:repo
+done
+
+# 加必填审批人（把 <你的用户名> 和 id 换掉，id 用 gh api user --jq .id）
+gh api -X PUT repos/:owner/:repo/environments/release \
+  -f 'reviewers[][type]=User' -F 'reviewers[][id]=<你的数字 id>'
+```
+
+---
+
+## 三、workflow 那边怎么用
+
+密钥**只以环境变量形式出现**，不写进任何命令行参数 —— 命令行会被完整打进日志，
+环境变量的值 GitHub 会自动打码成 `***`：
+
+```yaml
+env:
+  KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+  KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+  KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+  KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+```
+
+然后 `printf` 出 `keystore.properties`（**不用 heredoc**：口令里如果有引号或反斜杠，
+heredoc 会被 shell 再解释一遍），`storeFile` 指向 runner 上临时解出来的那份。
+跑完密钥留在 runner 上，runner 是一次性的，任务结束即销毁。
+
+**签名没生效要能立刻发现。** AGP 在没有 `keystore.properties` 时会安静地出一个
+**未签名**的包，所以 workflow 里有一道 `apksigner verify`，未签名直接让 job 失败。
+
+---
+
+## 四、不要做的事
+
+- ❌ **不要**把 `.jks` 或 `keystore.properties` 提交进库（`.gitignore` 已经挡住，别去动那几行）
+- ❌ **不要**在 workflow 里 `echo` 任何密钥；调试时也别 `set -x`
+- ❌ **不要**用 `pull_request_target` 触发任何带这些 secret 的 workflow ——
+  那个触发器会把 secret 交给 fork 过来的代码
+- ❌ **不要**把密钥加到 Repository secrets 就完事；那样少了一道人工审批
+
+---
+
+## 五、验证 CI 签出来的包和本地是同一个签名
+
+两边都跑一遍，比对 SHA-256 指纹：
+
+```bash
+apksigner verify --print-certs app/build/outputs/apk/release/*.apk \
+  | grep 'certificate SHA-256'
+```
+
+当前正式密钥的指纹（`CN=bitsay, OU=bitsay, O=del, L=Beijing, ST=Beijing, C=CN`）：
+
+```
+1f6448510feefc8dcafdfad986201765ad58de8c4f288593d1820b8a9b56732f
+```
+
+CI 每次发版也会把这个指纹写进 release notes 和 job summary，用户拿到包可以自己核。
+
+---
+
+## 六、关于「测试阶段不要真的发布」
+
+workflow 默认**只出 draft**：
+
+- 推 tag → 建 **draft** release（只有协作者看得到，资产和 notes 都已经生成好，确认无误再手动 Publish）
+- 手动触发 → `publish` 默认 `none`，**连 release 都不建**，只在 Actions 页面留一个构建产物
+
+所以「推了个 tag 结果冒出一个公开 release」这件事不会发生。真要公开必须显式选 `release`，
+或者事后自己点 Publish。

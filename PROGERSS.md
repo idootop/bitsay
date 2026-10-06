@@ -2205,3 +2205,95 @@ Gradle 的构建缓存把陈旧的 `mergeResources` 结果又还原了回来。
 
 **结论：删/改带限定符的 res 目录（`-v31`、`-night`、`-zh` …）之后，
 不要相信增量构建，直接强制重跑对应 variant 的 merge 任务。**
+
+### 13.49 发版流水线：GitHub Actions（推 tag / 手动触发）
+
+需求：「添加 GitHub Action 支持推送 tag 或手动打包发版（使用最新的 action 版本），
+带 release note 和支持的安卓版本说明」+「考虑怎么把我本地的正式签名密钥放到 GitHub 上安全打包发版」
++「当前只是测试阶段，不要真的发布一个 public 的 release」+「action 不需要钉到 commit SHA，
+钉在最新大版本的最新版本即可」。
+
+这同时清掉了 §10 里挂着的那条：「CI / 版本号自动化（现在 `versionCode = 1`，手改）」。
+
+#### 版本号：tag 是唯一事实来源
+
+`app/build.gradle.kts` 接受 `-PversionName` / `-PversionCode` 覆盖，字面量只是**本地构建的默认值**：
+
+```kotlin
+val appVersionName = (findProperty("versionName") as String?) ?: "1.0.0"
+val appVersionCode = (findProperty("versionCode") as String?)?.toIntOrNull() ?: 10_000
+```
+
+`versionCode` 由版本号**推导**，不手写：`major*10000 + minor*100 + patch`。
+v1.2.3 → 10203，v2.0.0 → 20000 —— 只增不减（Android 唯一的要求），而且能读回版本号。
+默认值取 10000 而不是 1，就是为了和这条公式对齐，否则本地包和 CI 包的 versionCode 会对不上。
+
+实测：`-PversionName=1.2.3 -PversionCode=10203` → `versionCode='10203' versionName='1.2.3-debug'`；
+不带参数 → `10000 / 1.0.0` ✓
+
+#### 触发与"不会误发"
+
+| 入口 | 行为 |
+|---|---|
+| 推 tag `v1.2.3` | 构建 + 签名 + 上传构建产物 + 建 **draft** release |
+| 手动触发 | 自己填版本号；`publish` 选 `none` / `draft` / `release`，**默认 `none`** |
+
+`none` 连 release 都不建，只在 Actions 页面留一个构建产物。推 tag 只出 **draft** ——
+draft 只有协作者看得到，资产和 notes 都生成好了，确认无误再手动 Publish。
+**「推了个 tag 结果冒出一个公开 release」这件事不会发生。**
+
+#### 签名密钥：放 Environment，不放 repo secret
+
+这是整个需求里最需要想清楚的一步，写进了 `.github/SIGNING.md`：
+
+- 四个值：`KEYSTORE_BASE64` / `KEYSTORE_PASSWORD` / `KEY_ALIAS` / `KEY_PASSWORD`
+- 放**名为 `release` 的 Environment**，并配上 **Required reviewers**。
+  workflow 里 `environment: release` 会让 job **先停下来等人点批准**，密钥批准后才下发。
+  **即使误推了 tag，也不会有任何东西被签出来。**
+- 密钥只以**环境变量**形式出现，不写进任何命令行参数（命令行会完整进日志；环境变量的值会被自动打码）
+- `keystore.properties` 用 `printf` 生成而不是 heredoc —— 口令里若有引号/反斜杠，heredoc 会被再解释一遍
+- ⚠️ **AGP 在没有 `keystore.properties` 时会安静地出未签名的包**，所以有一道 `apksigner verify`
+  兜底，未签名直接让 job 失败
+- 文档里也重申了密钥丢失的后果（同一个包名必须同一个签名，丢了就永远发不了更新）
+
+#### action 版本
+
+按用户要求钉在**最新大版本的最新小版本**（不钉 SHA）：checkout `v7.0.1`、
+setup-java `v6.0.1`、gradle/actions `v6.4.0`、upload-artifact `v7.0.1`、action-gh-release `v3.0.3`。
+版本号是查各仓库 release API 得到的，不是猜的。文件顶部列了清单，升级时一起改。
+
+#### 真跑一遍才发现的两个问题
+
+**① bash 会把 `$VAR` 后面的多字节字符算进变量名。**
+release notes 里写 `$VERSION（versionCode $CODE）`，全角括号紧跟在变量名后面，
+bash 把变量名解析成 `VERSION（` → `unbound variable`，CI 上会直接挂。
+**中文文案里的变量必须写 `${VAR}` 带花括号。** 已加注释说明原因，并留了一个检查脚本。
+
+**② 顶层 `permissions: contents: read` 会让建 release 的步骤没权限。**
+改成顶层只读、**job 级** `contents: write`（最小权限）。
+
+#### 验证方式：把 YAML 里的 run 段抽出来真跑
+
+不是"看一眼觉得对"，而是用 ruby 把 `jobs.release.steps[].run` 逐段导出成 `.sh`，
+替换掉 GitHub 表达式（`${{ ... }}`）后用**真实签名密钥**跑一遍：
+
+| 步骤 | 结果 |
+|---|---|
+| 版本解析 | tag `v1.2.3` → `1.2.3 / 10203`；手动 `2.0.0` → `20000`；非法 `1.2` → `::error::` 退出 ✓ |
+| 发布方式 | 推 tag → `draft`；手动 → 按输入 ✓ |
+| 写密钥 + 构建 | `BUILD SUCCESSFUL`，产物 `versionCode=10000 versionName=1.0.0` ✓ |
+| 验签 | V2 signer `CN=bitsay,…`，证书 SHA-256 `1f644851…`，APK SHA-256 已算出 ✓ |
+| release notes | 生成完整（含支持版本 / 安装 / 校验 / 指纹）✓ |
+| job summary | 表格正常 ✓ |
+| 全部 run 段 `bash -n` | 8/8 通过 ✓ |
+
+临时文件（`certs.txt` / `release-notes.md`）改用 `$RUNNER_TEMP`，不再落在仓库根目录 ——
+实测跑完 `git status` 干净 ✓
+
+本机状态已还原：`keystore.properties` 指回 `keystore/bitsay-release.jks`，测试用的
+`keystore/release.jks` 已删除，本地 `assembleRelease` 复测正常 ✓
+
+#### 还没做
+
+- **没有加 PR/push 的基础 CI**（只做了发版）。要的话是一个独立的 `ci.yml`：`assembleDebug` + lint。
+- 密钥目前**只有本机一份**。文档里强调了要另行备份，但备份本身得你自己做。

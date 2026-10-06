@@ -1,0 +1,284 @@
+# =============================================================================
+#  发版：推 tag 或手动触发，出一个**已签名**的 release APK
+# -----------------------------------------------------------------------------
+#  两条入口：
+#    · 推送 tag（v1.0.0）→ 构建 + 签名 + 上传构建产物 + 建一个 **draft** release
+#    · 手动触发         → 自己填版本号，publish 选 none / draft / release
+#
+#  ⚠️ **默认只出 draft，不会自动公开**。draft 只有仓库协作者看得到，
+#     资产和 release note 都生成好了，确认没问题再手动点 Publish。
+#     要真正公开必须显式选：手动触发 + publish=release，或者事后自己点 Publish。
+#
+#  签名密钥放在名为 `release` 的 **Environment** 里（不是普通 repo secret）：
+#  给这个 environment 配上 required reviewers 之后，任何一次发版都必须有人点批准
+#  才能读到密钥 —— 这是"测试阶段不会误发"最重要的一道闸。
+#  配置步骤见 .github/SIGNING.md。
+#
+#  action 版本：钉在**最新大版本的最新小版本**（不用 SHA）。
+#  升级时连着注释里的版本号一起改。当前：
+#    actions/checkout              v7.0.1
+#    actions/setup-java            v6.0.1
+#    gradle/actions/setup-gradle   v6.4.0
+#    actions/upload-artifact       v7.0.1
+#    softprops/action-gh-release   v3.0.3
+# =============================================================================
+name: Release
+
+on:
+  push:
+    tags:
+      # 粗筛成 v* 就够：这里只支持 glob，字符类不保证可用。
+      # 严格的 x.y.z 校验放在「解析版本号」那一步，那里能给出一句人话的报错。
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（不带 v），例如 1.0.0'
+        required: true
+        type: string
+      publish:
+        description: '是否创建 GitHub Release（none = 只上传构建产物；draft = 不公开，推荐；release = 直接公开）'
+        required: true
+        type: choice
+        options: [none, draft, release]
+        default: none
+
+# 默认最小权限；只有建 release 的那一步需要写
+permissions:
+  contents: read
+
+# 同一个版本不要并发跑两次，否则两个 job 会抢同一个 tag / release
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    # 密钥挂在这个 environment 上。配上 required reviewers 后，job 会先停下来等人批准。
+    environment: release
+    # 顶层给的是只读；只有这个 job 需要写 —— 建 release / 传资产要 contents: write。
+    permissions:
+      contents: write
+
+    env:
+      # 签名密钥**只以环境变量形式出现**，不写进任何命令行参数 ——
+      # 命令行会被完整打进日志，环境变量的值会被 GitHub 自动打码。
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: 装 JDK 21
+        uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: 装 Gradle
+        uses: gradle/actions/setup-gradle@v6.4.0
+
+      # ubuntu runner 自带的 SDK 不一定有 API 37（Android 17），缺了就装上
+      - name: 确保 Android SDK 37 存在
+        run: |
+          SDKMANAGER=$(ls "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | tail -1)
+          if [ -z "$SDKMANAGER" ]; then
+            echo "::error::找不到 sdkmanager，runner 的 Android SDK 布局变了"
+            exit 1
+          fi
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          "$SDKMANAGER" "platforms;android-37" "build-tools;37.0.0"
+
+      # ---- 版本号：tag 是唯一事实来源，versionCode 由版本号推导 ------------------
+      - name: 解析版本号
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            VERSION="$INPUT_VERSION"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"     # 推 tag：v1.2.3 -> 1.2.3
+          fi
+
+          if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::版本号必须形如 1.2.3，收到的是 '$VERSION'"
+            exit 1
+          fi
+
+          IFS=. read -r MAJOR MINOR PATCH <<< "$VERSION"
+          # major*10000 + minor*100 + patch —— 只增不减，且能读回版本号
+          CODE=$((MAJOR * 10000 + MINOR * 100 + PATCH))
+
+          echo "version=$VERSION"     >> "$GITHUB_OUTPUT"
+          echo "code=$CODE"           >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION"        >> "$GITHUB_OUTPUT"
+          echo "apk=Bitsay-$VERSION.apk" >> "$GITHUB_OUTPUT"
+          echo "解析结果：v$VERSION (versionCode $CODE)"
+
+      # ---- 是否发 release -------------------------------------------------------
+      # 推 tag 默认 draft（不公开）；手动触发按输入来。测试阶段永远不会因为推了个 tag
+      # 就冒出一个人人都能看到的 release。
+      - name: 决定发布方式
+        id: publish
+        env:
+          INPUT_PUBLISH: ${{ inputs.publish }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            MODE="$INPUT_PUBLISH"
+          else
+            MODE="draft"
+          fi
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "发布方式：$MODE"
+
+      # ---- 签名密钥 -------------------------------------------------------------
+      - name: 写入签名密钥
+        run: |
+          set -euo pipefail
+          if [ -z "${KEYSTORE_BASE64:-}" ]; then
+            echo "::error::没有读到 KEYSTORE_BASE64。签名密钥要放在名为 release 的 Environment 里，见 .github/SIGNING.md"
+            exit 1
+          fi
+          mkdir -p keystore
+          # base64 -d 不认换行以外的空白，先清掉再解
+          printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > keystore/release.jks
+          # 用 printf 而不是 heredoc：口令里的引号 / 反斜杠不会被 shell 再解释一遍
+          printf 'storeFile=keystore/release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+            "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > keystore.properties
+          echo "密钥已写入（内容不打印）"
+
+      - name: 构建 release APK
+        run: |
+          ./gradlew :app:assembleRelease --no-daemon \
+            -PversionName=${{ steps.version.outputs.version }} \
+            -PversionCode=${{ steps.version.outputs.code }}
+
+      # ---- 验收：必须是**已签名**的包，否则发出去也装不上 ------------------------
+      - name: 校验签名并计算摘要
+        id: verify
+        run: |
+          set -euo pipefail
+          UNALIGNED=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+          if [ -z "$UNALIGNED" ]; then
+            echo "::error::没找到 release APK"
+            exit 1
+          fi
+
+          # 密钥没写进去的话 AGP 会出**未签名**的包，这一步就是拦它的
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | tail -1)
+          CERTS="$RUNNER_TEMP/certs.txt"
+          if ! "$APKSIGNER" verify --print-certs "$UNALIGNED" > "$CERTS" 2>&1; then
+            echo "::error::APK 签名校验失败："
+            cat "$CERTS"
+            exit 1
+          fi
+          cat "$CERTS"
+
+          CERT=$(grep -m1 'certificate SHA-256 digest' "$CERTS" | awk '{print $NF}')
+          SHA=$(sha256sum "$UNALIGNED" | awk '{print $1}')
+          SIZE=$(du -h "$UNALIGNED" | cut -f1)
+
+          # 在 gradle 的产物目录里就地改名 —— 不换目录，避免踩到 AGP 的 output-metadata
+          APK="${{ steps.version.outputs.apk }}"
+          mv "$UNALIGNED" "app/build/outputs/apk/release/$APK"
+
+          {
+            echo "cert=$CERT"
+            echo "sha=$SHA"
+            echo "size=$SIZE"
+          } >> "$GITHUB_OUTPUT"
+          echo "签名证书 SHA-256: $CERT"
+          echo "APK SHA-256:      $SHA"
+
+      # ⚠️ 这里的 heredoc 是**不带引号**的（内容要展开 $VERSION / $SHA 等），
+      #    所以正文里的变量一律写成 ${VAR} 带花括号：bash 会把紧跟在 $VAR 后面的
+      #    多字节字符（比如全角括号）也算进变量名，`$VERSION（` 会被当成变量
+      #    `VERSION（` 而报 unbound variable。真跑一遍才发现，CI 上会直接挂。
+      - name: 生成 release notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          CODE: ${{ steps.version.outputs.code }}
+          CERT: ${{ steps.verify.outputs.cert }}
+          SHA: ${{ steps.verify.outputs.sha }}
+          SIZE: ${{ steps.verify.outputs.size }}
+        run: |
+          set -euo pipefail
+          NOTES="$RUNNER_TEMP/release-notes.md"
+          cat > "$NOTES" <<EOF
+          **支持的安卓版本：Android 12（API 31）及以上**（目标版本 Android 17 / API 37）。
+
+          低于 Android 12 装不上。这不是随手定的下限：桌面小组件用的
+          \`RemoteViews.RemoteCollectionItems\`、\`targetCellWidth\`、\`previewLayout\` 都是 API 31 才有的接口，
+          而它们正是 Android 17 上仍然推荐的那套集合式组件 API。
+
+          ### 这个包里有什么
+          - 纯文字笔记 + 待办，增删改查、创建/修改时间
+          - 桌面小组件：切笔记/待办、勾选完成、点开查看、**+** 快捷记录、搜索、缩放尺寸
+          - 备份与还原：导出成一个 \`.bitsay.gz\` 文件，换手机时导入即可
+
+          **不需要任何权限**（没有网络、没有存储、没有通知），数据只在你自己手机上。
+
+          ### 安装
+          1. 下载下面的 \`Bitsay-$VERSION.apk\`
+          2. 手机上点开，按提示允许「安装未知来源应用」
+          3. 已在旧版本上安装过的，直接覆盖安装即可，数据不会丢（签名相同）
+
+          ### 校验
+          想确认包没被改过、以及和以后的版本是同一个签名：
+
+          \`\`\`
+          文件大小        $SIZE
+          APK SHA-256     $SHA
+          签名证书 SHA-256 $CERT
+          \`\`\`
+
+          \`\`\`bash
+          sha256sum Bitsay-$VERSION.apk
+          apksigner verify --print-certs Bitsay-$VERSION.apk
+          \`\`\`
+
+          > 版本号 ${VERSION}（versionCode ${CODE}）。versionCode 由版本号推导：major×10000 + minor×100 + patch。
+          EOF
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: Bitsay-${{ steps.version.outputs.version }}
+          path: app/build/outputs/apk/release/${{ steps.version.outputs.apk }}
+          if-no-files-found: error
+          # 签名包不是长期存档，别占着默认的 90 天
+          retention-days: 30
+
+      - name: 创建 GitHub Release
+        if: steps.publish.outputs.mode != 'none'
+        uses: softprops/action-gh-release@v3.0.3
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: 碎碎念 Bitsay ${{ steps.version.outputs.tag }}
+          body_path: ${{ runner.temp }}/release-notes.md
+          files: app/build/outputs/apk/release/${{ steps.version.outputs.apk }}
+          # draft 时这一步产出的东西只有协作者看得到，确认无误再手动 Publish
+          draft: ${{ steps.publish.outputs.mode == 'draft' }}
+          fail_on_unmatched_files: true
+          # 追加 GitHub 自动生成的 commit 列表；和上面的 body 合在一起
+          generate_release_notes: true
+
+      - name: 结果
+        run: |
+          {
+            echo "### Bitsay ${{ steps.version.outputs.tag }}"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| 版本 | \`${{ steps.version.outputs.version }}\`（versionCode ${{ steps.version.outputs.code }}）|"
+            echo "| 支持安卓 | Android 12（API 31）及以上 |"
+            echo "| APK SHA-256 | \`${{ steps.verify.outputs.sha }}\` |"
+            echo "| 签名证书 SHA-256 | \`${{ steps.verify.outputs.cert }}\` |"
+            echo "| 发布方式 | ${{ steps.publish.outputs.mode }} |"
+          } >> "$GITHUB_STEP_SUMMARY"

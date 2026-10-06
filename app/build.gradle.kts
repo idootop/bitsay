@@ -14,6 +14,17 @@ val keystoreProps = Properties().apply {
     if (keystorePropsFile.exists()) keystorePropsFile.inputStream().use { load(it) }
 }
 
+// ---- Version ----------------------------------------------------------------
+// The git tag is the source of truth, not this file: CI passes -PversionName /
+// -PversionCode, taken from the tag it is releasing. The literals below are what a
+// local build produces, and they must stay in step with the newest tag.
+//
+// versionCode is derived, never typed: major*10000 + minor*100 + patch. So v1.2.3
+// is 10203 and v2.0.0 is 20000 — it always increases across releases, which is the
+// only thing Android actually requires of it, and it reads back as the version.
+val appVersionName: String = (findProperty("versionName") as String?) ?: "1.0.0"
+val appVersionCode: Int = (findProperty("versionCode") as String?)?.toIntOrNull() ?: 10_000
+
 android {
     namespace = "com.del.bitsay"
     compileSdk = 37
@@ -25,8 +36,8 @@ android {
         // and those are the non-deprecated collection APIs on Android 17.
         minSdk = 31
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
         vectorDrawables.useSupportLibrary = false
     }
 

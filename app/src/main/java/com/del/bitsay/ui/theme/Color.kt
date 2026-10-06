@@ -81,6 +81,8 @@ data class BitSayPalette(
     val line: Color,
     /** The plant drawing in the empty states. Nothing else may use this. */
     val leaf: Color,
+    /** Destructive actions only — the confirm button on a delete dialog. Never decoration. */
+    val danger: Color,
 )
 
 internal val LightPalette = BitSayPalette(
@@ -99,6 +101,7 @@ internal val LightPalette = BitSayPalette(
     inkFaint = Ink3Light,
     line = LineLight,
     leaf = LeafLight,
+    danger = Color(0xFFD23B2E),
 )
 
 internal val DarkPalette = BitSayPalette(
@@ -119,6 +122,7 @@ internal val DarkPalette = BitSayPalette(
     inkFaint = Ink3DarkValue,
     line = LineDarkValue,
     leaf = LeafDarkValue,
+    danger = Color(0xFFFF6B5C),
 )
 
 internal val LocalPalette = staticCompositionLocalOf { LightPalette }
@@ -148,6 +152,7 @@ val InkSoft: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.
 val InkFaint: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.inkFaint
 val Line: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.line
 val Leaf: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.leaf
+val Danger: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.danger
 
 /** Material's own scheme, re-exported so screens have one import for all colours. */
 val Scheme @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme

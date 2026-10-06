@@ -949,3 +949,179 @@ git add -A -n                      # 提交前预演，确认没有产物/密钥
 ⚠️ **笔记行必须在代码里补内边距**（`setViewPadding`，像素重载 —— dp 重载带 `@FlaggedApi` 不能依赖），
 而且**两种行都要显式设**、不能做缓存：启动器会回收 item view，笔记行用过的视图可能被待办行复用，
 沿用 14dp 又会把圆推回去。
+
+### 13.11 去掉衬线 · 首页标题改用品牌标记（2026-10）
+
+**衬线全部移除。** 原来是 `FontFamily.Serif`（中文落到 Noto Serif CJK）只给页面标题用。
+问题不在好看与否，而在**它是另一个字族**：Android 上衬线中文和系统无衬线并排时，
+页面标题和正文看起来不像同一个 App，也和桌面/设置等系统界面不一致。
+`--font-display` 直接指向正文字体栈，层级交给字号 + 字重。
+
+**页面标题 21sp / ExtraBold**（原来是 Bold）。系统中文在 21sp 下 Bold 仍偏轻，
+和旁边 20dp 的图标字形不配。
+
+**首页标题：试过换成品牌标记，已回退。** 试了一版把首页标题从"笔记/待办"文字换成
+`BrandMark`（无墨底的彩色破土），用户看后觉得怪，回到文字大标题。
+
+结论：**首页标题就是 38sp 文字，`DisplayStyle` 保留**（系统字体、Bold —— 38sp 下 ExtraBold
+会把中文的字怀挤住，小一号的 21sp 页面标题才用 ExtraBold）。
+
+品牌标记本身没浪费：`BrandMark` 现在给设置页「关于」里的圆角应用图标用
+（`AppIconPlate` = 墨色圆角底板 + 标记）。
+
+**页面标题 21sp / ExtraBold**（原来是 Bold）。系统中文在 21sp 下 Bold 仍偏轻，
+和旁边 20dp 的图标字形不配。
+
+`--fs-display` 三件套在设计板里已收敛为 `--fs-title-page`。
+
+### 13.14 widget 水波纹：一次错误结论（留作反面教材）
+
+> ⚠️ **这一节和 13.16 的结论都是错的，真正的根因见 13.18。**
+> 保留在这里，是因为它记录了一个**重复犯的错**：在没定位到根因之前就改代码。
+
+当时的结论是"宿主把水波纹放进 item 的 foreground"，理由是
+`View.setForegroundTintList` 带 `@RemotableViewMethod`。**这个推理是错的** ——
+那个注解只说明"foreground 可被染色"，不说明宿主动了 foreground。
+据此加的透明染色根本没起作用。
+
+**教训**：在 `RemoteViewsAdapter` / `AppWidgetHostView` 里搜不到水波纹
+**≠** 水波纹在宿主里。我当时只查了这两个类就跳到"是启动器干的"，然后开始加各种关不掉的补丁。
+**应该先把"这个 View 到底从哪来"整条链走完** —— 集合视图的布局 XML 是我自己的，
+`listSelector` 就写在我自己的 `ListView` 上。
+
+### 13.16 widget 水波纹：第三次尝试（已撤销）
+
+> ⚠️ **结论同样是错的，见 13.18。** 当时猜"启动器把背景 drawable 包进了 RippleDrawable"，
+> 于是在 apply 时用 `setBackgroundResource` 把背景盖回去。
+> **这段代码已经删掉了** —— 根因不是这个，留着就是乱打补丁。
+
+### 13.17 作者信息 · 危险色 · 标题回 Bold
+
+- 作者行改为 `Del Wang` + `https://del.wang`；源码行补全 `https://github.com/idootop/bitsay`
+  （展示用的文案带上 scheme —— 这一行是给人读和手敲的）
+- **新增 `danger` 令牌**（亮 `#D23B2E` / 暗 `#FF6B5C`），确认删除的按钮改用它。
+  13.15 里我按"全站只有一个响色"的原则用了强调色，用户要求改红 —— 记录一下结论：
+  **删除是全app 唯一不可撤销的动作，值得第二个颜色**；danger 不做任何装饰用途。
+- 首页标题 `DisplayStyle` ExtraBold → **Bold**（38sp 下 ExtraBold 会把中文字怀挤住）。
+  这一条来回改过两次，最终值就是 Bold。
+
+### 13.18 widget 那圈橙色：真正的根因与两个必要条件
+
+**现象**：列表**第一行外面一圈橙色描边**（用户描述为"激活背景色变成橙色"）。
+
+**根因：`ListView` 的 `listSelector`。**
+集合视图 `@id/widget_list` 就在我自己的布局里（`setRemoteAdapter` 只是往里塞数据）。
+`AbsListView` 从**它自己的布局属性**读 selector，并在按下时画在被按的那一行上：
+
+```
+AbsListView.java:986
+    final Drawable selector = a.getDrawable(R.styleable.AbsListView_listSelector);
+    if (selector != null) { setSelector(selector); }
+```
+
+不写这个属性 ≠ 没有 selector，会回落到主题的 `?android:attr/listSelector` ——
+在这台机器上就是那圈橙色描边。
+
+#### 为什么第一次改成 `@null` 完全没用
+
+两个**互相独立**的原因，缺一不可：
+
+**① `@null` 解析出的是 null Drawable，而 `setSelector` 只在非 null 时才被调用。**
+
+```java
+Drawable mSelector;                       // 字段没有初始值 = null
+if (selector != null) { setSelector(...) }  // ← @null 时这行不执行
+```
+
+于是 `mSelector` 保持主题 style 塞进去的那个橙色 drawable。
+→ 必须用**非 null 的透明 drawable**：`@android:color/transparent`。
+
+**② 启动器复用了已经 inflate 的视图树。**
+
+```java
+// AppWidgetHostView.inflateAsync()
+if (!mColorMappingChanged && remoteViews.canRecycleView(mView)) {
+    ... reapplyAsync(mContext, mView, ...)   // ← 复用旧树，只回放 actions
+}
+```
+
+`canRecycleView` 比的是 **layout 资源 id**。只改同一个布局文件的**内容**，id 不变，
+启动器就继续用第一次 inflate 的那棵树 —— 新属性**根本没被读到**。
+→ 必须**改 layout 的资源 id**：把文件重命名（`widget_bitsay.xml` → `widget_bitsay_v2.xml`）。
+
+**修复**：
+
+| 文件 | 改动 |
+|---|---|
+| `res/layout/widget_bitsay_v2.xml` | 由 `widget_bitsay.xml` 改名 —— 制造新 id，强制重新 inflate |
+| 同上，ListView 上 | `android:listSelector="@android:color/transparent"`（非 null） |
+| `WidgetRenderer.kt` / `xml*/widget_info_bitsay.xml` | 引用同步到新 layout |
+
+⚠️ **`_v2` 这个名字是有功能的，不是没整理干净。** 以后再改这个布局的**内容**（不是加控件而是改属性），
+只要想在已放置的组件上生效，同样需要换一个新 id。理由已写在文件头注释里。
+
+#### 同时撤销了前三次全部改动
+
+- `widget_item.xml` 的 `android:foreground="@null"` / `android:stateListAnimator="@null"` → 删
+- `WidgetItems.kt` 的 `setForegroundTintList(TRANSPARENT)` → 删
+- `WidgetItems.kt` 的 `setBackgroundResource(...)` 重设 → 删
+
+`WidgetItems.kt` 里现在只剩两个**有实际功能**的染色：勾选圈颜色（`setImageTintList`）和
+行底色（`setBackgroundTintList`）—— 这两个是需求，不是补丁。
+
+### 13.15 空内容不保存 · 删除二次确认 · 作者区块
+
+**空内容**：仓库层 `ItemRepository.saveDraft` 对空文本 `return`，所以**输入过程中永远不会新建行**。
+缺的一半在 `AppViewModel.saveDraft()`：它是**退出编辑页**时才调用的（全项目唯一调用点在
+`BitSayRoot.kt` 的返回键处理），此时若 `draft` 为空且已有行，则删除并给 `Notice.Empty`。
+用户特别澄清过时序 —— 是**退出时删**，不是清空时就删。
+
+**实机验证**（直接读 `databases/bitsay.db` 含 WAL）：
+
+| 时刻 | 结果 |
+|---|---|
+| 清空后仍在编辑页 | 9 行，目标行**还在**（保留最后自动保存的内容） |
+| 按返回退出后 | 8 行，目标行**已删除** |
+
+⚠️ 顺带发现一个小瑕疵：清空后状态行仍显示"已自动保存"，其实那一笔没有写入（`dirty` 判的是
+`draft.isNotBlank()`）。因为退出时整条会被删掉，暂未处理。
+
+**删除二次确认**：新增 `ConfirmDialog`（和选择弹窗同一套形状：右侧安静的取消 + 强调色的确认）。
+单条删除（编辑器）与批量删除（多选）都走它。**这个 app 唯一的"响"色是纯黑/纯白，不是红色**，
+所以确认按钮用强调色而不是危险红。
+
+**作者区块**：设置页最后加 `作者 → Del Wang（个人主页）/ 源代码`。
+两个 URL 放在 `core/util/Author.kt`，**只有一处定义** —— 链接写错在点开之前是看不出来的。
+
+**首页标题**：`DisplayStyle` 字重 Bold → **ExtraBold**。38sp 的 Bold 看起来比 21sp 的页面标题还轻，
+层级是反的：屏幕最上方应该最重，不是最轻。
+
+### 13.12 主题 / 语言弹窗重做
+
+原来直接用 Material 的 `AlertDialog` + `RadioButton`：大标题居中、选项稀疏，
+像是在设计好的界面上盖了一个系统弹窗。改成自己画（`Dialog` + Column）：
+
+- 标题是**小号大写 + 大字距**的 `labelSmall`，和设置页的分组标签同一套（设计板 `.dialog__title`）
+- 选项前面留一个**固定 18dp 的勾选槽**：打勾不能把文字挤动，而且空圈会读成"你必须选一个"，
+  实际语义只是"当前是这个"
+- 选中项文字加粗
+- 底部右对齐一个安静的 `Cancel`
+
+### 13.13 关于图标 · 备份文案
+
+- 「关于」卡片加了**圆角应用图标**：`AppIconPlate` 自己画墨色圆角底板 + 标记。
+  **不要直接 `painterResource(R.mipmap.ic_launcher)`** —— AdaptiveIconDrawable 自己没有遮罩，
+  直接画出来是个大方块、内容缩在中间一圈空白里，和桌面上看到的完全不一样。
+- 备份/还原描述改成**单行短句**，且不提 `.bitsay.gz`：
+  「把全部笔记和待办打包成一个备份文件」/「从备份文件恢复，可覆盖或并入现有内容」。
+
+### 13.12 主题 / 语言弹窗重做
+
+原来直接用 Material 的 `AlertDialog` + `RadioButton`：大标题居中、选项稀疏，
+像是在设计好的界面上盖了一个系统弹窗。改成自己画（`Dialog` + Column）：
+
+- 标题是**小号大写 + 大字距**的 `labelSmall`，和设置页的分组标签同一套（设计板 `.dialog__title`）
+- 选项前面留一个**固定 18dp 的勾选槽**：打勾不能把文字挤动，而且空圈会读成"你必须选一个"，
+  实际语义只是"当前是这个"
+- 选中项文字加粗
+- 底部右对齐一个安静的 `Cancel`

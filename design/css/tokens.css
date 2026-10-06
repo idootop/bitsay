@@ -30,6 +30,9 @@
      **暗色下必须归零** —— 近黑的底上盖 92% 白会洗成一片灰，颜色看着不对。 */
   --c-glow:      rgba(255,255,255,.92);
   --c-leaf:      #8CA487;   /* 植物线描的绿。**只给空状态那株芽用**，不是 UI 强调色 */
+  /* 危险色：**只给"删除确认"这类不可撤销的动作**，不做任何装饰用途。
+     全站唯一允许出现的第二个颜色 —— 强调色是黑/白，红色只在"删了就回不来"时出现。 */
+  --c-danger:    #D23B2E;
 
   /* ================= 强调色（全局唯一的"响"） =================
      纯黑。整屏只有黑 / 白 / 灰三档，交互元素（FAB、勾选、选中态）
@@ -60,6 +63,7 @@
   --c-line-d:      #282B3A;
   --c-glow-d:      rgba(255,255,255,0);   /* 暗色不打光 */
   --c-leaf-d:      #5D7358;
+  --c-danger-d:    #FF6B5C;
   --c-accent-d:        #FFFFFF;   /* 暗底上反过来用白，保持"最高对比"这个角色 */
   --c-accent-ink-d:    #111318;
   --c-accent-soft-d:   #2A2D3A;
@@ -102,19 +106,19 @@
   /* ================= 字体 =================
      大标题走衬线，正文走无衬线 —— 绘本都是这样排的。
      衬线只给 display 一级用，多一处就俗。 */
-  --font-display: "Songti SC", "Noto Serif CJK SC", "Source Han Serif SC",
-                  "STSong", Georgia, "Times New Roman", serif;
+  /* 标题**不再用衬线**。Android 上衬线中文字体和系统无衬线是两个字族，
+     页面标题和正文会看起来不像同一个 App，也和桌面/设置等系统界面不一致。
+     层级交给字号 + 字重去表达。 */
+  --font-display: var(--font-body);
   --font-body: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
                "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
 
   /* ================= 排版 =================
      设计主要靠这里：层级拉开、字距收紧、行高紧凑。 */
-  /* 首页（列表）标题。**只有首页用这个尺寸** —— 它是 App 的封面，
-     一屏只有这一处"大字"，其余页面（编辑器 / 设置）一律 21px 的次级标题。
-     两边都放大会互相抢，两边都收小首页就没有气势了。 */
-  --fs-display: 38px;
-  --lh-display: 42px;
-  --ls-display: -0.035em;
+  /* 页面标题 21px：比返回键字形（20px）大一档就够。
+     首页标题现在是品牌标记（js/brand.js），不再是一行大字，所以这里只剩一个尺寸。 */
+  --fs-title-page: 21px;
+  --lh-title-page: 27px;
   --fs-title:   17px;
   --lh-title:   24px;
   --fs-body:    16px;

@@ -111,11 +111,10 @@ private val AppShapes = Shapes(
 // ----------------------------------------------------------------------------
 
 /**
- * The home screen title. **The only 38sp type in the app.**
+ * The home list title. The only 38sp type in the app — the home screen is its cover.
  *
- * Two ranks, not one: the list screen is the app's cover and gets the display size, while every
- * other screen (editor, settings) uses [PageTitleStyle]. Making both large made them compete;
- * making both small left the home screen with no presence at all.
+ * Bold. ExtraBold was tried and reverted: at 38sp the heavier weight closes up the CJK counters
+ * and the title starts to look like a headline pasted on rather than the name of the screen.
  */
 val DisplayStyle = TextStyle(
     fontSize = 38.sp,

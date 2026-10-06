@@ -50,7 +50,7 @@ BitSay.pages.list = (function () {
       el('head').className = 'topbar';
       el('head').innerHTML = `
         <div class="topbar__titles">
-          <h3 class="topbar__title"><span class="hl">${tab === 'note' ? '笔记' : '待办'}</span></h3>
+          <h3 class="topbar__title">${tab === 'note' ? '笔记' : '待办'}</h3>
           <div class="topbar__sub">${tab === 'note'
             ? `${c.notes} 条笔记`
             : `${c.todos} 个待办 · ${c.openTodos} 个未完成`}</div>

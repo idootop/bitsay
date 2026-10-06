@@ -379,20 +379,22 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     /**
      * Leaves the editor. The text is already in the database, so this only flushes the last few
-     * milliseconds and cleans up a brand-new entry the user emptied out before leaving.
+     * milliseconds and removes a row the user emptied out.
+     *
+     * **An empty entry is not content.** The repository never inserts one for a blank draft, and a
+     * row whose text has been cleared is deleted here — whether it was created a moment ago or has
+     * been on the list for weeks. The old behaviour kept the previous text for an existing entry
+     * and only showed a notice, which meant the words the user had just deleted came back the next
+     * time they opened it.
      */
     fun saveDraft() {
         cancelAutoSave()
         viewModelScope.launch {
             persistDraft()
             val snapshot = _state.value
-            val emptiedNewEntry = createdInThisSession &&
-                snapshot.draft.isBlank() &&
-                snapshot.editingId > 0L
-            if (emptiedNewEntry) {
+            val emptied = snapshot.draft.isBlank() && snapshot.editingId > 0L
+            if (emptied) {
                 repository.delete(snapshot.editingId)
-            } else if (!createdInThisSession && snapshot.draft.isBlank() && snapshot.editingId > 0L) {
-                // Editing an existing entry down to nothing: keep the last real content, say so.
                 _state.update { it.copy(notice = Notice.Empty) }
             }
             leaveEditor(snapshot.fromWidget)
@@ -474,7 +476,6 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             _state.update { it.copy(dirty = snapshot.draft.isNotBlank()) }
             return
         }
-        if (snapshot.editingId == 0L) createdInThisSession = true
         val stored = repository.findById(id)
         _state.update {
             it.copy(
@@ -524,7 +525,6 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     private fun cancelAutoSave() {
         autoSaveJob?.cancel()
         autoSaveJob = null
-        createdInThisSession = false
         autoSaveThrottle.reset()
     }
 
@@ -602,7 +602,6 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     private val autoSaveThrottle = WriteThrottle(AUTO_SAVE_THROTTLE_MS)
 
     /** True when the entry now in the editor did not exist until this editing session. */
-    private var createdInThisSession = false
 
     /** Turns any throwable into something the UI can put into a sentence. */
     private fun Throwable.toFailure(): Notice.Failed = when (this) {

@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
+  NOTE ON THE FILENAME. The "_v2" is load-bearing, not tidiness.
+
+  AppWidgetHostView.inflateAsync() recycles the existing view tree when the incoming RemoteViews
+  has the same layout id (`remoteViews.canRecycleView(mView)` compares exactly that). A change to
+  a layout's *content* therefore never reaches a widget that is already on someone's home screen —
+  the host keeps the tree it inflated the first time and only replays the actions.
+
+  Renaming the file gives it a new resource id, which is the one thing that forces a real
+  re-inflate. Without that, the listSelector fix below had no effect at all on the live widget.
+-->
+<!--
   Widget layout:
     [ 笔记 | 待办 ]  (open app)     ← two tabs instead of a toggle button, plus a way into the app
     ┌───────────────────────────┐
@@ -81,6 +92,20 @@
           list keeps no reserved gap at the bottom: clipToPadding=false lets rows scroll all the
           way down, and the button simply sits on top of the last one.
         -->
+        <!--
+          The orange ring around the pressed row is THIS view's listSelector.
+
+          AbsListView takes it from its own layout attributes
+          (AbsListView.java:986 `a.getDrawable(R.styleable.AbsListView_listSelector)`) and paints it
+          over the pressed item in positionSelectorLikeTouch(). Leaving the attribute out does not
+          mean "no selector" — it falls back to the theme's `?android:attr/listSelector`, which on
+          this device is an orange rounded stroke.
+
+          Transparent, not @null: `@null` resolves to a null Drawable, and AbsListView only calls
+          setSelector() when the resolved value is non-null
+          (`if (selector != null) setSelector(selector);`), leaving mSelector at whatever the theme
+          style put there. A transparent ColorDrawable is non-null, so it always wins.
+        -->
         <ListView
             android:id="@+id/widget_list"
             android:layout_width="match_parent"
@@ -90,6 +115,7 @@
             android:divider="@null"
             android:dividerHeight="0dp"
             android:fadeScrollbars="true"
+            android:listSelector="@android:color/transparent"
             android:paddingTop="2dp"
             android:paddingEnd="3dp"
             android:paddingBottom="2dp"

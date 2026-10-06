@@ -36,6 +36,9 @@ BitSay.icons = (function () {
     exportIc: () => wrap(`<path d="${P.exportIc}"/>`),
     importIc: () => wrap(`<path d="${P.importIc}"/>`),
     // 对比度：整圆 + 右半实心。原来那条路径没闭合，描出来是个逗号
+    // 外链：两节圆角链环。读作"点了会去别处"
+    link:     () => wrap(`<path d="M10.2 13.8a3.6 3.6 0 0 0 5.1 0l3.1-3.1a3.6 3.6 0 0 0-5.1-5.1L12 6.9"/>
+                          <path d="M13.8 10.2a3.6 3.6 0 0 0-5.1 0l-3.1 3.1a3.6 3.6 0 0 0 5.1 5.1L12 17.1"/>`),
     theme:    () => wrap(`<circle cx="12" cy="12" r="8.6"/>
                           <path d="M12 3.4a8.6 8.6 0 010 17.2z" fill="currentColor" stroke="none"/>`),
     // 地球：圆 + 赤道 + 经线。原来的"文A"在 20px 下笔画太密会糊

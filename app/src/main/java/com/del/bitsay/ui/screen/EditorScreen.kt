@@ -16,6 +16,10 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -35,6 +39,7 @@ import com.del.bitsay.core.util.TimeText
 import com.del.bitsay.core.util.TimeWording
 import com.del.bitsay.i18n.rememberTimeWording
 import com.del.bitsay.ui.AppUiState
+import com.del.bitsay.ui.components.ConfirmDialog
 import com.del.bitsay.ui.components.RoundIconButton
 import com.del.bitsay.ui.theme.CardShape
 import com.del.bitsay.ui.theme.Ink
@@ -53,7 +58,23 @@ fun EditorScreen(
     modifier: Modifier = Modifier,
 ) {
     val wording = rememberTimeWording()
+    var confirmDelete by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
+
+    if (confirmDelete) {
+        ConfirmDialog(
+            title = stringResource(
+                R.string.confirm_delete_title,
+                stringResource(
+                    if (state.editingKind == Kind.NOTE) R.string.tab_notes else R.string.tab_todos,
+                ),
+            ),
+            hint = stringResource(R.string.confirm_delete_hint),
+            confirmLabel = stringResource(R.string.action_delete_confirm),
+            onConfirm = { confirmDelete = false; onDelete() },
+            onDismiss = { confirmDelete = false },
+        )
+    }
     val keyboard = LocalSoftwareKeyboardController.current
 
     // Opened to write something new → go straight into typing. Opening an existing entry is a
@@ -91,7 +112,7 @@ fun EditorScreen(
                 RoundIconButton(
                     painter = painterResource(R.drawable.ic_delete),
                     contentDescription = stringResource(R.string.action_delete),
-                    onClick = onDelete,
+                    onClick = { confirmDelete = true },
                     tint = InkSoft,
                 )
             }

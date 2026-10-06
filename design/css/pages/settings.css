@@ -62,3 +62,14 @@
 
 .big-stat{ font-size:22px; line-height:28px; font-weight:800; letter-spacing:-.02em; }
 .note-text{ font-size:var(--fs-meta); line-height:20px; color:var(--c-ink-2); opacity:.8; }
+
+/* 关于：圆角应用图标 + 名称/版本 */
+.about-row{ display:flex; align-items:center; }
+.app-plate{
+  width:52px; height:52px; flex:0 0 auto; display:grid; place-items:center;
+  border-radius:22%;            /* 和启动器套的圆角方一致 */
+  background:#17140F;           /* 图标自己的墨底，不是页面令牌 */
+}
+.app-plate svg{ display:block; }
+.about-row__text{ padding-left:14px; min-width:0; }
+.about-row__name{ font-size:20px; line-height:26px; font-weight:800; letter-spacing:-.015em; }

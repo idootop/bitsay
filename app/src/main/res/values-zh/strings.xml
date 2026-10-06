@@ -12,6 +12,10 @@
     <string name="action_done">完成</string>
     <string name="action_toggle_done">切换完成状态</string>
     <string name="action_delete">删除</string>
+    <string name="confirm_delete_title">删除这条%s？</string>
+    <string name="confirm_delete_batch">删除选中的 %1$d 条？</string>
+    <string name="confirm_delete_hint">删除后无法恢复。</string>
+    <string name="action_delete_confirm">删除</string>
     <string name="action_back">返回</string>
     <string name="action_settings">设置</string>
     <string name="action_search">搜索</string>
@@ -36,7 +40,7 @@
 
     <string name="deleted">已删除</string>
     <string name="saved">已保存</string>
-    <string name="nothing_to_save">内容为空</string>
+    <string name="nothing_to_save">内容为空，已删除</string>
 
     <string name="editor_saving">正在输入…</string>
     <string name="editor_saved">已自动保存</string>
@@ -46,10 +50,14 @@
     <string name="settings_title">设置</string>
     <string name="settings_backup">备份与恢复</string>
     <string name="settings_export">备份</string>
-    <string name="settings_export_desc">把全部笔记和待办打包成一个备份文件，换手机时拷过去即可</string>
+    <string name="settings_export_desc">把全部笔记和待办打包成一个备份文件</string>
     <string name="settings_import">还原</string>
     <string name="settings_import_desc">从备份文件恢复，可覆盖或并入现有内容</string>
     <string name="settings_about">关于</string>
+    <string name="settings_author">作者</string>
+    <string name="settings_author_name">Del Wang</string>
+    <string name="settings_author_site">https://del.wang</string>
+    <string name="settings_author_source">源代码</string>
     <string name="widget_pin_requested">已请求添加到桌面；若桌面没有反应，请长按桌面空白处手动添加</string>
     <string name="widget_pin_unsupported">当前桌面不支持从应用内添加，请长按桌面空白处手动添加</string>
 

@@ -1,5 +1,6 @@
 package com.del.bitsay.ui.screen
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,10 @@ import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -24,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.del.bitsay.R
 import com.del.bitsay.core.model.Kind
 import com.del.bitsay.ui.AppUiState
+import com.del.bitsay.ui.components.ConfirmDialog
 import com.del.bitsay.ui.components.EmptyState
 import com.del.bitsay.ui.components.ItemList
 import com.del.bitsay.ui.components.RoundIconButton
@@ -49,6 +55,18 @@ fun ListScreen(
     onDeleteSelected: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var confirmDelete by remember { mutableStateOf(false) }
+
+    if (confirmDelete) {
+        ConfirmDialog(
+            title = stringResource(R.string.confirm_delete_batch, state.selection.size),
+            hint = stringResource(R.string.confirm_delete_hint),
+            confirmLabel = stringResource(R.string.action_delete_confirm),
+            onConfirm = { confirmDelete = false; onDeleteSelected() },
+            onDismiss = { confirmDelete = false },
+        )
+    }
+
     Box(modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             // Selection mode replaces the whole header rather than stacking on top of it: while
@@ -57,7 +75,7 @@ fun ListScreen(
                 SelectionHeader(
                     state = state,
                     onClearSelection = onClearSelection,
-                    onDeleteSelected = onDeleteSelected,
+                    onDeleteSelected = { confirmDelete = true },
                 )
             } else {
                 Header(
@@ -203,7 +221,11 @@ private fun Header(
         // Sits at the title's cap height rather than centred on the two-line block: at 38sp the
         // icon buttons are much shorter than the text block, and centring drops them to the
         // baseline of the count line.
-        Row(Modifier.padding(top = 2.dp)) {
+        // 8dp apart, not 0: two 40dp targets sharing an edge is a mis-tap waiting to happen.
+        Row(
+            Modifier.padding(top = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             RoundIconButton(
                 painter = painterResource(R.drawable.ic_search),
                 contentDescription = stringResource(R.string.action_search),

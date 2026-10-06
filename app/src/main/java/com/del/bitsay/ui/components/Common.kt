@@ -22,14 +22,22 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.window.Dialog
+import com.del.bitsay.R
+import com.del.bitsay.ui.theme.BlockShape
+import com.del.bitsay.ui.theme.Danger
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -69,6 +77,7 @@ import com.del.bitsay.ui.theme.InkSoft
 import com.del.bitsay.ui.theme.Leaf
 import com.del.bitsay.ui.theme.Line
 import com.del.bitsay.ui.theme.Moss
+import com.del.bitsay.ui.theme.Paper
 import com.del.bitsay.ui.theme.Sky
 
 /**
@@ -223,6 +232,67 @@ fun <T> SegmentedTabs(
     }
 }
 
+/**
+ * A two-action confirmation. Deleting has no undo here, so both the editor's delete and the batch
+ * delete go through this.
+ *
+ * Shaped like the settings choice dialog on purpose: the same quiet cancel on the right. The
+ * destructive action is the one place in the app allowed a second colour — it is red, because
+ * "delete" is the single action here that cannot be undone, and accent-coloured text made it look
+ * exactly like every other confirm.
+ */
+@Composable
+fun ConfirmDialog(
+    title: String,
+    hint: String,
+    confirmLabel: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(BlockShape)
+                .background(Paper)
+                .padding(top = 20.dp, bottom = 8.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp),
+                color = Ink,
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp),
+            )
+            Text(
+                text = hint,
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.5.sp, lineHeight = 18.sp),
+                color = InkSoft,
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp),
+            )
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+            ) {
+                TextButton(onClick = onDismiss) {
+                    Text(
+                        text = stringResource(R.string.cancel),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = InkSoft,
+                    )
+                }
+                TextButton(onClick = onConfirm) {
+                    Text(
+                        text = confirmLabel,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Danger,
+                    )
+                }
+            }
+        }
+    }
+}
+
 /** Small caps group label above a settings block. */
 @Composable
 fun SectionLabel(text: String, modifier: Modifier = Modifier) {
@@ -343,31 +413,61 @@ fun BrandMark(height: Dp = 46.dp, modifier: Modifier = Modifier) {
         val oy = -29f * s
         fun p(x: Float, y: Float) = Offset(ox + x * s, oy + y * s)
 
-        fun path(v: FloatArray, close: Boolean): Path = Path().apply {
-            moveTo(p(v[0], v[1]).x, p(v[0], v[1]).y)
+        // A closed shape made of one cubic plus a straight edge: moveTo, cubicTo, lineTo, close.
+        fun soil(x0: Float, y0: Float, c1x: Float, c1y: Float, c2x: Float, c2y: Float,
+                 mx: Float, my: Float, ex: Float, ey: Float): Path = Path().apply {
+            val a = p(x0, y0); moveTo(a.x, a.y)
+            val c1 = p(c1x, c1y); val c2 = p(c2x, c2y); val m = p(mx, my)
+            cubicTo(c1.x, c1.y, c2.x, c2.y, m.x, m.y)
+            val e = p(ex, ey); lineTo(e.x, e.y)
+            close()
+        }
+        // The sprout is pure cubics, so it can use one walker.
+        fun curve(v: FloatArray): Path = Path().apply {
+            val a = p(v[0], v[1]); moveTo(a.x, a.y)
             var i = 2
             while (i + 5 < v.size) {
-                val a = p(v[i], v[i + 1]); val b = p(v[i + 2], v[i + 3]); val c = p(v[i + 4], v[i + 5])
-                cubicTo(a.x, a.y, b.x, b.y, c.x, c.y)
+                val c1 = p(v[i], v[i + 1]); val c2 = p(v[i + 2], v[i + 3]); val e = p(v[i + 4], v[i + 5])
+                cubicTo(c1.x, c1.y, c2.x, c2.y, e.x, e.y)
                 i += 6
             }
-            if (close) close()
         }
-        val soilL = floatArrayOf(34f,79f, 34f,71f, 41f,67f, 50f,66f, 52.5f,79f)
-        val soilR = floatArrayOf(57.5f,79f, 60f,66f, 69f,67f, 74f,71f, 74f,79f)
-        val stem  = floatArrayOf(54f,79f, 53f,68f, 53f,57f, 54f,46f)
-        val leafL = floatArrayOf(54f,46f, 44f,47f, 37f,39f, 37f,29f, 47f,29f, 54f,36f, 54f,46f)
-        val leafR = floatArrayOf(54f,46f, 64f,47f, 71f,39f, 71f,29f, 61f,29f, 54f,36f, 54f,46f)
-        // soil is a 4-point polygon; reuse the same cubic walker by giving it one flat segment
-        drawPath(path(soilL, true), BRAND_SOIL)
-        drawPath(path(soilR, true), BRAND_SOIL)
+        drawPath(soil(34f, 79f, 34f, 71f, 41f, 67f, 50f, 66f, 52.5f, 79f), BRAND_SOIL)
+        drawPath(soil(57.5f, 79f, 60f, 66f, 69f, 67f, 74f, 71f, 74f, 79f), BRAND_SOIL)
         drawPath(
-            path(stem, false),
+            curve(floatArrayOf(54f, 79f, 53f, 68f, 53f, 57f, 54f, 46f)),
             color = BRAND_SPROUT,
             style = Stroke(width = 4.4f * s, cap = StrokeCap.Round),
         )
-        drawPath(path(leafL, true), BRAND_SPROUT)
-        drawPath(path(leafR, true), BRAND_SPROUT)
+        drawPath(curve(floatArrayOf(54f,46f, 44f,47f, 37f,39f, 37f,29f)).apply {
+            val a = p(47f, 29f); val b = p(54f, 36f); val c = p(54f, 46f)
+            cubicTo(a.x, a.y, b.x, b.y, c.x, c.y); close()
+        }, BRAND_SPROUT)
+        drawPath(curve(floatArrayOf(54f,46f, 64f,47f, 71f,39f, 71f,29f)).apply {
+            val a = p(61f, 29f); val b = p(54f, 36f); val c = p(54f, 46f)
+            cubicTo(a.x, a.y, b.x, b.y, c.x, c.y); close()
+        }, BRAND_SPROUT)
+    }
+}
+
+/**
+ * The app icon, drawn as it appears on the launcher: the mark on an ink plate with rounded corners.
+ *
+ * Rendered rather than loaded from `mipmap/ic_launcher`, because an AdaptiveIconDrawable has no
+ * mask of its own — drawn directly it comes out as a full square with the artwork floating in the
+ * middle of a lot of empty margin, which is not what the icon looks like anywhere else.
+ */
+@Composable
+fun AppIconPlate(size: Dp = 52.dp, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .size(size)
+            // ~22% is the squircle radius the launcher actually applies.
+            .clip(RoundedCornerShape(size * 0.22f))
+            .background(Color(0xFF17140F)),
+        contentAlignment = Alignment.Center,
+    ) {
+        BrandMark(height = size * 0.66f)
     }
 }
 

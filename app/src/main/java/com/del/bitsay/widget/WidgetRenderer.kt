@@ -53,7 +53,7 @@ internal object WidgetRenderer {
         val dark = ThemePrefs.isDark(context)
         val palette = paletteFor(dark)
 
-        val views = RemoteViews(context.packageName, R.layout.widget_bitsay)
+        val views = RemoteViews(context.packageName, R.layout.widget_bitsay_v2)
         views.setInt(
             R.id.widget_root,
             "setBackgroundResource",

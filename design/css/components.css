@@ -35,25 +35,22 @@
 }
 .topbar__titles{ flex:1 1 auto; min-width:0; }
 .topbar__title{
-  font-family:var(--font-display);           /* 绘本感来自字形，不来自装饰 */
-  font-size:var(--fs-display); line-height:var(--lh-display);
-  font-weight:700; letter-spacing:var(--ls-display);
+  font-family:var(--font-display);
+  font-size:var(--fs-title-page); line-height:var(--lh-title-page);
+  font-weight:800; letter-spacing:-.015em;
   margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .topbar__sub{
   font-size:13px; line-height:18px; color:var(--c-ink-2);
   margin-top:4px; letter-spacing:.01em;
 }
-.topbar__actions{ display:flex; align-items:center; gap:2px; padding-top:2px; }
+.topbar__actions{ display:flex; align-items:center; gap:8px; padding-top:2px; }
 
 /* 编辑器 / 设置页：次级页面。标题 21px —— 比返回键字形（20px）大一点点就够，
    用首页那个 38px 会把返回键衬成一个小点。整行垂直居中，标题才不吊在顶上。 */
 .topbar--page{
   align-items:center;
   padding:14px 12px 10px var(--pad-page);
-}
-.topbar--page .topbar__title{
-  font-size:21px; line-height:27px; letter-spacing:-.015em;
 }
 /* 返回图标到标题留 8px，贴着读起来像连在一起 */
 .topbar--page .topbar__titles{ padding-left:8px; }
@@ -259,3 +256,6 @@
   color:var(--c-ink-2);
 }
 .dialog__actions button:hover{ background:rgba(34,29,24,.05); }
+
+/* 首页标题的品牌标记 */
+.brand{ display:block; }

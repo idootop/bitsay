@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>碎碎念 — 桌面上的笔记和待办</title>
+  <meta name="description" content="不用打开 App，桌面上就能看列表、勾完成、记一句。免费开源，不申请任何权限，不联网，笔记只存在你手机里。" />
+  <link rel="canonical" href="https://bitsay.del.wang/" />
+  <link rel="icon" type="image/svg+xml" href="logo.svg" />
+  <link rel="apple-touch-icon" href="icon.png" />
+  <meta property="og:url" content="https://bitsay.del.wang/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="碎碎念 — 桌面上的笔记和待办" />
+  <meta property="og:description" content="不用打开 App，桌面上就能看、能勾、能写。不申请权限，不联网。" />
+  <meta property="og:image" content="https://bitsay.del.wang/og.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <style>
+    :root {
+      --bg: #fff;
+      --fg: #0a0a0a;
+      --mute: #666;
+      --line: #ebebeb;
+      --soft: #fafafa;
+      --soft2: #f2f2f2;
+      /* 和 App 同一套色：画布是冷灰，卡片纯白，强调色纯黑 */
+      --canvas: #e6e9f2;
+    }
+
+    @media (prefers-color-scheme:dark) {
+      :root {
+        --bg: #000;
+        --fg: #ededed;
+        --mute: #a1a1a1;
+        --line: #1f1f1f;
+        --soft: #0a0a0a;
+        --soft2: #141414;
+        --canvas: #101119;
+      }
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    html {
+      -webkit-text-size-adjust: 100%;
+      scroll-behavior: smooth
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 17px/1.7 -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", Segoe UI, Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none
+    }
+
+    img {
+      max-width: 100%;
+      height: auto
+    }
+
+    .wrap {
+      max-width: 1060px;
+      margin: 0 auto;
+      padding: 0 24px
+    }
+
+    /* nav */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: var(--bg);
+      background: color-mix(in srgb, var(--bg) 82%, transparent);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      backdrop-filter: saturate(180%) blur(20px);
+      border-bottom: 1px solid var(--line)
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      height: 54px;
+      font-size: 14px
+    }
+
+    .nav .b {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 650
+    }
+
+    .nav .b img {
+      height: 21px;
+      width: auto
+    }
+
+    .nav .r {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 16px
+    }
+
+    .nav .gh {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 550
+    }
+
+    .i {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+      flex: none
+    }
+
+    /* hero */
+    .hero {
+      text-align: center;
+      padding-top: 76px;
+      padding-bottom: 40px
+    }
+
+    .hero img.icon {
+      height: 104px;
+      width: auto;
+      border-radius: 24px;
+      filter: drop-shadow(0 14px 26px rgba(10, 10, 10, .22))
+    }
+
+    h1 {
+      font-size: clamp(34px, 6.4vw, 54px);
+      line-height: 1.18;
+      font-weight: 700;
+      letter-spacing: -.03em;
+      margin: 26px 0 0;
+      text-wrap: balance
+    }
+
+    /* 不允许被拆开的最小单元。
+       标题里「笔记&待办」和「小组件」各自整块换行 —— 不然窄屏会断成
+       「桌面上的「笔记 / &待办」小组件」，第二行以 & 开头（汉字和 & 之间允许断行）。 */
+    h1 .nb,
+    .hero .note span {
+      white-space: nowrap
+    }
+
+    /* 手机上从「桌面上的」之后断行，后面那一整块留在下一行。
+       不指望浏览器自己挑：贪心算法在 430–505px 这一段会把「小组件」孤零零丢到第二行。
+       510px 往上标题本来一行就放得下，所以只给窄屏加断点。 */
+    h1 .brk {
+      display: none
+    }
+
+    @media (max-width:520px) {
+      h1 .brk {
+        display: inline
+      }
+    }
+
+    /* 更窄的机器字号要跟着缩，不然「笔记&待办」小组件 会顶到屏幕边（9.6em 宽） */
+    @media (max-width:380px) {
+      h1 {
+        font-size: 8.6vw
+      }
+    }
+
+    .hero p.sub {
+      font-size: clamp(16.5px, 2.5vw, 19px);
+      color: var(--mute);
+      margin: 16px auto 0;
+      max-width: 24em;
+      text-wrap: balance
+    }
+
+    .cta {
+      margin-top: 28px;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 24px;
+      border-radius: 980px;
+      font-size: 15px;
+      font-weight: 600;
+      background: var(--fg);
+      color: var(--bg)
+    }
+
+    .btn.ghost {
+      background: transparent;
+      color: var(--fg);
+      box-shadow: inset 0 0 0 1px var(--line)
+    }
+
+    .hero .note {
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--mute)
+    }
+
+    /* 手机截图：竖屏，所以并排而不是铺满 */
+    .shots {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 18px;
+      flex-wrap: wrap;
+      padding-bottom: 24px
+    }
+
+    .shots img {
+      width: 232px;
+      border-radius: 22px;
+      border: 1px solid var(--line);
+      background: var(--canvas)
+    }
+
+    @media (max-width:720px) {
+      .shots img {
+        width: 150px
+      }
+
+      .shots {
+        gap: 12px
+      }
+    }
+
+    /* section：只给纵向留白，横向留给 .wrap，否则窄屏上内容会顶到边 */
+    .sec {
+      padding-top: 72px;
+      padding-bottom: 72px
+    }
+
+    .head {
+      text-align: center;
+      max-width: 30em;
+      margin: 0 auto 40px
+    }
+
+    .eyebrow {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      color: var(--mute);
+      margin: 0 0 10px
+    }
+
+    h2 {
+      font-size: clamp(25px, 3.8vw, 34px);
+      line-height: 1.35;
+      font-weight: 700;
+      letter-spacing: -.02em;
+      margin: 0;
+      text-wrap: balance
+    }
+
+    .head p {
+      font-size: 16px;
+      color: var(--mute);
+      margin: 14px 0 0
+    }
+
+    .head p b {
+      color: var(--fg);
+      font-weight: 600
+    }
+
+    /* 特性四格：4 / 2 / 1，任何宽度下都不会剩一个孤零零的 */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px
+    }
+
+    @media (max-width:900px) {
+      .grid {
+        grid-template-columns: repeat(2, 1fr)
+      }
+    }
+
+    @media (max-width:560px) {
+      .grid {
+        grid-template-columns: 1fr
+      }
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 20px;
+      background: var(--soft)
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      font-weight: 650;
+      letter-spacing: -.01em
+    }
+
+    .card p {
+      margin: 0;
+      font-size: 14.5px;
+      color: var(--mute);
+      line-height: 1.7
+    }
+
+    /* 图文左右分栏：截图是竖的，所以文案列也收窄，两边才配得上 */
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 400px) 280px;
+      gap: 72px;
+      align-items: center;
+      justify-content: center;
+      max-width: 752px;
+      margin: 0 auto;
+      text-align: left
+    }
+
+    .split.flip {
+      grid-template-columns: 280px minmax(0, 400px)
+    }
+
+    .split.flip .txt {
+      order: 2
+    }
+
+    .split.flip .pic {
+      order: 1
+    }
+
+    .split .txt .eyebrow {
+      margin-bottom: 8px
+    }
+
+    .split .txt h2 {
+      font-size: clamp(22px, 3vw, 28px)
+    }
+
+    .split .txt p {
+      font-size: 16px;
+      color: var(--mute);
+      margin: 14px 0 0
+    }
+
+    .split .txt p b {
+      color: var(--fg);
+      font-weight: 600
+    }
+
+    .split .pic img {
+      width: 280px;
+      border-radius: 24px;
+      border: 1px solid var(--line);
+      background: var(--canvas);
+      display: block;
+      margin: 0 auto
+    }
+
+    @media (max-width:820px) {
+
+      .split,
+      .split.flip {
+        grid-template-columns: 1fr;
+        gap: 28px;
+        text-align: center
+      }
+
+      .split.flip .txt,
+      .split.flip .pic {
+        order: initial
+      }
+
+      .split .pic img {
+        width: 260px
+      }
+    }
+
+    .cap {
+      text-align: center;
+      font-size: 13.5px;
+      color: var(--mute);
+      margin: 14px 0 0
+    }
+
+    /* 平板那张是横的，铺满整行正合适 */
+    .wide {
+      padding-top: 0
+    }
+
+    .wide img {
+      display: block;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      /* 懒加载没到位时是一块底色，而不是一个白洞 */
+      background: var(--canvas)
+    }
+
+    /* FAQ */
+    .faq {
+      max-width: 640px;
+      margin: 0 auto
+    }
+
+    .qa {
+      padding: 22px 0;
+      border-top: 1px solid var(--line)
+    }
+
+    .qa:last-child {
+      border-bottom: 1px solid var(--line)
+    }
+
+    .qa h3 {
+      margin: 0 0 8px;
+      font-size: 16.5px;
+      font-weight: 650;
+      letter-spacing: -.01em
+    }
+
+    .qa p {
+      margin: 0;
+      font-size: 15.5px;
+      color: var(--mute);
+      line-height: 1.75
+    }
+
+    .qa p+p {
+      margin-top: 8px
+    }
+
+    .qa p b {
+      color: var(--fg);
+      font-weight: 600
+    }
+
+    .qa a {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      text-decoration-thickness: 1px;
+      text-decoration-color: var(--mute)
+    }
+
+    footer {
+      padding: 8px 0 56px;
+      font-size: 13.5px;
+      color: var(--mute);
+      text-align: center
+    }
+
+    footer a {
+      color: var(--fg);
+      font-weight: 550
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="wrap nav">
+      <a class="b" href="#top"><img src="logo.svg" width="88" height="116" alt="" />碎碎念</a>
+      <span class="r">
+        <a class="gh" href="https://github.com/idootop/bitsay" target="_blank" rel="noopener">
+          <svg class="i" viewBox="0 0 16 16" aria-hidden="true">
+            <path
+              d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+          </svg>GitHub</a>
+      </span>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- 首屏 -->
+    <div class="hero wrap">
+      <img class="icon" src="appicon.svg" width="108" height="108" alt="碎碎念" />
+      <h1>桌面上的<br class="brk" /><span class="nb">「笔记&amp;待办」</span><wbr /><span class="nb">小组件</span></h1>
+      <p class="sub">不用打开 App。看一眼，就知道今天要做什么。</p>
+      <div class="cta">
+        <a class="btn" href="https://github.com/idootop/bitsay/releases/latest" target="_blank" rel="noopener">
+          <svg class="i" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M8 1v9.6M4.7 7.3 8 10.6l3.3-3.3M2.5 12.5v1.6h11v-1.6" fill="none" stroke="currentColor"
+              stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>下载
+        </a>
+        <a class="btn ghost" href="https://github.com/idootop/bitsay" target="_blank" rel="noopener">
+          <svg class="i" viewBox="0 0 16 16" aria-hidden="true">
+            <path
+              d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+          </svg>GitHub
+        </a>
+      </div>
+      <p class="note"><span>免费开源</span> · <span>支持 Android 12 及以上</span> · <span>安装包只有 2 MB</span></p>
+    </div>
+
+    <!-- 首屏截图 -->
+    <div class="wrap">
+      <div class="shots">
+        <img src="img/cn-desk-todo.jpeg" width="1080" height="2400" alt="桌面上的小组件：待办列表，行首是勾选圈" />
+        <img src="img/cn-home-note.jpeg" width="1080" height="2400" alt="笔记列表" />
+        <img src="img/cn-settings.jpeg" width="1080" height="2400" alt="设置页：主题、显示语言、备份与还原" />
+      </div>
+      <p class="cap">桌面小组件 · 笔记列表 · 设置</p>
+    </div>
+
+    <!-- 特性 -->
+    <section class="sec wrap">
+      <div class="head">
+        <p class="eyebrow">为什么选它</p>
+        <h2>一目了然，一触即达。</h2>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <h3>桌面就能用</h3>
+          <p>小组件就是主界面。看列表、勾完成，都不用打开 App。</p>
+        </div>
+        <div class="card">
+          <h3>随手就能记</h3>
+          <p>点一下加号就能写，边写边存，没有保存按钮。</p>
+        </div>
+        <div class="card">
+          <h3>数据不会丢</h3>
+          <p>自动保存。还能导出备份，换手机时导入就行。</p>
+        </div>
+        <div class="card">
+          <h3>不要任何权限</h3>
+          <p>不联网，也不读取任何东西。笔记只存在你手机里。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 小组件 -->
+    <section class="sec wrap">
+      <div class="split">
+        <div class="txt">
+          <p class="eyebrow">桌面小组件</p>
+          <h2>抬眼就能看到。</h2>
+          <p>笔记和待办<b>一键切换</b>，重要的事情一目了然。</p>
+        </div>
+        <div class="pic">
+          <img src="img/cn-desk-todo.jpeg" width="1080" height="2400" loading="lazy" decoding="async"
+            alt="桌面上的碎碎念小组件：待办列表，行首是勾选圈" />
+          <p class="cap">桌面小组件</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 笔记与待办 -->
+    <section class="sec wrap">
+      <div class="split flip">
+        <div class="txt">
+          <p class="eyebrow">笔记与待办</p>
+          <h2>笔记，一段话。待办，一个圈。</h2>
+          <p>笔记和待办都是纯文本，支持<b>搜索</b>全文匹配。</p>
+        </div>
+        <div class="pic">
+          <img src="img/cn-home-note.jpeg" width="1080" height="2400" loading="lazy" decoding="async"
+            alt="笔记列表：标题、条数、笔记/待办切换与条目" />
+          <p class="cap">一条笔记就是一段话</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 大屏 -->
+    <section class="sec wide wrap">
+      <div class="head">
+        <p class="eyebrow">多屏适配</p>
+        <h2>大屏幕上，左右并排。</h2>
+        <p>左边看列表，右边改内容，大屏操作更高效。</p>
+      </div>
+      <img src="img/cn-tablet.jpeg" width="2240" height="1400" loading="lazy" decoding="async"
+        alt="宽屏下的左右两栏：左边是笔记列表，右边是打开的编辑器" />
+      <p class="cap">手机、平板、折叠屏全适配</p>
+    </section>
+
+    <!-- FAQ -->
+    <section class="sec">
+      <div class="head">
+        <p class="eyebrow">常见问题</p>
+        <h2>你可能想知道的</h2>
+      </div>
+      <div class="faq wrap">
+        <div class="qa">
+          <h3>支持哪些手机？</h3>
+          <p>Android 12 及以上都可以。</p>
+        </div>
+        <div class="qa">
+          <h3>要收费吗？</h3>
+          <p>不收费，没有广告，也不用注册登录账号。</p>
+        </div>
+        <div class="qa">
+          <h3>会上传我的数据吗？</h3>
+          <p>不会。App 不联网，也没有任何权限，笔记只保存在你手机里。</p>
+        </div>
+        <div class="qa">
+          <h3>数据会丢吗？</h3>
+          <p>不会。边写边存，锁屏、关机都不会丢。也可以随时导出备份。</p>
+        </div>
+        <div class="qa">
+          <h3>换手机怎么办？</h3>
+          <p>在设置里导出备份，新手机上选中那个文件还原就行。</p>
+        </div>
+        <div class="qa">
+          <h3>怎么添加到桌面？</h3>
+          <p>长按桌面空白处，选择「添加小部件」，找到「碎碎念」拖到桌面上。</p>
+          <p>拉动边缘可以调整组件大小和显示行数。</p>
+        </div>
+        <div class="qa">
+          <h3>能加图片或者分类吗？</h3>
+          <p>不能。一条笔记就是一段文字，我们想让这件事一直简单下去。</p>
+        </div>
+        <div class="qa">
+          <h3>开源吗？</h3>
+          <p>开源，MIT 协议，代码都在 <a href="https://github.com/idootop/bitsay" target="_blank"
+              rel="noopener"><b>GitHub</b></a> 上。</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Made with ❤️ by <a href="https://github.com/idootop" target="_blank" rel="noopener">Del Wang</a>
+  </footer>
+</body>
+
+</html>

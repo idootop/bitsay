@@ -2545,3 +2545,158 @@ gh api -X POST /markdown -f mode=gfm -f context=idootop/bitsay -f text="$(cat RE
 - 半透明唯一的真风险是**花哨壁纸**：大面积渐变最友好，换成照片壁纸时字可能吃力。
   App 侧不打算为此加"不透明度"开关，除非真机上确认有问题。
 - 设计台的 `.glass--frost` 那台和 `widget_bg_glass.xml` 是一一对应的，改一边要改另一边。
+
+---
+
+### 13.54 官网：`website/`（中文，单文件静态站）
+
+参照 `https://doubless.del.wang/` 的版式做了一份中文落地页，放进 `website/`，用来放 Releases 的下载入口。
+
+#### 文件
+
+| 文件 | 说明 |
+|---|---|
+| `website/index.html` | 单文件，CSS 全内联（和参照站一致，无外链、无构建） |
+| `website/logo.svg` | 应用图标 108 master（`rx=24`），同时作 favicon |
+| `website/icon.png` | 180×180 满幅（`rx=0`）导出，作 `apple-touch-icon` |
+| `website/img/*.jpeg` | 4 张截图，直接从 `assets/` 复制，不动原图 |
+
+全站 **549 KB**，`index.html` 16.6 KB。
+
+#### 设计系统沿用参照站
+
+同样的 `--bg/--fg/--mute/--line/--soft/--soft2` 六个 token + `prefers-color-scheme` 暗色块，
+`.wrap{max-width:1060px}`、吸顶 `backdrop-filter` 导航、`.hero`、`.grid`、`.qa`、`footer`。
+只加了两个属于 BitSay 的变量：`--canvas: #E6E9F2`（截图占位底色）和纯黑强调色。
+
+#### 竖屏截图不能用参照站的版式
+
+参照站是桌面软件，截图是横的，可以整行铺满。BitSay 的截图是 1080×2400 的竖屏，
+铺满一行会有近 2000px 高。改成两种：首屏三台并排（232px），正文里做左右分栏。
+
+分栏第一版把文案列写成 `1fr`，结果文案行宽 712px、旁边站一台 280px 的手机，
+**左右完全不配**（用户直接指出来了）。定死两边：
+`grid-template-columns: minmax(0,400px) 280px; gap:72px; max-width:752px; margin:0 auto`，
+整组居中。这样任何宽度下文案都是 ≤400px、约 25 个汉字一行。
+
+#### 两个真实的 CSS 坑
+
+1. **`.sec` 不能写 `padding: 72px 0`**。它和 `.wrap` 同时挂在一个元素上（`class="sec wrap"`），
+   `.sec` 在样式表后面，简写把 `.wrap` 的左右 24px 一起抹掉了 —— 桌面端因为 `max-width:1060px`
+   够窄看不出来，**手机端整块内容顶到屏幕边缘**。改成 `padding-top/padding-bottom` 两个长写。
+   顺带发现桌面端各段内容宽 1060、首屏宽 1012，本来就不齐，一并修好。
+2. **`.grid` 用 `auto-fit minmax(220px,1fr)`** 在 834px 宽（平板）下排成 3+1，
+   最后一个孤零零挂着。改成显式 `4 / 2 / 1` 三档断点（900px / 560px）。
+
+#### 文案按用户视角重写了一遍
+
+第一版文案偏"文案腔"（"灵感不等人，也不该等一个启动页"），被要求改简约。
+现在的规则：**一句话只说一个真实场景，不解释实现，不抒情**。
+
+- 首屏副标题：`不用打开 App，桌面上就能看、能勾、能写。`
+- 四张卡片各 ≤21 字，如"点 + 就写，边写边存，没有保存按钮"。
+- 分栏里只留一句，如"笔记和待办一键切换，拖动边缘可以调整大小"。
+- FAQ 砍掉"需要注册账号吗""会收集我的数据吗"这类长问题，答案也压到一行。
+
+顺带把 `.head`/`.faq`/`.hero .sub` 的宽度都收窄（30em / 640px / 24em），
+并给 `h1/h2` 加 `text-wrap: balance` —— 窄屏下"零权限。"不会再被拆成"零权/限。"。
+
+#### 验证方式（可复现）
+
+```bash
+CH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+# 整页：直接开一个和页面等高的大窗口，再用 ffmpeg 裁段看（sips 的 cropOffset 到边界会静默失败）
+"$CH" --headless --hide-scrollbars --virtual-time-budget=4000 \
+  --window-size=1280,6300 --screenshot=/tmp/full.png "file://$PWD/website/index.html"
+ffmpeg -y -i /tmp/full.png -vf "crop=1280:1200:0:2400" -frames:v 1 /tmp/sec.png
+```
+
+`--window-size` **不能**用来量窄屏：headless 的窗口有最小宽度，传 390 只能得到一张
+被裁掉右边的桌面版式图。窄屏要套一层 iframe 夹具（`/tmp/ws/crop.html?w=390&y=2400`），
+用 `--allow-file-access-from-files` 拿同源，外层读 query 设置 iframe 宽度和位移。
+
+⚠️ 夹具里 `scrollTo` 必须显式 `behavior:'instant'` —— 站点有 `scroll-behavior:smooth`，
+而虚拟时间下动画不推进（§13.52 的老坑换了个马甲）。
+
+用 iframe 夹具量过：**390px 下 `scrollWidth == 390`，没有横向溢出**。
+
+#### 还没做
+
+- **没有部署。** 本地只有文件，放 GitHub Pages 还是 `del.wang` 子域由用户定。
+- `og:image` 用的是相对路径（和参照站一致）；如果挂到别的域名下，爬虫抓不到，要换绝对地址。
+
+#### 补充：域名、三个标记、文案第二轮
+
+**域名 `bitsay.del.wang`**（同门的 `doubless.del.wang` 挂在 Vercel 上；这个子域目前还没有 DNS 记录）。
+于是 `og:image` / `og:url` / `canonical` 全部改成绝对地址，并补了 `twitter:card`。
+⚠️ 不是 GitHub Pages，所以**不要**放 `CNAME` 文件。
+
+**站点里共有三个标记，别再混用**：
+
+| 文件 | 长什么样 | 用在哪 |
+|---|---|---|
+| `logo.svg` | 只有彩色嫩芽，无底板（几何与 `design/js/brand.js` 一字不差）| favicon、左上角 |
+| `appicon.svg` | 黑底圆角（`rx=24`）+ 嫩芽，和 App 图标一致 | 首屏正中 |
+| `icon.png` | 嫩芽落在 `--canvas` 底上，180×180 满幅 | `apple-touch-icon` |
+
+- `apple-touch-icon` 必须是**不透明**的（iOS 会自己套圆角遮罩），所以只有它保留了底板 —— 但底是
+  App 的冷灰而不是黑，视觉上仍和 favicon 是一株。
+- 嫩芽是竖长的（44:58），别给它套方形盒子；SVG 默认 `preserveAspectRatio` 会留白，不会拉变形。
+- `og.jpg` 1200×630（61 KB，PNG 是 175 KB）：App 图标 + 碎碎念 + 一句话 + 一张真机截图。
+
+**文案第二轮：改成苹果官网那种说法。**
+第一轮只做了减法，结果一堆"能看、能勾、能写"式的单字动词罗列，中文里不这么说。这轮的规则：
+
+- 主语和谓语要完整，用**用户会说的话**。卡片标题从"在桌面 / 随手记 / 丢不了 / 零权限"
+  改成"桌面就能用 / 随手就能记 / 数据不会丢 / 不要任何权限"。
+- 一句话只讲一个场景，句号收尾，不用感叹号。
+- 首屏 `不用打开 App。看一眼，就知道今天要做什么。`；小节标题 `打开就能用，用完就走。`
+  `抬眼就能看到。` `笔记，一段话。待办，一个圈。` `大屏幕上，左右并排。`
+- FAQ 的问题改成用户口吻：`会上传我的数据吗？` `数据会丢吗？` `换手机怎么办？`，答案压到一行。
+
+**顺手修掉一个真问题**：懒加载的图没到位时，`.wide img` 会留一个白洞。
+给它补了 `background: var(--canvas)` 和圆角描边 —— 慢网络下看到的是"还在加载的板子"而不是破图。
+（headless 整页截图偶尔抓不到懒加载，用 `scroll.html` 夹具真实滚动 1.5s 后再截才稳定；
+这是**测量工具的毛病**，不是页面的。）
+
+#### 补充：首屏标题在窄屏的断行
+
+用户把首屏标题改成了 `桌面上的「笔记&待办」小组件`。390px 下断成：
+
+```
+桌面上的「笔记
+&待办」小组件      ← 第二行以 & 开头
+```
+
+**根因**：UAX #14 允许汉字和拉丁字母（`&`）之间断行，`text-wrap: balance` 只会挑一个"平衡"的
+断点，不会避开它。`&` 夹在汉字中间时，浏览器有的是机会从它前面断开。
+
+**修法**：两件事，缺一不可。
+
+1. 把不可拆的单元收进 `white-space: nowrap`，只留一个断点（`」｜小`）：
+   `<span class="nb">「笔记&amp;待办」</span><wbr><span class="nb">小组件</span>`
+2. **断点写死**，不指望浏览器挑：`桌面上的<br class="brk" />…`，`.brk` 只在 `≤520px` 显示。
+
+第 2 条是用户要求的"从「桌面上的」截断"。不能全靠贪心：430–505px 这一段
+`桌面上的「笔记&待办」`（11.6em ≈ 395px）塞得下，贪心就会把「小组件」孤零零丢到第二行，
+只能指望 `text-wrap: balance` 帮忙纠偏 —— 而 balance 在老 Safari / Firefox 上不生效。
+
+字号还要跟着缩：`「笔记&待办」小组件` 宽 **9.6em**，34px 时是 320px，320px 的机器放不下，
+所以 `≤380px` 时 `h1{font-size:8.6vw}`。
+
+实测（逐字量 `Range` 的行归属，不是靠眼看）：
+
+| 视口 | 标题 | 第二行宽 |
+|---|---|---|
+| 300 – 380 | `桌面上的` / `「笔记&待办」小组件` | 243 – 314px |
+| 390 – 520 | 同上（字号锁在 34px）| 320px |
+| ≥ 560 | 一整行（476 – 718px）| — |
+
+任何宽度下 `scrollWidth == innerWidth`，无横向溢出。
+
+首屏那行 `免费开源 · 支持 Android 12 及以上 · 安装包只有 2 MB` 也一起处理了 ——
+三项各自 `nowrap`，断行只发生在 `·` 处，不会再出现"安装包只 / 有 2 MB"这种断法。
+
+⚠️ 别用 `getClientRects()` 数行数：Range 会按内联盒子切碎，返回一堆宽度重复的矩形，
+看起来像 5 行（我第一版就被它骗了）。要么用 `元素高度 ÷ line-height`，
+要么逐字取 rect 再按 `top` 分组 —— 后者还能看出**到底断在哪两个字之间**，量断行只能用它。

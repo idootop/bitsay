@@ -3,9 +3,11 @@
 > 本文件是**唯一权威交接文档**。任何 agent / 开发者接手前请先完整读一遍，
 > 完成阶段性工作后**必须**回来更新「§10 任务列表」「§11 实机验证记录」「§12 下一步」。
 
-- 最后更新：2026-10-01
+- 最后更新：2026-10-07
 - 当前阶段：**核心功能 + 桌面小组件已全部跑通并在真机验证；UI 视觉处于「可用的第一版」，等待按 HTML 稿细化**
-- 一句话状态：可安装、可日常使用的可用版本已成型（release APK ≈ **2.1 MB**，63 个单元测试全绿）
+- 一句话状态：可安装、可日常使用的可用版本已成型（release APK ≈ **2.1 MB**，95 个单元测试全绿）
+- 2026-10-07：完成「完事儿 → bitsay」历史数据迁移（1432 条），方法论见 **§8.6**，
+  转换脚本保留在 `tools/everythingdone_to_bitsay.py`，以后还要迁移直接照 §8.6.4 跑。
 
 ---
 
@@ -573,6 +575,109 @@ android:theme="@style/Theme.BitSay"                 <!-- 和 App 同一个主题
 
 ---
 
+## 8.6 数据迁移：从「完事儿」导入（一次性任务）
+
+用户手机上原本用 **完事儿 / EverythingDone**（`com.ywwynm.everythingdone`，v1.3.8，
+2017 年的老应用，targetSdk 25），需要把里面的笔记搬到 bitsay。这一节记录**怎么做到的**和
+**踩过的坑**，因为换台机器或用户再攒了新笔记时还要重跑一遍。
+
+### 8.6.1 为什么不能直接读它的数据库
+
+| 手段 | 结果 |
+|---|---|
+| `adb shell su` | ❌ 手机没 root（`su: inaccessible or not found`） |
+| `run-as com.ywwynm.everythingdone` | ❌ 非 debuggable 包 |
+| `adb backup` | ❌ targetSdk 25 本应可用，但实机只吐回 **549 字节空包** |
+| **应用自带备份** | ✅ **唯一可行路径** |
+
+> 完事儿 的备份（设置 → 备份）把 `databases/` + `shared_prefs/` 打成一个 **普通 ZIP**
+> （后缀 `.bak`），落在 `/sdcard/EverythingDone/backup/ED_backup_<yyyyMMddHHmmss>.bak`。
+> 数据库是**明文 SQLite**（没有 SQLCipher），adb shell 能直接 `pull` 出来。
+> 所谓「私密密码」只用于解锁 App 内一个 private 分区，与备份文件本身无关。
+
+### 8.6.2 完事儿的数据模型（反编译 `com.ywwynm.everythingdone.b.b` / `model.Thing`）
+
+`things` 表：`id, type, state, color, title, content, attachment, location,
+create_time, update_time, finish_time`
+
+- `type`：**0=note 1=reminder 2=habit 3=goal**，**4..8 = 应用自动生成的欢迎条目**，**-1 = 内置彩蛋**
+- `state`：0=进行中 1=已完成 2=已删除
+- **`title` 和 `content` 是分开的两列**——大多只有 `content`，标题为空
+- **换行是真正的 `\n`**，不是硬折行，可直接搬运
+
+本机实际数据（2026-10-07 导出）：**1439 行**，其中
+`type=0` 有 1241(进行中) + 173(已完成) + 19(已删除)，其余 6 行是欢迎条目和彩蛋。
+**一条 reminder/habit/goal 都没有**，所以全部按普通笔记处理。
+文本最长 1045 字符，远低于 `ItemRepository.MAX_TEXT_LENGTH`(20 000)。
+
+### 8.6.3 转换规则
+
+| 完事儿 | bitsay |
+|---|---|
+| `title` + `content` | `text`（各自 trim，非空则用 `\n` 拼接） |
+| `type` 4..8、-1 | **丢弃**（应用自动生成，不是用户内容） |
+| `state` 0 / 1 / 2 | 用户明确要求**全部保留**，统一 `kind=NOTE, done=0` |
+| `create_time` / `update_time` | `createdAt` / `updatedAt`（毫秒，原样） |
+| `id` | 重新连续编号 1..N（按 `create_time` 升序，让 delta 编码最省） |
+| 文本为空的 1 条 | 丢弃（与 App 端 `ItemRepository.normalize` 同规则） |
+
+> **1439 → 1432 条**：跳过 5 条欢迎条目 + 1 条内置彩蛋 + 1 条空文本。
+
+### 8.6.4 产物与工具链
+
+转换脚本 **`tools/everythingdone_to_bitsay.py`**（不依赖任何第三方库，只用标准库）：
+
+```bash
+# 1) 手机上：完事儿 → 设置 → 备份
+# 2) 拉下来并解包
+adb pull /sdcard/EverythingDone/backup/ED_backup_<stamp>.bak /tmp/ed.bak
+unzip -o /tmp/ed.bak -d /tmp/ed          # → databases/EverythingDoneData.db
+# 3) 转换（同时输出 .bitsay.gz 和一份人类可读 JSON）
+python3 tools/everythingdone_to_bitsay.py /tmp/ed/databases/EverythingDoneData.db /tmp/out
+#    加 --exported-at <毫秒> 可把备份元数据里的导出时间钉死，让产物字节级可复现
+# 4) 推到手机，在 bitsay 里走「设置 → 还原」导入
+adb push /tmp/out/everythingdone.bitsay.gz /sdcard/Download/
+```
+
+自检在转换脚本内部完成，**刻意用独立实现**避免"自己验证自己"：
+脚本里另写了一个**纯 Python 解码器**，把刚生成的文件读回来逐条比对文本、时间戳、
+kind/done 与 id 连续性，不一致就直接 `assert` 失败，不会悄悄产出坏文件。
+
+此外这次迁移还额外做过一层更强的验证（**验证用，已删除，不再保留在仓库里**）：
+用 App 真正的 `BackupArchive` + `BackupCodec` 解码生成的文件，断言 1432 条、全 `NOTE`、
+全未完成、id 连续、时间戳单调不倒挂、换行与 Unicode 无损 —— 通过后即清理。
+要复现这层验证，临时加一个读 `.bitsay.gz` 的单测即可，不必留档。
+
+保留在仓库里的只有**两样东西**：`tools/everythingdone_to_bitsay.py` 和本节文档。
+
+> ⚠️ **`WidgetLayoutTest.kt` 已在 2026-10-07 删除（用户确认）。**
+> 它引用的 `WidgetLayout` 类早在 `b890743 chore: 优化细节` 就已经没了，属于孤儿测试，
+> 会让整个 test 源集编不过（9 处 `Unresolved reference 'WidgetLayout'`）。
+> 也就是说在此之前**干净 checkout 上 `./gradlew test` 一直是红的**。
+> 如果你将来想恢复"小组件顶栏收起阈值"那段逻辑，需要连实现带测试一起重新写。
+
+本次迁移的确定产物（可复现，`exportedAt` 已用 `--exported-at` 钉死）：
+
+| 项 | 值 |
+|---|---|
+| `exportedAt` | `1791364171143` |
+| `.bitsay.gz` | 61 114 字节，MD5 `8c379c1b0324e2b4b2cdb7c7b925ba37` |
+| payload | 107 135 字节 |
+| 推送位置 | `/sdcard/Download/everythingdone.bitsay.gz`（adb 校验 MD5 一致） |
+| 导入结果 | ✅ 用户已在真机 release 包上导入成功（2026-10-07） |
+
+### 8.6.5 导入方式的选择（重要）
+
+bitsay 的「合并」是按 **id** 判重的（本地没有该 id 就插入）。迁移数据的 id 从 1 开始连续编号，
+**必然与手机上已有的笔记 id 撞车**，撞上的那些会因为"本地更新"而被跳过。
+所以：
+
+- 如果手机上的 bitsay **还是空的** → 随便选，用「覆盖」最干净；
+- 如果**已经有内容** → 用「合并」，但要知道 id 冲突的那部分可能不进来；
+  想要两边都留全，就先导出手机上现有的备份，最后用「覆盖」导迁移数据，再把两份在电脑上合并重导。
+
+---
+
 ## 9. 签名（长期正式分发）
 
 - keystore：`keystore/bitsay-release.jks`（PKCS12）
@@ -758,9 +863,16 @@ git add -A -n                      # 提交前预演，确认没有产物/密钥
 | **搜索「Q4」→ 笔记分类 1 条命中；切「待办」关键词仍在、0 条命中（「没有找到相关内容」）；切回笔记命中恢复** | ✅ |
 | 搜索页空关键词 → 显示「输入关键词搜索笔记和待办」，切分类不崩 | ✅ |
 | 导入后 done / doneAt 一一对应（5000 待办中 1281 完成、1281 个 doneAt） | ✅ |
+| 完事儿 备份落盘 `/sdcard/EverythingDone/backup/ED_backup_20261007170539.bak`（91 055 B） | ✅ |
+| 解包出明文 SQLite，1439 行 / 文本最长 1045 字符 | ✅ |
+| 转换 1439 → 1432 条，用真实 `BackupCodec` 解码通过（验证代码事后已清理） | ✅ |
+| `.bitsay.gz` 推到手机 + adb MD5 双向一致 | ✅ |
+| **手机上「设置 → 还原」导入 1432 条**（release 包，由用户本人操作） | ✅ |
+| `WidgetLayoutTest.kt` 孤儿测试清理后，`./gradlew test` 在干净 checkout 上 95 个全绿 | ✅ |
 
 未验证 / 待补：小组件**手动拖拽缩放**的中间档位逐级走查（只验证了当前档位的渲染结果与 `WidgetSize` 单测）、
 深色模式逐屏、Android 12~15 真机（本机只有 Android 16，只能靠 minSdk 与实际 API 使用面推断）。
+完事儿 迁移已在真机 release 包上端到端跑通（§8.6）。
 
 ---
 
